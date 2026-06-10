@@ -20,6 +20,7 @@
 #  key => API's Key (see admin panel on how to generate a key)
 #
 
+// @implements FS-043.9: Remote HTTP Cron Execution — reference remote-cron client: POST empty body to api/tasks/cron with X-API-Key (200→exit 0)
 $config = array(
         'url'=>'http://yourdomain.com/support/api/tasks/cron',
         'key'=>'API KEY HERE'

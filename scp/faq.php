@@ -16,6 +16,7 @@
 require('staff.inc.php');
 require_once(INCLUDE_DIR.'class.faq.php');
 
+// @implements FS-050.11: Staff KB Entry & Routing — article id / category id resolution, "Unknown or invalid FAQ"/"...category"
 $faq=$category=null;
 if($_REQUEST['id'] && !($faq=FAQ::lookup($_REQUEST['id'])))
    $errors['err']='Unknown or invalid FAQ';
@@ -23,9 +24,11 @@ if($_REQUEST['id'] && !($faq=FAQ::lookup($_REQUEST['id'])))
 if($_REQUEST['cid'] && !$faq && !($category=Category::lookup($_REQUEST['cid'])))
     $errors['err']='Unknown or invalid FAQ category';
 
+// @implements FS-050.12: Staff FAQ Mutation Actions — POST dispatch on `do`
 if($_POST):
     $errors=array();
     switch(strtolower($_POST['do'])) {
+        // @implements FS-050.12: Staff FAQ Mutation Actions — create/add new article
         case 'create':
         case 'add':
             if(($faq=FAQ::add($_POST,$errors)))
@@ -33,6 +36,7 @@ if($_POST):
             elseif(!$errors['err'])
                 $errors['err'] = 'Unable to add FAQ. Try again!';
         break;
+        // @implements FS-050.12: Staff FAQ Mutation Actions — update/edit existing article
         case 'update':
         case 'edit';
             if(!$faq)
@@ -44,6 +48,7 @@ if($_POST):
             } elseif(!$errors['err'])
                 $errors['err'] = 'Unable to update FAQ. Try again!';     
             break;
+        // @implements FS-050.12: Staff FAQ Mutation Actions — manage-faq: edit/publish/unpublish/delete dispatch
         case 'manage-faq':
             if(!$faq) {
                 $errors['err']='Unknown or invalid FAQ';
@@ -85,6 +90,7 @@ if($_POST):
 endif;
 
 
+// @implements FS-050.13: Staff View Selection & Single-Article View — select view (article/edit form/category/landing)
 $inc='faq-categories.inc.php'; //FAQs landing page.
 if($faq) {
     $inc='faq-view.inc.php';

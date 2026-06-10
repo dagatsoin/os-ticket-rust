@@ -16,6 +16,7 @@
 # Override staffLoginPage() defined in staff.inc.php to return an
 # HTTP/Forbidden status rather than the actual login page.
 # XXX: This should be moved to the AjaxController class
+// @implements FS-002.11: Per-request session validation (the authenticated gate) — AJAX override returns HTTP 403 instead of the login page
 function staffLoginPage($msg='Unauthorized') {
     Http::response(403,'Must login: '.Format::htmlchars($msg));
     exit;
@@ -32,6 +33,10 @@ if(!defined('INCLUDE_DIR'))	Http::response(500, 'Server configuration error');
 
 require_once INCLUDE_DIR.'/class.dispatcher.php';
 require_once INCLUDE_DIR.'/class.ajax.php';
+// @implements FS-043.3: HTTP API URL Dispatcher — staff AJAX route table (nestable URL patterns)
+// @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — session-gated AJAX handlers, no API key
+// @implements FS-033.8: Single Log Record Detail (Content AJAX) — /content/log/<id> route
+// @implements FS-033.10: Staff Configuration Bundle (Config AJAX) — /config/scp route
 $dispatcher = patterns('',
     url('^/kb/', patterns('ajax.kbase.php:KbaseAjaxAPI',
         # Send ticket-id as a query arg => canned-response/33?ticket=83
@@ -65,5 +70,6 @@ $dispatcher = patterns('',
 );
 
 # Call the respective function
+// @implements FS-043.3: HTTP API URL Dispatcher — resolve path info to the matching handler and emit its output
 print $dispatcher->resolve($ost->get_path_info());
 ?>

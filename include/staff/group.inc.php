@@ -1,4 +1,6 @@
 <?php
+// @implements FS-031.6: Group Management Access Gate — in-partial admin re-check (else die 'Access Denied')
+// @implements FS-031.8: Create / Edit a Group — add-vs-update mode select + defaults (active, can_create_tickets pre-checked)
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $info=array();
 $qstr='';
@@ -20,6 +22,7 @@ if($group && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-031.8: Create / Edit a Group — Group Information section (Name, Active/Disabled status; CSRF) */ ?>
 <form action="groups.php?<?php echo $qstr; ?>" method="post" id="save" name="group">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">
@@ -55,6 +58,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 &nbsp;<span class="error">*&nbsp;<?php echo $errors['status']; ?></span>
             </td>
         </tr>
+        <?php /* @implements BS-031-020: Group Permission Flag Set (Canonical) — 11-flag Yes/No radio matrix (create/edit/reply/close/assign/transfer/delete tickets, ban emails, manage premade/FAQ, view staff stats) */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Group Permissions</strong>: Applies to all group members&nbsp;</em>
@@ -148,6 +152,8 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 &nbsp;&nbsp;<i>Ability to view stats of other staff members in allowed departments.</i>
             </td>
         </tr>
+        <?php /* @implements BS-031-021: Group↔Department Access Matrix — department checkbox set (Select All/None) reconciling group↔dept access rows */ ?>
+        <?php /* @implements FS-031.8: Create / Edit a Group — Admin Notes free-text field */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Department Access</strong>: Check all departments the group members are allowed to access.&nbsp;&nbsp;&nbsp;<a id="selectAll" href="#deptckb">Select All</a>&nbsp;&nbsp;<a id="selectNone" href="#deptckb">Select None</a>&nbsp;&nbsp;</em>

@@ -15,6 +15,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 require('staff.inc.php');
+// @implements FS-043.11: Autocron Web Fallback — emit 1x1 GIF, finish response, then run cron work in background
 ignore_user_abort(1);//Leave me a lone bro!
 @set_time_limit(0); //useless when safe_mode is on
 $data=sprintf ("%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%",
@@ -38,6 +39,8 @@ ob_start(); //Keep the image output clean. Hide our dirt.
 $sec=time()-$_SESSION['lastcroncall'];
 $caller = $thisstaff->getUserName();
 
+// @implements FS-043.11: Autocron Web Fallback — 180s/session throttle, upgrade-gated; always ticket-monitor, mail-fetch if enabled
+// @implements BS-435: Autocron Is a Throttled, Session-Scoped Fallback
 if($sec>180 && $ost && !$ost->isUpgradePending()): //user can call cron once every 3 minutes.
 require_once(INCLUDE_DIR.'class.cron.php');
 

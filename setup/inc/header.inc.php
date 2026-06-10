@@ -1,3 +1,4 @@
+<!-- @implements FS-060.1: Installer bootstrap & step state machine — installer wizard header chrome (title/tagline/logo/menu) -->
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
     "http://www.w3.org/TR/html4/loose.dtd">
 <html>

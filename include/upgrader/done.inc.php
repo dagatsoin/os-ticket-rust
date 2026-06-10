@@ -1,4 +1,7 @@
 <?php
+// @implements FS-061.14: Post-upgrade completion actions — done screen destroys upgrader session state + success guidance
+// @implements FS-061.9: Upgrade wizard UX & access gating — done screen selection
+// @implements BS-061-03: Only an authenticated admin may run the upgrade — Access Denied unless SCP-context admin
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 //Destroy the upgrader - we're done! 
 $_SESSION['ost_upgrader']=null;

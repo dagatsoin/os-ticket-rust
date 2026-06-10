@@ -24,6 +24,8 @@ require_once(INCLUDE_DIR.'class.canned.php');
 $page='';
 $ticket=null; //clean start.
 //LOCKDOWN...See if the id provided is actually valid and if the user has access.
+// @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — resolve ticket by internal id, "Unknown or invalid ticket ID"
+// @implements FS-021.2: Staff Access Check (checkStaffAccess) — clear ticket + access-denied error on failed access
 if($_REQUEST['id']) {
     if(!($ticket=Ticket::lookup($_REQUEST['id'])))
          $errors['err']='Unknown or invalid ticket ID';
@@ -33,14 +35,18 @@ if($_REQUEST['id']) {
     }
 }
 //At this stage we know the access status. we can process the post.
+// @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — dispatch POST to per-action handlers once access is established
 if($_POST && !$errors):
 
+    // @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — per-ticket action switch (reply/transfer/assign/...)
     if($ticket && $ticket->getId()) {
         //More coffee please.
         $errors=array();
         $lock=$ticket->getLock(); //Ticket lock if any
         $statusKeys=array('open'=>'Open','Reopen'=>'Open','Close'=>'Closed');
         switch(strtolower($_POST['a'])):
+        // @implements FS-021.3: Post Reply to Requester (reply -> postReply) — lock/ban guards, email-reply, close/reopen-on-reply
+        // @implements BS-021.18: Reply Status Checkbox Can Close or Reopen On Reply
         case 'reply':
             if(!$thisstaff->canPostReply())
                 $errors['err'] = 'Action denied. Contact admin for access';
@@ -74,6 +80,7 @@ if($_POST && !$errors):
                 $errors['err']='Unable to post the reply. Correct the errors below and try again!';
             }
             break;
+        // @implements FS-021.10: Transfer Between Departments (transfer -> transfer) — dept change, SLA re-select, access re-check
         case 'transfer': /** Transfer ticket **/
             //Check permission
             if(!$thisstaff->canTransferTickets())
@@ -107,6 +114,8 @@ if($_POST && !$errors):
                 }
             }
             break;
+        // @implements FS-021.7: Assign / Reassign Ticket (assign -> assign) — staff/team/claim prefix decode, comments, alerts
+        // @implements BS-021.9: No Self-Assignment Alerts
         case 'assign':
 
              if(!$thisstaff->canAssignTickets())
@@ -149,6 +158,8 @@ if($_POST && !$errors):
                  }
              }
             break;
+        // @implements FS-021.4: Post Internal Note (postnote -> postNote) — note body + optional manager-gated state change
+        // @implements BS-021.13: Manual Overdue/Answered/State Flags Are Manager-Only
         case 'postnote': /* Post Internal Note */
             //Make sure the staff can set desired state
             if($_POST['state']) {
@@ -179,6 +190,7 @@ if($_POST && !$errors):
                 $errors['postnote'] = 'Unable to post the note. Correct the error(s) below and try again!';
             }
             break;
+        // @implements FS-021.15: Edit Ticket Properties (a=edit -> update) — validated field edit + access re-check
         case 'edit':
         case 'update':
             if(!$ticket || !$thisstaff->canEditTickets())
@@ -193,8 +205,11 @@ if($_POST && !$errors):
                 $errors['err']='Unable to update the ticket. Correct the errors below and try again!';
             }
             break;
+        // @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — process sub-action dispatcher (close/reopen/...)
         case 'process':
             switch(strtolower($_POST['do'])):
+                // @implements FS-021.11: Close Ticket (process/close -> close) — close, clear overdue/due, credit closer
+                // @implements BS-021.4: Closing Clears Overdue & Due Date and Credits the Closer
                 case 'close':
                     if(!$thisstaff->canCloseTickets()) {
                         $errors['err'] = 'Perm. Denied. You are not allowed to close tickets.';
@@ -218,6 +233,8 @@ if($_POST && !$errors):
                         $errors['err']='Problems closing the ticket. Try again';
                     }
                     break;
+                // @implements FS-021.12: Reopen Ticket (process/reopen -> reopen) — reopen, annul prior close event
+                // @implements BS-021.14: Reopen Annuls the Prior Close Event
                 case 'reopen':
                     //if staff can close or create tickets ...then assume they can reopen.
                     if(!$thisstaff->canCloseTickets() && !$thisstaff->canCreateTickets()) {
@@ -238,6 +255,7 @@ if($_POST && !$errors):
                         $errors['err']='Problems reopening the ticket. Try again';
                     }
                     break;
+                // @implements FS-021.9: Release / Unassign Ticket (process/release -> release/unassign) — manager-only unassign
                 case 'release':
                     if(!$ticket->isAssigned() || !($assigned=$ticket->getAssigned())) {
                         $errors['err'] = 'Ticket is not assigned!';
@@ -248,6 +266,7 @@ if($_POST && !$errors):
                         $errors['err'] = 'Problems releasing the ticket. Try again';
                     }
                     break;
+                // @implements FS-021.8: Claim Ticket (process/claim) — self-assign an open, unassigned ticket (no alert)
                 case 'claim':
                     if(!$thisstaff->canAssignTickets()) {
                         $errors['err'] = 'Perm. Denied. You are not allowed to assign/claim tickets.';
@@ -261,6 +280,8 @@ if($_POST && !$errors):
                         $errors['err'] = 'Problems assigning the ticket. Try again';
                     }
                     break;
+                // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — manual mark-overdue (manager-only, idempotent)
+                // @implements BS-021.21: Mark-Overdue / Mark-Answered Are Idempotent
                 case 'overdue':
                     $dept = $ticket->getDept();
                     if(!$dept || !$dept->isManager($thisstaff)) {
@@ -272,6 +293,7 @@ if($_POST && !$errors):
                         $errors['err']='Problems marking the the ticket overdue. Try again';
                     }
                     break;
+                // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — manager-only mark-answered (idempotent)
                 case 'answered':
                     $dept = $ticket->getDept();
                     if(!$dept || !$dept->isManager($thisstaff)) {
@@ -283,6 +305,7 @@ if($_POST && !$errors):
                         $errors['err']='Problems marking the the ticket answered. Try again';
                     }
                     break;
+                // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — manager-only mark-unanswered (idempotent)
                 case 'unanswered':
                     $dept = $ticket->getDept();
                     if(!$dept || !$dept->isManager($thisstaff)) {
@@ -294,6 +317,8 @@ if($_POST && !$errors):
                         $errors['err']='Problems marking the the ticket unanswered. Try again';
                     }
                     break;
+                // @implements FS-021.14: Ban / Unban Requester E-mail (process/banemail) — per-ticket ban action
+                // @implements FS-042.12: Per-Ticket Ban / Unban Staff Action — add owner email to SYSTEM BAN LIST
                 case 'banemail':
                     if(!$thisstaff->canBanEmails()) {
                         $errors['err']='Perm. Denied. You are not allowed to ban emails';
@@ -305,6 +330,8 @@ if($_POST && !$errors):
                         $errors['err']='Unable to add the email to banlist';
                     }
                     break;
+                // @implements FS-021.14: Ban / Unban Requester E-mail (process/unbanemail) — per-ticket unban action
+                // @implements FS-042.12: Per-Ticket Ban / Unban Staff Action — remove owner email from SYSTEM BAN LIST
                 case 'unbanemail':
                     if(!$thisstaff->canBanEmails()) {
                         $errors['err'] = 'Perm. Denied. You are not allowed to remove emails from banlist.';
@@ -316,6 +343,8 @@ if($_POST && !$errors):
                         $errors['err']='Unable to remove the email from banlist. Try again.';
                     }
                     break;
+                // @implements FS-021.19: Delete Ticket (process/delete -> delete) — permanent delete + thread/attachment cascade
+                // @implements BS-021.16: Deletion Is Permanent and Cascades to Thread & Attachments
                 case 'delete': // Dude what are you trying to hide? bad customer support??
                     if(!$thisstaff->canDeleteTickets()) {
                         $errors['err']='Perm. Denied. You are not allowed to DELETE tickets!!';
@@ -343,6 +372,8 @@ if($_POST && !$errors):
     }elseif($_POST['a']) {
 
         switch($_POST['a']) {
+            // @implements FS-020.9: Mass / Bulk Actions From the Queue — selection + gating + queue→action mapping
+            // @implements FS-021.21: Mass Ticket Actions From the View Script (mass_process)
             case 'mass_process':
                 if(!$thisstaff->canManageTickets())
                     $errors['err']='You do not have permission to mass manage tickets. Contact admin for such access';
@@ -352,6 +383,8 @@ if($_POST && !$errors):
                     $count=count($_POST['tids']);
                     $i = 0;
                     switch(strtolower($_POST['do'])) {
+                        // @implements FS-021.21: Mass Ticket Actions From the View Script — bulk reopen (close-or-create perm)
+                        // @implements BS-020.11: Per-Action Permission Re-Check On Bulk
                         case 'reopen':
                             if($thisstaff->canCloseTickets() || $thisstaff->canCreateTickets()) {
                                 $note='Ticket reopened by '.$thisstaff->getName();
@@ -372,6 +405,7 @@ if($_POST && !$errors):
                                 $errors['err'] = 'You do not have permission to reopen tickets';
                             }
                             break;
+                        // @implements FS-021.21: Mass Ticket Actions From the View Script — bulk close (close perm)
                         case 'close':
                             if($thisstaff->canCloseTickets()) {
                                 $note='Ticket closed without response by '.$thisstaff->getName();
@@ -392,6 +426,7 @@ if($_POST && !$errors):
                                 $errors['err'] = 'You do not have permission to close tickets';
                             }
                             break;
+                        // @implements FS-021.21: Mass Ticket Actions From the View Script — bulk mark-overdue
                         case 'mark_overdue':
                             $note='Ticket flagged as overdue by '.$thisstaff->getName();
                             foreach($_POST['tids'] as $k=>$v) {
@@ -408,6 +443,7 @@ if($_POST && !$errors):
                             else
                                 $errors['err'] = 'Unable to flag selected tickets as overdue';
                             break;
+                        // @implements FS-021.21: Mass Ticket Actions From the View Script — bulk delete (delete perm) + warning log
                         case 'delete':
                             if($thisstaff->canDeleteTickets()) {
                                 foreach($_POST['tids'] as $k=>$v) {
@@ -437,6 +473,8 @@ if($_POST && !$errors):
                     }
                 }
                 break;
+            // @implements FS-021.20: Staff-Initiated (Phone) New Ticket (a=open -> Ticket::open) — staff create path
+            // @implements BS-021.15: Staff-Created Tickets Default to No Auto-Response
             case 'open':
                 $ticket=null;
                 if(!$thisstaff || !$thisstaff->canCreateTickets()) {
@@ -463,9 +501,12 @@ if($_POST && !$errors):
 endif;
 
 /*... Quick stats ...*/
+// @implements FS-020.11: Quick Ticket Stats — compute the acting staff's quick ticket counts
 $stats= $thisstaff->getTicketsStats();
 
 //Navigation
+// @implements FS-020.2: Predefined Queues (Status Tabs) — assemble queue sub-menu from quick stats
+// @implements BS-020.14: Quick-Stat Warning & Notice Thresholds — >10 assigned/overdue warnings
 $nav->setTabActive('tickets');
 if($cfg->showAnsweredTickets()) {
     $nav->addSubMenu(array('desc'=>'Open ('.number_format($stats['open']+$stats['answered']).')',
@@ -537,8 +578,11 @@ if($thisstaff->canCreateTickets()) {
 }
 
 
+// @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — view-routing (view/edit/print vs listing)
 $inc = 'tickets.inc.php';
 if($ticket) {
+    // @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — resolved ticket renders ticket-view/edit; print -> PDF export
+    // @implements FS-021.17: Print Ticket to PDF (a=print -> pdfExport) — PDF export trigger
     $ost->setPageTitle('Ticket #'.$ticket->getNumber());
     $nav->setActiveSubMenu(-1);
     $inc = 'ticket-view.inc.php';
@@ -547,9 +591,13 @@ if($ticket) {
     elseif($_REQUEST['a'] == 'print' && !$ticket->pdfExport($_REQUEST['psize'], $_REQUEST['notes']))
         $errors['err'] = 'Internal error: Unable to export the ticket to PDF for print.';
 } else {
+    // @implements FS-020.1: Queue Entry & Default Landing — no ticket resolved renders the queue listing
     $inc = 'tickets.inc.php';
+    // @implements FS-021.20: Staff-Initiated (Phone) New Ticket — a=open renders the new-ticket form
     if($_REQUEST['a']=='open' && $thisstaff->canCreateTickets())
         $inc = 'ticket-open.inc.php';
+    // @implements FS-020.10: Export Current Query to CSV — token-backed queue export trigger
+    // @implements FS-090.23: Ticket-Queue CSV Export Flow (Token-Backed) — session query-token lookup + CSV dump
     elseif($_REQUEST['a'] == 'export') {
         require_once(INCLUDE_DIR.'class.export.php');
         $ts = strftime('%Y%m%d');

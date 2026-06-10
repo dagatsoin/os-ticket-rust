@@ -16,6 +16,7 @@
 require('staff.inc.php');
 include_once(INCLUDE_DIR.'class.canned.php');
 /* check permission */
+// @implements FS-022.9: Canned-Response Management Permission — manage-premade gate, redirect to kb.php otherwise
 if(!$thisstaff || !$thisstaff->canManageCannedResponses()) {
     header('Location: kb.php');
     exit;
@@ -23,12 +24,15 @@ if(!$thisstaff || !$thisstaff->canManageCannedResponses()) {
 
 //TODO: Support attachments!
 
+// @implements FS-022.3: Edit / Update Canned Response — canned id lookup, "Unknown or invalid canned response ID." on miss
 $canned=null;
 if($_REQUEST['id'] && !($canned=Canned::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid canned response ID.';
 
+// @implements FS-022.9: Canned-Response Management Permission — re-check permission before processing POST
 if($_POST && $thisstaff->canManageCannedResponses()) {
     switch(strtolower($_POST['do'])) {
+        // @implements FS-022.3: Edit / Update Canned Response — update + attachment add/remove on save
         case 'update':
             if(!$canned) {
                 $errors['err']='Unknown or invalid canned response.';
@@ -53,6 +57,7 @@ if($_POST && $thisstaff->canManageCannedResponses()) {
                 $errors['err']='Error updating canned response. Try again!';
             }
             break;
+        // @implements FS-022.2: Create Canned Response — create + bind uploaded attachments
         case 'create':
             if(($id=Canned::create($_POST, $errors))) {
                 $msg='Canned response added successfully';
@@ -65,6 +70,7 @@ if($_POST && $thisstaff->canManageCannedResponses()) {
                 $errors['err']='Unable to add canned response. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-022.6: Mass-Process Canned Responses (Enable / Disable / Delete)
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err']='You must select at least one canned response';
@@ -121,6 +127,8 @@ if($_POST && $thisstaff->canManageCannedResponses()) {
     }
 }
 
+// @implements FS-022.1: Canned Response Library (List View) — list partial routing
+// @implements FS-022.2: Create Canned Response — add/edit form partial routing
 $page='cannedresponses.inc.php';
 if($canned || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='cannedresponse.inc.php';

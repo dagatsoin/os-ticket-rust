@@ -14,9 +14,11 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-060.1: Installer bootstrap & step state machine — installer bootstrap: THIS_VERSION, error/display tuning, session, constants, DB driver load
 #This  version - changed on every release
 define('THIS_VERSION', '1.7-git');
 
+// @implements FS-060.1: Installer bootstrap & step state machine — error_reporting E_ALL & ~E_NOTICE, strip E_STRICT (5.4+) and E_DEPRECATED (5.3+)
 #inits - error reporting.
 $error_reporting = E_ALL & ~E_NOTICE;
 if (defined('E_STRICT')) # 5.4.0
@@ -31,6 +33,7 @@ ini_set('session.cache_limiter', 'nocache');
 ini_set('display_errors',1); //We want the user to see errors during install process.
 ini_set('display_startup_errors',1);
 
+// @implements FS-060.1: Installer bootstrap & step state machine — neutralize register_globals when enabled
 #Disable Globals if enabled
 if(ini_get('register_globals')) {
     ini_set('register_globals',0);
@@ -46,6 +49,8 @@ session_start();
 $errors=array();
 $msg='';
 
+// @implements FS-060.1: Installer bootstrap & step state machine — SETUPINC guard constant
+// @implements EC-060-12: URL auto-detection trims a trailing `setup` segment — URL via rtrim trailing 'setup'
 #define constants.
 define('SETUPINC',true);
 define('URL',rtrim('http'.(($_SERVER['HTTPS']=='on')?'s':'').'://'.$_SERVER['HTTP_HOST'].dirname($_SERVER['PHP_SELF']),'setup'));
@@ -67,6 +72,8 @@ require_once(INCLUDE_DIR.'class.passwd.php');
 require_once(INCLUDE_DIR.'class.format.php');
 require_once(INCLUDE_DIR.'class.misc.php');
 
+// @implements FS-060.1: Installer bootstrap & step state machine — conditional DB driver load
+// @implements EC-060-02: `mysqli` present but `mysql` extension absent — mysqli if loaded, else mysql
 if (extension_loaded('mysqli'))
     require_once INCLUDE_DIR.'mysqli.php';
 else

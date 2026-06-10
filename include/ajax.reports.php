@@ -26,7 +26,10 @@ include_once(INCLUDE_DIR.'class.ticket.php');
  * The overview report allows for the display of basic ticket statistics in
  * both graphical and tabular formats.
  */
+// @implements FS-020.12: Dashboard — Ticket Activity Chart — graph endpoint
+// @implements FS-020.13: Dashboard — Tabular Statistics — table/groups + table endpoints
 class OverviewReportAjaxAPI extends AjaxController {
+    // @implements FS-020.13: Dashboard — Tabular Statistics — enumerates the dept/topic/staff tab groups
     function enumTabularGroups() {
         return $this->encode(array("dept"=>"Department", "topic"=>"Topics",
             # XXX: This will be relative to permissions based on the
@@ -34,6 +37,8 @@ class OverviewReportAjaxAPI extends AjaxController {
             "staff"=>"Staff"));
     }
 
+    // @implements FS-020.13: Dashboard — Tabular Statistics — per-group Opened/Assigned/Overdue/Closed/Reopened + Service/Response times
+    // @implements BS-020.15: Dashboard Statistics Visibility Scoping — dept rows bounded by access, staff rows by managed/viewable depts
     function getData() {
         global $thisstaff;
 
@@ -148,10 +153,13 @@ class OverviewReportAjaxAPI extends AjaxController {
                      "data" => $rows);
     }
 
+    // @implements FS-020.13: Dashboard — Tabular Statistics — JSON projection for in-page rendering
     function getTabularData() {
         return $this->encode($this->getData());
     }
 
+    // @implements FS-020.13: Dashboard — Tabular Statistics — CSV download named <group>-report.csv
+    // @implements FS-090: shared export/download helper — delegates streaming to Http::download
     function downloadTabularData() {
         $data = $this->getData();
         $csv = '"' . implode('","',$data['columns']) . '"';
@@ -162,6 +170,7 @@ class OverviewReportAjaxAPI extends AjaxController {
             'text/csv', $csv);
     }
 
+    // @implements FS-020.12: Dashboard — Ticket Activity Chart — resolves start (default "last month") + period stop, relative "+" handling
     function _getDateRange() {
         global $cfg;
 
@@ -183,6 +192,7 @@ class OverviewReportAjaxAPI extends AjaxController {
         return array($start, $stop);
     }
 
+    // @implements FS-020.12: Dashboard — Ticket Activity Chart — per-state daily time series, annulled excluded, missing days zero-filled
     function getPlotData() {
         list($start, $stop) = $this->_getDateRange();
 

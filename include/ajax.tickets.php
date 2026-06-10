@@ -18,8 +18,13 @@ if(!defined('INCLUDE_DIR')) die('403');
 
 include_once(INCLUDE_DIR.'class.ticket.php');
 
+// @implements FS-020.7: Basic (Keyword) Search — ticket-number / email autocomplete lookups
+// @implements FS-020.8: Advanced Search — async result-count preview
+// @implements FS-021.18: Collaborative Edit Locking — acquire/renew/release + inline preview
 class TicketsAjaxAPI extends AjaxController {
 
+    // @implements FS-020.7: Basic (Keyword) Search — numeric ticketID-prefix autocomplete (falls back to email lookup)
+    // @implements BS-020.2: Department + Assignment Visibility Is Always Enforced — results scoped to staff/team/dept access
     function lookup() {
         global $thisstaff;
 
@@ -53,6 +58,8 @@ class TicketsAjaxAPI extends AjaxController {
         return $this->json_encode($tickets);
     }
 
+    // @implements FS-020.7: Basic (Keyword) Search — requester-email autocomplete with per-email ticket counts
+    // @implements BS-020.2: Department + Assignment Visibility Is Always Enforced — results scoped to staff/team/dept access
     function lookupByEmail() {
         global $thisstaff;
 
@@ -84,6 +91,8 @@ class TicketsAjaxAPI extends AjaxController {
         return $this->json_encode($tickets);
     }
 
+    // @implements FS-020.8: Advanced Search — async result-count preview over keyword/status/dept/assignee/closed-by/topic/date criteria
+    // @implements BS-020.16: Assignee + Closed-By Search Has Three Query Shapes — assignee/staffId/status predicate branching
     function search() {
         global $thisstaff, $cfg;
 
@@ -192,6 +201,8 @@ class TicketsAjaxAPI extends AjaxController {
         return $this->json_encode($result);
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — acquireLock returns lock id + remaining time, renews own lock, denies other-owned, signals retry
+    // @implements BS-021.3: One Active Lock Per Ticket; Locks Block Conflicting Replies — denies when locked by another non-expired owner
     function acquireLock($tid) {
         global $cfg,$thisstaff;
 
@@ -219,6 +230,7 @@ class TicketsAjaxAPI extends AjaxController {
         return $this->json_encode(array('id'=>$lock->getId(), 'time'=>$lock->getTime()));
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — renewLock re-extends own lock, re-acquires when gone/expired, gives up when owned by another
     function renewLock($tid, $id) {
         global $thisstaff;
 
@@ -238,6 +250,7 @@ class TicketsAjaxAPI extends AjaxController {
         return $this->json_encode(array('id'=>$lock->getId(), 'time'=>$lock->getTime()));
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — releaseLock frees a specific owned lock, or all of the requester's locks when no id given
     function releaseLock($tid, $id=0) {
         global $thisstaff;
 
@@ -258,6 +271,8 @@ class TicketsAjaxAPI extends AjaxController {
         return 0;
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — inline preview requires access check (404 otherwise), single lock/overdue banner
+    // @implements FS-021.23a: Ticket-View Banners, Action Visibility & Reload Affordance — permission-gated action menu in the preview popover
     function previewTicket ($tid) {
 
         global $thisstaff;

@@ -1,4 +1,7 @@
 <?php
+// @implements FS-061.9: Upgrade wizard UX & access gating — upgrade screen (in-progress action display + Upgrade Now)
+// @implements FS-061.11: AJAX progress protocol with manual fallback — ajax→manual mode switch + AcceptPathInfo warning
+// @implements BS-061-03: Only an authenticated admin may run the upgrade — Access Denied unless SCP-context admin
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
 //See if we need to switch the mode of upgrade...e.g from ajax (default) to manual

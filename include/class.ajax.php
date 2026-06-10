@@ -24,10 +24,12 @@ require_once (INCLUDE_DIR.'class.api.php');
  * call controller should inherit from this class in order to maintain
  * consistency.
  */
+// @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — extends ApiController, no API key
 class AjaxController extends ApiController {
     function AjaxController() {
     
     }
+    // @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — staffOnly guard → 401 when no valid staff
     function staffOnly() {
         global $thisstaff;
         if(!$thisstaff || !$thisstaff->isValid()) {
@@ -37,16 +39,19 @@ class AjaxController extends ApiController {
     /**
      * Convert a PHP array into a JSON-encoded string
      */
+    // @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — JSON-encoding helper
     function json_encode($what) {
         require_once (INCLUDE_DIR.'class.json.php');
         $encoder = new JsonDataEncoder();
         return $encoder->encode($what);
     }
 
+    // @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — encode alias
     function encode($what) {
         return $this->json_encode($what);
     }
 
+    // @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — GET param reader with default
     function get($var, $default=null) {
         return (isset($_GET[$var])) ? $_GET[$var] : $default;
     }

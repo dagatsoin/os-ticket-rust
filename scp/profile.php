@@ -17,6 +17,8 @@
 require_once('staff.inc.php');
 $msg='';
 $staff=Staff::lookup($thisstaff->getId());
+// @implements FS-031.10: Own Profile View & Edit — self-only profile save (dummy id tamper guard)
+// @implements BS-031-032: Profile Edits Self Only — deny mismatched submitted id
 if($_POST && $_POST['id']!=$thisstaff->getId()) { //Check dummy ID used on the form.
  $errors['err']='Internal Error. Action Denied';
 } elseif(!$errors && $_POST) { //Handle post
@@ -34,6 +36,7 @@ if($_POST && $_POST['id']!=$thisstaff->getId()) { //Check dummy ID used on the f
 }
 
 //Forced password Change.
+// @implements FS-031.11: Forced-Password-Change and Vacation Notices on Profile — forced-change + returning-from-vacation banners
 if($thisstaff->forcePasswdChange() && !$errors['err'])
     $errors['err']=sprintf('<b>Hi %s</b> - You must change your password to continue!',$thisstaff->getFirstName());
 elseif($thisstaff->onVacation() && !$warn)

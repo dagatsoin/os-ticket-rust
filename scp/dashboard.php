@@ -13,10 +13,13 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-020.12: Dashboard — Ticket Activity Chart — dashboard entry (requires staff session, 'dashboard' tab)
 require('staff.inc.php');
 $nav->setTabActive('dashboard');
 require(STAFFINC_DIR.'header.inc.php');
 ?>
+<!-- @implements FS-020.12: Dashboard — Ticket Activity Chart — timeframe form + line-chart area -->
+<!-- @implements FS-020.13: Dashboard — Tabular Statistics — statistics tab groups + table area -->
 
 <script type="text/javascript" src="js/raphael-min.js"></script>
 <script type="text/javascript" src="js/g.raphael.js"></script>

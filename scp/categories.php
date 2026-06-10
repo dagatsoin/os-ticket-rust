@@ -17,18 +17,22 @@ require('staff.inc.php');
 include_once(INCLUDE_DIR.'class.category.php');
 
 /* check permission */
+// @implements FS-032.15: FAQ Category Access Control — manage-FAQ gate, redirect to kb.php otherwise
 if(!$thisstaff || !$thisstaff->canManageFAQ()) {
     header('Location: kb.php');
     exit;
 }
 
 
+// @implements FS-032.13: FAQ Category Listing & Mass Actions — category id lookup, "Unknown or invalid category ID." on miss
 $category=null;
 if($_REQUEST['id'] && !($category=Category::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid category ID.';
 
+// @implements FS-032.14: FAQ Category Create / Edit Form — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])) {
+        // @implements FS-032.14: FAQ Category Create / Edit Form — update existing category
         case 'update':
             if(!$category) {
                 $errors['err']='Unknown or invalid category.';
@@ -38,6 +42,7 @@ if($_POST){
                 $errors['err']='Error updating category. Try again!';
             }
             break;
+        // @implements FS-032.14: FAQ Category Create / Edit Form — create new category
         case 'create':
             if(($id=Category::create($_POST,$errors))) {
                 $msg='Category added successfully';
@@ -46,6 +51,7 @@ if($_POST){
                 $errors['err']='Unable to add category. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-032.13: FAQ Category Listing & Mass Actions — mass make-public/make-internal/delete
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err']='You must select at least one category';
@@ -103,6 +109,8 @@ if($_POST){
     }
 }
 
+// @implements FS-032.13: FAQ Category Listing & Mass Actions — list partial routing
+// @implements FS-032.14: FAQ Category Create / Edit Form — form partial routing
 $page='categories.inc.php';
 if($category || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='category.inc.php';

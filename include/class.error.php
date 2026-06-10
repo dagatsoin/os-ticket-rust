@@ -17,12 +17,15 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-003.23 — Formal error object with auto-logging — legacy-runtime error stand-in
 class Error /* extends Exception */ {
     var $title = '';
 
+    // @implements FS-003.23 — Formal error object with auto-logging — constructor shim
     function Error($message) {
         call_user_func_array(array($this,'__construct'), func_get_args());
     }
+    // @implements FS-003.23 — Formal error object with auto-logging — normalize message, append backtrace at log level 3, self-log
     function __construct($message) {
         global $ost;
 
@@ -34,10 +37,12 @@ class Error /* extends Exception */ {
         $ost->logError($this->getTitle(), $message);
     }
 
+    // @implements FS-003.23 — Formal error object with auto-logging — title "<ClassName>: <title>"
     function getTitle() {
         return get_class($this) . ": {$this->title}";
     }
 
+    // @implements FS-003.23 — Formal error object with auto-logging — format debug backtrace frames
     function formatBacktrace($bt) {
         $buffer = array();
         foreach ($bt as $i=>$frame)
@@ -48,10 +53,12 @@ class Error /* extends Exception */ {
     }
 }
 
+// @implements FS-003.23 — Formal error object with auto-logging — install-data error specialization (raised by FS-060 installer)
 class InitialDataError extends Error {
     var $title = 'Problem with install initial data';
 }
 
+// @implements FS-003.23 — Formal error object with auto-logging — instantiate (and thereby log) a named error class
 function raise_error($message, $class=false) {
     if (!$class) $class = 'Error';
     new $class($message);

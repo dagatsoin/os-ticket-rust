@@ -1,4 +1,7 @@
 <?php
+// @implements FS-032.15: FAQ Category Access Control — access gate requires canManageFAQ permission
+// @implements FS-032.14: FAQ Category Create / Edit Form — add/edit a FAQ category
+// @implements FS-050.8: Staff FAQ Management Permission Gate — canManageFAQ guards FAQ-category mutation
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->canManageFAQ()) die('Access Denied');
 $info=array();
 $qstr='';
@@ -18,6 +21,7 @@ if($category && $_REQUEST['a']!='add'){
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 
 ?>
+<?php /* @implements FS-032.14: FAQ Category Create / Edit Form — FAQ-category form: Type (public/internal ispublic), Name, rich-text Description, notes; CSRF */ ?>
 <form action="categories.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">

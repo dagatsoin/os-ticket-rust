@@ -1,4 +1,5 @@
 <?php
+// @implements FS-030.13: Help topic list view — in-partial admin re-check; parent/child names via self-join (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
 $qstr='';
@@ -53,6 +54,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="helptopics.php?a=add" class="Icon newHelpTopic">Add New Help Topic</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-030.13: Help topic list view — list table (name, status, type, priority, dept, updated) + mass_process form (CSRF) */ ?>
 <form action="helptopics.php" method="POST" name="topics">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -114,6 +116,7 @@ else
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
 ?>
+<?php /* @implements FS-030.17: Help topic bulk actions — bulk Enable / Disable / Delete selected help topics + confirm dialog */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable" >
     <input class="button" type="submit" name="disable" value="Disable">

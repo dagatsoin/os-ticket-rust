@@ -18,6 +18,8 @@
 require_once INCLUDE_DIR.'class.migrater.php';
 require_once(INCLUDE_DIR.'class.file.php');
 
+// @implements FS-061.5: Resumable procedural migration tasks — the one genuinely batched/resumable task in this version
+// @implements FS-022.12: Content-Addressed Chunked File Storage — moves pre-1.7 disk attachments into the DB-backed file store
 class AttachmentMigrater extends MigrationTask {
     var $description = "Attachment migration from disk to database";
 
@@ -25,18 +27,22 @@ class AttachmentMigrater extends MigrationTask {
     var $skipList;
     var $errorList = array();
 
+    // @implements FS-061.5: Resumable procedural migration tasks — sleep() serialises interim queue/skip state into the session
     function sleep() {
         return array('queue'=>$this->queue, 'skipList'=>$this->skipList);
     }
+    // @implements FS-061.5: Resumable procedural migration tasks — wakeup() restores interim state on re-entry
     function wakeup($stuff) {
         $this->queue = $stuff['queue'];
         $this->skipList = $stuff['skipList'];
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — run(max_time) processes one time-boxed batch (90% of budget)
     function run($max_time) {
         $this->do_batch($max_time * 0.9, 100);
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — isFinished() drives whether the checkpoint advances
     function isFinished() {
         return $this->getQueueLength() == 0;
     }
@@ -50,6 +56,7 @@ class AttachmentMigrater extends MigrationTask {
      * Returns:
      * Number of pending attachments to migrate.
      */
+    // @implements FS-061.5: Resumable procedural migration tasks — do_batch processes attachments until the time slice elapses
     function do_batch($time=30, $max=0) {
 
         if(!$this->queueAttachments($max) || !$this->getQueueLength())
@@ -67,18 +74,22 @@ class AttachmentMigrater extends MigrationTask {
 
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — skip-list accessor (files that failed and won't be retried)
     function getSkipList() {
         return $this->skipList;
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — enqueue a discovered attachment onto the work queue
     function enqueue($fileinfo) {
         $this->queue[] = $fileinfo;
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — work-queue accessor
     function getQueue() {
         return $this->queue;
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — pending-count predicate driving the batch loop
     function getQueueLength() { return count($this->queue); }
     /**
      * Processes the next item on the work queue. Emits a JSON messages to
@@ -87,6 +98,7 @@ class AttachmentMigrater extends MigrationTask {
      * Returns:
      * TRUE/NULL if the migration was successful
      */
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — reads one disk file, saves via AttachmentFile::save, repoints attach row, unlinks original
     function next() {
         # Fetch next item -- use the last item so the array indices don't
         # need to be recalculated for every shift() operation.
@@ -130,6 +142,8 @@ class AttachmentMigrater extends MigrationTask {
      * From (class Ticket::fixAttachments), used to detect the locations of
      * attachment files
      */
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — discovers legacy disk attachments (v1.5/v1.6 paths) to migrate
+    // @implements FS-061.5: Resumable procedural migration tasks — refills the persistent queue only once drained
     /* static */ function queueAttachments($limit=0){
         global $cfg, $ost;
 
@@ -207,6 +221,7 @@ class AttachmentMigrater extends MigrationTask {
         return $this->queueAttachments($limit);
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — records an unmigratable attachment on the skip-list so the batch never retries it
     function skip($attachId, $error) {
 
         $this->skipList[] = $attachId;
@@ -214,6 +229,7 @@ class AttachmentMigrater extends MigrationTask {
         return $this->error($error." (ID #$attachId)");
     }
 
+    // @implements FS-061.12: Abort, error capture & alerting — logs the migration error (without sending the operator alert email)
     function error($what) {
         global $ost;
 
@@ -224,6 +240,7 @@ class AttachmentMigrater extends MigrationTask {
         # Assist in returning FALSE for inline returns with this method
         return false;
     }
+    // @implements FS-061.12: Abort, error capture & alerting — exposes the accumulated migration error list
     function getErrors() {
         return $this->errorList;
     }

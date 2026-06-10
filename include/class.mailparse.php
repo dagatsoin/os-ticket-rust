@@ -18,6 +18,7 @@
 require_once(PEAR_DIR.'Mail/mimeDecode.php');
 require_once(PEAR_DIR.'Mail/RFC822.php');
 
+// @implements FS-041.5: MIME Parsing & Normalization — Mail_Parse MIME decoder
 class Mail_Parse {
 
     var $mime_message;
@@ -45,6 +46,7 @@ class Mail_Parse {
             $this->charset = $charset;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — decode raw MIME into header/struct tree
     function decode() {
 
         $params = array('crlf'          => "\r\n",
@@ -59,6 +61,7 @@ class Mail_Parse {
         return (PEAR::isError($this->struct) || !(count($this->struct->headers)>1))?FALSE:TRUE;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — split raw message into header block + body
     function splitBodyHeader() {
 
         if (preg_match("/^(.*?)\r?\n\r?\n(.*)/s",
@@ -79,6 +82,7 @@ class Mail_Parse {
      * the header key. If left as FALSE, only the value given in the last
      * occurance of the header is retained.
      */
+    // @implements FS-041.5: MIME Parsing & Normalization — parse header text to name=>value map (multi-line aware)
     /* static */ function splitHeaders($headers_text, $as_array=false) {
         $headers = preg_split("/\r?\n/", $headers_text);
         for ($i=0, $k=count($headers); $i<$k; $i++) {
@@ -107,6 +111,7 @@ class Mail_Parse {
     }
 
     /* static */
+    // @implements FS-041.5: MIME Parsing & Normalization — case-insensitive header lookup
     function findHeaderEntry($headers, $name) {
         if (!is_array($headers))
             $headers = self::splitHeaders($headers);
@@ -131,6 +136,7 @@ class Mail_Parse {
     }
 
 
+    // @implements FS-041.5: MIME Parsing & Normalization — parse From header address list
     function getFromAddressList(){
         if (!($header = $this->struct->headers['from']))
             return null;
@@ -138,6 +144,7 @@ class Mail_Parse {
         return Mail_Parse::parseAddressList($header);
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — parse To + Delivered-To address list
     function getToAddressList(){
         // Delivered-to incase it was a BBC mail.
         $addrs = array();
@@ -151,6 +158,7 @@ class Mail_Parse {
         return $addrs;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — parse Cc header address list
     function getCcAddressList(){
         if (!($header = $this->struct->headers['cc']))
             return null;
@@ -158,6 +166,7 @@ class Mail_Parse {
         return Mail_Parse::parseAddressList($header);
     }
 
+    // @implements BS-041.17: Multi-Valued Message-Id Resolution — resolve message-id, synthesize when absent
     function getMessageId(){
         if (($mid = $this->struct->headers['message-id']) && is_array($mid))
             $mid = array_pop(array_filter($mid));
@@ -171,6 +180,7 @@ class Mail_Parse {
         return Format::mimedecode($this->struct->headers['subject'], $this->charset);
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — parse Reply-To header address list
     function getReplyTo() {
         if (!($header = $this->struct->headers['reply-to']))
             return null;
@@ -178,6 +188,7 @@ class Mail_Parse {
         return Mail_Parse::parseAddressList($header);
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — extract plain-text body (HTML fallback, sanitized)
     function getBody(){
 
         $body='';
@@ -192,6 +203,7 @@ class Mail_Parse {
         return $body;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — recursive part walk + charset transcode by content-type
     function getPart($struct, $ctypepart) {
 
         if($struct && !$struct->parts) {
@@ -222,6 +234,8 @@ class Mail_Parse {
         return Charset::transcode($text, $charset, $encoding);
     }
 
+    // @implements FS-041.5.2: Attachment Extraction — walk MIME parts, derive filename (RFC 6266/5987), collect attachments
+    // @implements BS-041.11: Attachment Acceptance Limits
     function getAttachments($part=null){
 
         /* Consider this part as an attachment if
@@ -299,10 +313,12 @@ class Mail_Parse {
         return $files;
     }
 
+    // @implements BS-041.10: Email Priority Mapping — derive ticket priority from headers
     function getPriority(){
         return Mail_Parse::parsePriority($this->getHeader());
     }
 
+    // @implements BS-041.10: Email Priority Mapping — map X-Priority value to internal priority id
     function parsePriority($header=null){
 
         $priority=0;
@@ -321,6 +337,7 @@ class Mail_Parse {
         return $priority;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — RFC822 address-list parse + MIME-decode names
     function parseAddressList($address){
         if (!$address)
             return array();
@@ -346,12 +363,15 @@ class Mail_Parse {
         return $parsed;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — static convenience parse of a raw email
     function parse($rawemail) {
         $parser= new Mail_Parse($rawemail);
         return ($parser && $parser->decode())?$parser:null;
     }
 }
 
+// @implements FS-041.5: MIME Parsing & Normalization — EmailDataParser normalizes a message into the request field set
+// @implements FS-041.5.1: Permitted Email-Request Field Set (HTTP/pipe channel)
 class EmailDataParser {
     var $stream;
     var $error;
@@ -360,6 +380,8 @@ class EmailDataParser {
         $this->stream = $stream;
     }
 
+    // @implements FS-041.5.1: Permitted Email-Request Field Set — decode stream + project to {email,name,subject,message,mid,priority,...}
+    // @implements FS-041.5.2: Attachment Extraction — attach parsed attachments when config allows
     function parse($stream) {
         global $cfg;
 

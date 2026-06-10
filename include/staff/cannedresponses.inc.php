@@ -1,6 +1,9 @@
 <?php
+// @implements FS-022.1: Canned Response Library (List View) — access gate
+// @implements FS-022.9: Canned-Response Management Permission — manage-premade permission enforced upstream in canned.php
 if(!defined('OSTSCPINC') || !$thisstaff) die('Access Denied');
 
+// @implements FS-022.1: Canned Response Library (List View) — canned responses list query w/ attachment count + dept join; sort/order/pagination
 $qstr='';
 $sql='SELECT canned.*, count(attach.file_id) as files, dept.dept_name as department '.
      ' FROM '.CANNED_TABLE.' canned '.
@@ -52,6 +55,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="canned.php?a=add" class="Icon newReply">Add New Response</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-022.1: Canned Response Library (List View) — list table (title+file icon, status, dept scope, updated) + mass_process form (CSRF) */ ?>
 <form action="canned.php" method="POST" name="canned">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -112,6 +116,11 @@ else
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
 ?>
+<?php
+/* @implements FS-022.6: Mass-Process Canned Responses (Enable / Disable / Delete) — bulk Enable / Disable / Delete + confirm dialog */
+/* @implements BS-022.5: Canned-response delete cascades to bound attachments */
+/* @implements BS-022.6: Delete guarded when referenced by an email filter */
+?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable" >
     <input class="button" type="submit" name="disable" value="Disable" >
@@ -131,6 +140,7 @@ endif;
     <p class="confirm-action" style="display:none;" id="disable-confirm">
         Are you sure want to <b>disable</b> selected canned responses?
     </p>
+    <?php /* @implements FS-022.6: Mass-Process Canned Responses (Enable / Disable / Delete) — dead copy-paste fragment, unreachable: this page has no overdue mass action, so mark_overdue-confirm can never surface */ ?>
     <p class="confirm-action" style="display:none;" id="mark_overdue-confirm">
         Are you sure want to flag the selected tickets as <font color="red"><b>overdue</b></font>?
     </p>

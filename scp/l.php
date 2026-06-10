@@ -15,6 +15,8 @@
 **********************************************************************/
 require_once 'staff.inc.php';
 //Basic url validation + token check.
+// @implements FS-003.9: Standalone format validators — is_url() check on the redirect target
+// @implements FS-001.16: System-Object Request & Environment Utilities — validateLinkToken() guards the redirect
 if (!($url=trim($_GET['url'])) || !Validator::is_url($url) || !$ost->validateLinkToken($_GET['auth']))
     exit('Invalid url');
 ?>

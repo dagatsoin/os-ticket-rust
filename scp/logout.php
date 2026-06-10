@@ -16,6 +16,7 @@
 **********************************************************************/
 require('staff.inc.php');
 //Check token: Make sure the user actually clicked on the link to logout.
+// @implements FS-002.10: Logout — link-token check, session teardown, redirect to login
 if(!$_GET['auth'] || !$ost->validateLinkToken($_GET['auth']))
     @header('Location: index.php');
 

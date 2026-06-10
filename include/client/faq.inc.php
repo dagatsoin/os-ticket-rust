@@ -1,3 +1,5 @@
+<?php /* @implements FS-050.7: Public Single-Article View (`faq.inc.php`) — public single-article view: self-guard OSTCLIENTINC + faq present + isPublished(); renders question/answer, attachments, help-topic associations, last-updated */
+   /* @implements KL-050.2: Public Article "Last Updated" Reads the Category Timestamp — displays the parent category timestamp ($category->getUpdateDate()), not the article's own timestamp */ ?>
 <?php
 if(!defined('OSTCLIENTINC') || !$faq  || !$faq->isPublished()) die('Access Denied');
 

@@ -6,6 +6,7 @@ require_once "modules/class.module.php";
 if (!function_exists('noop')) { function noop() {} }
 session_set_save_handler('noop','noop','noop','noop','noop','noop');
 
+// @implements FS-092.1: CLI front controller & action dispatch — Manager dispatches an action arg to a self-registered module
 class Manager extends Module {
     var $prologue =
         "Manage one or more osTicket installations";
@@ -18,6 +19,7 @@ class Manager extends Module {
 
     var $autohelp = false;
 
+    // @implements FS-092.3: Aggregated and per-module help rendering — load every module, print one prologue line per registered action
     function showHelp() {
         foreach (glob(dirname(__file__).'/modules/*.php') as $script)
             include_once $script;
@@ -34,6 +36,8 @@ class Manager extends Module {
             echo str_pad($name, 20) . $mod->prologue . "\n";
     }
 
+    // @implements FS-092.1: CLI front controller & action dispatch — run: resolve + delegate, else "Unknown action given"
+    // @implements BS-092-02: Action token is consumed before module parsing — strip the action token from argv
     function run($args, $options) {
         if ($options['help'] && !$args['action'])
             $this->showHelp();
@@ -57,6 +61,9 @@ class Manager extends Module {
     }
 }
 
+// @implements FS-092.1: CLI front controller & action dispatch — CLI-only invocation gate
+// @implements BS-092-01: CLI-only execution — die when not run from the command line
+// @implements EC-092-01: Non-CLI invocation — terminates "Management only supported from command-line"
 if (php_sapi_name() != "cli")
     die("Management only supported from command-line\n");
 

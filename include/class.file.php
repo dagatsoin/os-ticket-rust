@@ -12,16 +12,22 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-022.12: Content-Addressed Chunked File Storage — stored file record entity
+// @implements BS-022.9: Files Are Addressed by Content Hash
+// @implements BS-022.10: Shared Files Are Reference-Counted; Bytes Purged Only When Orphaned
 class AttachmentFile {
 
     var $id;
     var $ht;
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — construct/load a file by id
     function AttachmentFile($id) {
         $this->id =0;
         return ($this->load($id));
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — hydrate file + ticket/canned ref counts
+    // @implements BS-022.10: Shared Files Are Reference-Counted — counts canned + ticket references
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -59,10 +65,12 @@ class AttachmentFile {
         return $this->ht['tickets'];
     }
 
+    // @implements BS-022.10: Shared Files Are Reference-Counted — file is referenced by a canned response
     function isCanned() {
         return ($this->ht['canned']);
     }
 
+    // @implements BS-022.10: Shared Files Are Reference-Counted — file is still referenced (ticket or canned)
     function isInUse() {
         return ($this->getNumTickets() || $this->isCanned());
     }
@@ -99,14 +107,18 @@ class AttachmentFile {
      * Retrieve a hash that can be sent to scp/file.php?h= in order to
      * download this file
      */
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — combined download hash (content + session-bound half)
+    // @implements BS-022.8: Download Access Requires a Fresh Session-Bound Hash
     function getDownloadHash() {
         return strtolower($this->getHash() . md5($this->getId().session_id().$this->getHash()));
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — open chunked reader for this file
     function open() {
         return new AttachmentChunkedData($this->id);
     }
 
+    // @implements FS-022.11: Download vs Display Delivery Semantics — stream bytes chunk-by-chunk
     function sendData() {
         @ini_set('zlib.output_compression', 'Off');
         $file = $this->open();
@@ -114,6 +126,7 @@ class AttachmentFile {
             echo $chunk;
     }
 
+    // @implements FS-022.11: Download vs Display Delivery Semantics — buffer full bytes into memory (discouraged helper)
     function getData() {
         # XXX: This is horrible, and is subject to php's memory
         #      restrictions, etc. Don't use this function!
@@ -124,6 +137,7 @@ class AttachmentFile {
         return $data;
     }
 
+    // @implements BS-022.10: Shared Files Are Reference-Counted; Bytes Purged Only When Orphaned — delete file + chunks
     function delete() {
 
         $sql='DELETE FROM '.FILE_TABLE.' WHERE id='.db_input($this->getId()).' LIMIT 1';
@@ -136,6 +150,8 @@ class AttachmentFile {
         return true;
     }
 
+    // @implements FS-022.11: Download vs Display Delivery Semantics — cache headers + 304 conditional short-circuit
+    // @implements BS-022.12: Conditional Requests Short-Circuit With 304
     function makeCacheable($ttl=3600) {
         // Thanks, http://stackoverflow.com/a/1583753/1025836
         $last_modified = Misc::db2gmtime($this->lastModified());
@@ -151,6 +167,7 @@ class AttachmentFile {
         }
     }
 
+    // @implements FS-022.11: Download vs Display Delivery Semantics — inline display mode (no Content-Disposition)
     function display() {
         $this->makeCacheable();
 
@@ -160,6 +177,7 @@ class AttachmentFile {
         exit();
     }
 
+    // @implements FS-022.11: Download vs Display Delivery Semantics — forced download mode + UA-specific filename encoding
     function download() {
         $this->makeCacheable();
 
@@ -183,6 +201,8 @@ class AttachmentFile {
     }
 
     /* Function assumes the files types have been validated */
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — upload one file (content hash + time)
+    // @implements BS-022.9: Files Are Addressed by Content Hash
     function upload($file, $ft='T') {
 
         if(!$file['name'] || $file['error'] || !is_uploaded_file($file['tmp_name']))
@@ -199,6 +219,7 @@ class AttachmentFile {
         return AttachmentFile::save($info);
     }
 
+    // @implements FS-022.15: Logo File Upload (Shared File Store) — logo upload (ft='L') + GIF/JPEG/PNG + aspect ratio
     function uploadLogo($file, &$error, $aspect_ratio=3) {
         /* Borrowed in part from
          * http://salman-w.blogspot.com/2009/04/crop-to-fit-image-using-aspphp.html
@@ -230,6 +251,7 @@ class AttachmentFile {
         return false;
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — persist file record + write chunked data
     function save($file) {
 
         if(!$file['hash'])
@@ -259,6 +281,7 @@ class AttachmentFile {
     }
 
     /* Static functions */
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — resolve file id by permanent content hash
     function getIdByHash($hash) {
 
         $sql='SELECT id FROM '.FILE_TABLE.' WHERE hash='.db_input($hash);
@@ -268,6 +291,7 @@ class AttachmentFile {
         return $id;
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — lookup by numeric id or content hash
     function lookup($id) {
 
         $id = is_numeric($id)?$id:AttachmentFile::getIdByHash($id);
@@ -279,6 +303,9 @@ class AttachmentFile {
       Method formats http based $_FILE uploads - plus basic validation.
       @restrict - make sure file type & size are allowed.
      */
+    // @implements FS-022.13: Upload Validation (Type & Size) — normalize $_FILES + type/size validation
+    // @implements BS-022.13: Allowed File Types Are Matched by Extension Only
+    // @implements BS-022.14: An Empty Allow-List Rejects Everything (Default-Deny)
     function format($files, $restrict=false) {
         global $ost;
 
@@ -325,6 +352,8 @@ class AttachmentFile {
      * Removes files and associated meta-data for files which no ticket,
      * canned-response, or faq point to any more.
      */
+    // @implements BS-022.10: Shared Files Are Reference-Counted; Bytes Purged Only When Orphaned — purge unreferenced files
+    // @implements BS-022.11: Orphan Reclamation Is Scoped to Ticket-Type Files — only ft='T' files reclaimed
     /* static */ function deleteOrphans() {
 
         $sql = 'DELETE FROM '.FILE_TABLE.' WHERE id NOT IN ('
@@ -344,6 +373,7 @@ class AttachmentFile {
 
     }
 
+    // @implements FS-022.15: Logo File Upload (Shared File Store) — enumerate logo-type (ft='L') files
     /* static */
     function allLogos() {
         $sql = 'SELECT id FROM '.FILE_TABLE.' WHERE ft="L"
@@ -362,12 +392,15 @@ class AttachmentFile {
  * LOB fields in the MySQL database
  */
 define('CHUNK_SIZE', 500*1024); # Beware if you change this...
+// @implements FS-022.12: Content-Addressed Chunked File Storage — fixed-size chunked byte store (CHUNK_SIZE)
 class AttachmentChunkedData {
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — bind reader/writer to a file id
     function AttachmentChunkedData($file) {
         $this->_file = $file;
         $this->_pos = 0;
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — total byte length across chunks
     function length() {
         list($length) = db_fetch_row(db_query(
              'SELECT SUM(LENGTH(filedata)) FROM '.FILE_CHUNK_TABLE
@@ -375,6 +408,7 @@ class AttachmentChunkedData {
         return $length;
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — read next chunk in (file_id, chunk_id) order
     function read() {
         # Read requested length of data from attachment chunks
         list($buffer) = @db_fetch_row(db_query(
@@ -383,6 +417,7 @@ class AttachmentChunkedData {
         return $buffer;
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — REPLACE INTO upsert per (file_id, chunk_id)
     function write($what, $chunk_size=CHUNK_SIZE) {
         $offset=0;
         for (;;) {
@@ -398,6 +433,7 @@ class AttachmentChunkedData {
         return $this->_pos;
     }
 
+    // @implements BS-022.10: Shared Files Are Reference-Counted; Bytes Purged Only When Orphaned — purge chunks with no parent file
     function deleteOrphans() {
         $deleted = 0;
         $sql = 'SELECT c.file_id, c.chunk_id FROM '.FILE_CHUNK_TABLE.' c '

@@ -20,6 +20,8 @@
 if(!strcasecmp(basename($_SERVER['SCRIPT_NAME']),basename(__FILE__)) || !defined('INCLUDE_DIR'))
     die('kwaheri rafiki!');
 
+// @implements BS-060-02: Runtime config self-redirects to installer until installed — OSTINSTALLED flag drives the redirect to setup/install.php
+// @implements FS-060.9: Re-run protection (already-installed detection) — the install flag distinguishes a provisioned config from the sample template
 #Install flag
 define('OSTINSTALLED',FALSE);
 if(OSTINSTALLED!=TRUE){
@@ -29,6 +31,9 @@ if(OSTINSTALLED!=TRUE){
     exit;
 }
 
+// @implements FS-060.17: A secret salt is generated per install — SECRET_SALT placeholder substituted with random bytes at install time
+// @implements FS-060.7: Schema load, default seeding, admin & config provisioning — static config placeholders (DB creds, prefix, admin email) written by the installer
+// @implements FS-091.1: Configurable Table Prefix — TABLE_PREFIX defined here is the prefix every *_TABLE constant builds on
 # Encrypt/Decrypt secret key - randomly generated during installation.
 define('SECRET_SALT','%CONFIG-SIRI');
 

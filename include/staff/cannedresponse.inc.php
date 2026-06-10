@@ -1,5 +1,8 @@
 <?php
+// @implements FS-022.9: Canned-Response Management Permission — access gate (OSTSCPINC + staff); manage-premade permission enforced upstream in canned.php
 if(!defined('OSTSCPINC') || !$thisstaff) die('Access Denied');
+// @implements FS-022.2: Create Canned Response — add-mode branch of the canned-response form
+// @implements FS-022.3: Edit / Update Canned Response — update-mode branch (add-vs-update mode select)
 $info=array();
 $qstr='';
 if($canned && $_REQUEST['a']!='add'){
@@ -18,6 +21,11 @@ if($canned && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 
+?>
+<?php
+/* @implements FS-022.2: Create Canned Response — canned form: Status, Department scope, Title, body (variables), notes; CSRF + multipart */
+/* @implements FS-022.7: Canned Response Field Validation — required Title + department-scope field rules */
+/* @implements BS-022.1: Department-scope (all-depts vs single-dept) semantics */
 ?>
 <form action="canned.php?<?php echo $qstr; ?>" method="post" id="save" enctype="multipart/form-data">
  <?php csrf_token(); ?>
@@ -75,6 +83,10 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 <textarea name="response" cols="21" rows="12" style="width: 80%;"><?php echo $info['response']; ?></textarea>
                 <br><br><div><b>Canned Attachments</b> (optional) <font class="error">&nbsp;<?php echo $errors['files']; ?></font></div>
                 <?php
+                // @implements FS-022.5: Remove Attachment(s) from a Canned Response — list existing attachments w/ keep-checkbox (uncheck=delete on submit)
+                // @implements FS-022.10: Authorized Attachment Download & Inline Display — attachment link uses session-bound hash
+                // @implements FS-022.8: Canned Response Attachment Count Cap — 10-attachment cap: file input hidden once count>=10
+                // @implements BS-022.4: Attachment count cap is 10 per canned response
                 if($canned && ($files=$canned->getAttachments())) {
                     echo '<div id="canned_attachments"><span class="faded">Uncheck to delete the attachment on submit</span><br>';
                     foreach($files as $file) {
@@ -109,6 +121,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
         </tr>
     </tbody>
 </table>
+ <?php /* @implements BS-022.6: Delete guarded when referenced by an email filter — warn when referenced by email filter(s), blocking deletion */ ?>
  <?php if ($canned && $canned->getFilters()) { ?>
     <br/>
     <div id="msg_warning">Canned response is in use by email filter(s): <?php

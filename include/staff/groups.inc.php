@@ -1,6 +1,9 @@
 <?php
+// @implements FS-031.6: Group Management Access Gate — in-partial admin re-check (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
+// @implements FS-031.7: Group List, Sort & Mass Actions — list query w/ member + dept-access counts; sort/order resolution
+// @implements BS-031-034: Group List Counts and Linkage — distinct member count + distinct dept-access count
 $qstr='';
 
 $sql='SELECT grp.*,count(DISTINCT staff.staff_id) as users, count(DISTINCT dept.dept_id) as depts '
@@ -45,6 +48,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="groups.php?a=add" class="Icon newgroup">Add New Group</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-031.7: Group List, Sort & Mass Actions — list table (name, status, member/dept counts, dates) + mass_process form (CSRF) */ ?>
 <form action="groups.php" method="POST" name="groups">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -112,6 +116,7 @@ else
 <?php
 if($res && $num): //Show options..
 ?>
+<?php /* @implements FS-031.7: Group List, Sort & Mass Actions — bulk Enable / Disable / Delete selected groups + confirm dialog */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable" >
     <input class="button" type="submit" name="disable" value="Disable" >

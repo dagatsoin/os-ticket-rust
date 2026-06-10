@@ -13,6 +13,7 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-031.9: Staff Directory (Browse & Search) — directory entry script (any authenticated staff)
 require('staff.inc.php');
 $page='directory.inc.php';
 $nav->setTabActive('dashboard');

@@ -3,8 +3,10 @@
 include_once INCLUDE_DIR.'class.api.php';
 include_once INCLUDE_DIR.'class.ticket.php';
 
+// @implements FS-043.4: External Ticket-Create API Endpoint — API controller exposing remote ticket creation over HTTP/pipe
 class TicketApiController extends ApiController {
 
+    // @implements FS-041.5.1: Permitted Email-Request Field Set — declares the supported request fields, extended for the 'email' format
     # Supported arguments -- anything else is an error. These items will be
     # inspected _after_ the fixup() method of the ApiXxxDataParser classes
     # so that all supported input formats should be supported
@@ -29,6 +31,9 @@ class TicketApiController extends ApiController {
     /*
      Validate data - overwrites parent's validator for additional validations.
     */
+    // @implements FS-043.5: API Attachment Intake & Validation — strips attachments when disallowed, decodes base64, soft-fails on type/size errors
+    // @implements BS-437: Soft Attachment Validation — sets per-attachment error and passes the request on rather than rejecting
+    // @implements FS-001.16: System-Object Request & Environment Utilities — isFileTypeAllowed checks each attachment extension against config
     function validate(&$data, $format) {
         global $ost;
 
@@ -66,6 +71,8 @@ class TicketApiController extends ApiController {
     }
 
 
+    // @implements FS-043.4: External Ticket-Create API Endpoint — authenticates the API key, then creates a ticket (or processes an email) and returns 201 + ext id
+    // @implements FS-043.6: API Key Authentication & IP Binding — requireApiKey + canCreateTickets permission gate, 401 otherwise
     function create($format) {
 
         if(!($key=$this->requireApiKey()) || !$key->canCreateTickets())
@@ -88,6 +95,8 @@ class TicketApiController extends ApiController {
 
     /* private helper functions */
 
+    // @implements FS-043.4: External Ticket-Create API Endpoint — pulls alert/autorespond/source meta then delegates to Ticket::create, mapping errors to API codes
+    // @implements FS-011.9: Ticket Creation, Routing, and Reference Assignment — shared Ticket::create routing path used by the API channel
     function createTicket($data) {
 
         # Pull off some meta-data
@@ -115,6 +124,8 @@ class TicketApiController extends ApiController {
         return $ticket;
     }
 
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — appends to an existing ticket/thread by id or email headers, else creates a new ticket
+    // @implements BS-041.7: Thread-Match Precedence — explicit ticketId, then Message-Id header match, then new-ticket fallback
     function processEmail() {
 
         $data = $this->getEmailRequest();
@@ -133,9 +144,13 @@ class TicketApiController extends ApiController {
 }
 
 //Local email piping controller - no API key required!
+// @implements FS-041.1: Local Pipe Intake — local MTA pipe controller; no API key required for local piping
+// @implements BS-041.3: Local-Only Pipe — only reachable via the local pipe.php CLI entry point
 class PipeApiController extends TicketApiController {
 
     //Overwrite grandparent's (ApiController) response method.
+    // @implements FS-041.10: Outcome Signaling to the MTA (pipe channel) — maps HTTP-style codes to postfix exit codes
+    // @implements BS-041.2: Pipe Exit-Code Mapping — 201→0, 400→66, 401/403→77, 415-417/501→65, 503→69, else 75 (temp/retry)
     function response($code, $resp) {
 
         //Use postfix exit codes - instead of HTTP
@@ -169,6 +184,8 @@ class PipeApiController extends TicketApiController {
         exit($exitcode);
     }
 
+    // @implements FS-041.1: Local Pipe Intake — static entry invoked by api/pipe.php: processes the piped email and signals the MTA via exit code
+    // @implements BS-041.2: Pipe Exit-Code Mapping — 201 on success, 416 (retry, exit 75) when processing fails
     function  process() {
         $pipe = new PipeApiController();
         if(($ticket=$pipe->processEmail()))

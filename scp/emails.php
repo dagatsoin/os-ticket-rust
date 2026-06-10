@@ -16,12 +16,15 @@
 require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.email.php');
 
+// @implements FS-040.1: Email Account Listing — email account id lookup, "Unknown or invalid email ID." on miss
 $email=null;
 if($_REQUEST['id'] && !($email=Email::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid email ID.';
 
+// @implements FS-040.3: Email Account Save Validation & Provisioning — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-040.3: Email Account Save Validation & Provisioning — update existing account
         case 'update':
             if(!$email){
                 $errors['err']='Unknown or invalid email.';
@@ -31,6 +34,7 @@ if($_POST){
                 $errors['err']='Error updating email. Try again!';
             }
             break;
+        // @implements FS-040.3: Email Account Save Validation & Provisioning — create new account
         case 'create':
             if(($id=Email::create($_POST,$errors))){
                 $msg='Email address added successfully';
@@ -39,6 +43,8 @@ if($_POST){
                 $errors['err']='Unable to add email. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-040.4: Email Account Bulk Delete — refuse if dept-associated, skip default, delete the rest
+        // @implements BS-040.3: Department Association Blocks Deletion
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one email address';
@@ -77,6 +83,8 @@ if($_POST){
     }
 }
 
+// @implements FS-040.1: Email Account Listing — list partial routing
+// @implements FS-040.2: Email Account Create / Edit Form — form partial routing
 $page='emails.inc.php';
 if($email || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='email.inc.php';

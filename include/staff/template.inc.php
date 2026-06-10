@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-040.8: Template Set Create (Clone-Based) — admin gate, add mode; name, status, language, clone-from selector on add, notes */
+/* @implements FS-040.6: Template Set Manage View (Message List) — edit mode shows message list (implemented + unimplemented links) */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
 $info=array();

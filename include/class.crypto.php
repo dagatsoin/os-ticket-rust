@@ -47,6 +47,9 @@ require_once PEAR_DIR.'Crypt/AES.php';
  * Therefore, the best encryption library, algorithm, and configuration will
  * be used to perform the encryption.
  */
+// @implements FS-003.1 — Two-key reversible encryption — pluggable master/sub-key crypto facade
+// @implements FS-003.4 — Automatic crypto backend selection & tagging
+// @implements BS-001 — Self-describing ciphertext format
 class Crypto {
 
     /**
@@ -67,6 +70,8 @@ class Crypto {
      *      is only really useful for testing. The crypto library will be
      *      automatically selected based on the available PHP extensions.
      */
+    // @implements FS-003.1 — Two-key reversible encryption — encrypt → "$<tag>$<base64(ciphertext)>"
+    // @implements BS-005 — Sub-key namespacing
     function encrypt($input, $key, $skey='encryption', $crypt=null) {
 
         //Gets preffered crypto.
@@ -95,6 +100,8 @@ class Crypto {
      * skey - (string_ sub key or namespace used originally for the
      *      encryption
      */
+    // @implements FS-003.1 — Two-key reversible encryption — decrypt tagged ciphertext back to clear text
+    // @implements BS-006 — Decrypt input guard
     function decrypt($ciphertext, $key, $skey='encryption') {
 
         if(!$key || !$ciphertext || $ciphertext[0] != '$')
@@ -110,6 +117,8 @@ class Crypto {
         return $crypto->decrypt(base64_decode($ciphertext));
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — resolve backend by tag or best-available
+    // @implements BS-002 — Backend preference order
     function get($crypt) {
 
         $cryptos = self::cryptos();
@@ -131,6 +140,7 @@ class Crypto {
      *  Returns list of supported cryptos
      *
      */
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — build cached tag→backend registry
     function cryptos() {
 
         static $cryptos = false;
@@ -151,6 +161,7 @@ class Crypto {
         return $cryptos;
     }
 
+    // @implements FS-003.2 — Keyed hash — SHA-512 keyed hash (basis for per-message key derivation)
     function hash($string, $key) {
         $hash = new Crypt_Hash('sha512');
         $hash->setKey($key);
@@ -162,6 +173,8 @@ class Crypto {
       Credit: The routine borrows heavily from PHPSecLib's Crypt_Random
       package.
      */
+    // @implements FS-003.6 — Cryptographically-strong random bytes — priority source chain + AES-CTR fallback
+    // @implements BS-007 — Random source priority
     function random($len) {
 
         if(CRYPT_IS_WINDOWS) {
@@ -220,6 +233,8 @@ class Crypto {
  * subjects using a specific library.
  */
 /* abstract */
+// @implements FS-003.4 — Automatic crypto backend selection & tagging — abstract backend base
+// @implements FS-003.3 — Subkey-derived per-message encryption key
 class CryptoAlgo {
 
     var $master_key;
@@ -229,14 +244,17 @@ class CryptoAlgo {
 
     var $ciphers = null;
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — bind backend tag number
     function  CryptoAlgo($tag) {
         $this->tag_number = $tag;
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — backend tag accessor
     function getTagNumber() {
         return $this->tag_number;
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — shared cipher resolver (cid or first usable)
     function getCipher($cid, $callback=null) {
 
         if(!$this->ciphers)
@@ -261,14 +279,17 @@ class CryptoAlgo {
             array_merge($cipher, array('cid' => $cid)) : null;
     }
 
+    // @implements FS-003.3 — Subkey-derived per-message encryption key — master key accessor
     function getMasterKey() {
         return $this->master_key;
     }
 
+    // @implements FS-003.3 — Subkey-derived per-message encryption key — sub-key accessor
     function getSubKey() {
         return $this->sub_key;
     }
 
+    // @implements FS-003.3 — Subkey-derived per-message encryption key — set master + sub keys
     function setKeys($master, $sub) {
         $this->master_key = $master;
         $this->sub_key = $sub;
@@ -287,6 +308,8 @@ class CryptoAlgo {
      *      likely an IV or salt value
      * len - (int) length of the desired hash
      */
+    // @implements FS-003.3 — Subkey-derived per-message encryption key — derive binary key = hash(master.md5(sub), IV)
+    // @implements BS-004 — Per-message key derivation
     function getKeyHash($seed, $len=32) {
 
         $hash = Crypto::hash($this->getMasterKey().md5($this->getSubKey()), $seed);
@@ -299,6 +322,7 @@ class CryptoAlgo {
      * defined in extension classes.
      */
     /* abstract */
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — availability predicate (overridden)
     function exists() { return false; }
 
 
@@ -320,6 +344,8 @@ if(!defined('MCRYPT_RIJNDAEL_128')):
 define('MCRYPT_RIJNDAEL_128', '');
 endif;
 
+// @implements FS-003.5 — Backend cipher behavior (AES-128) — mcrypt Rijndael-128/CBC backend
+// @implements BS-003 — Cipher tags are immutable
 Class CryptoMcrypt extends CryptoAlgo {
 
     # WARNING: Change and you will lose your passwords ...
@@ -330,10 +356,12 @@ Class CryptoMcrypt extends CryptoAlgo {
                 ),
             );
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — mcrypt cipher resolver
     function getCipher($cid=null) {
         return parent::getCipher($cid, array($this, '_checkCipher'));
     }
 
+   // @implements FS-003.4 — Automatic crypto backend selection & tagging — mcrypt cipher usability predicate
    function _checkCipher($c) {
 
        return ($c
@@ -353,6 +381,7 @@ Class CryptoMcrypt extends CryptoAlgo {
      * text - (string) clear text subject to be encrypted
      * cid - (int) encryption configuration to be used. @see $this->ciphers
      */
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — mcrypt encrypt with PKCS pad + prepended IV
     function encrypt($text, $cid=0) {
 
         if(!$this->exists()
@@ -390,6 +419,8 @@ Class CryptoMcrypt extends CryptoAlgo {
      * text - (string<binary>) Unencoded, binary string which is the result
      *      of the ::encrypt() method.
      */
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — mcrypt decrypt, strip IV + pad
+    // @implements EC-016: (mcrypt decrypt guards — cid mismatch / empty-after-IV)
     function decrypt($ciphertext) {
 
          if(!$this->exists()
@@ -429,6 +460,7 @@ Class CryptoMcrypt extends CryptoAlgo {
          return $plaintext;
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — mcrypt availability check
     function exists() {
         return (extension_loaded('mcrypt')
                 && function_exists('mcrypt_module_open'));
@@ -448,6 +480,8 @@ Class CryptoMcrypt extends CryptoAlgo {
 
 define('CRYPTO_CIPHER_OPENSSL_AES_128_CBC', 1);
 
+// @implements FS-003.5 — Backend cipher behavior (AES-128) — OpenSSL aes-128-cbc backend
+// @implements BS-003 — Cipher tags are immutable
 class CryptoOpenSSL extends CryptoAlgo {
 
     # WARNING: Change and you will lose your passwords ...
@@ -457,16 +491,19 @@ class CryptoOpenSSL extends CryptoAlgo {
                 ),
             );
 
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — OpenSSL method name accessor
     function getMethod($cid) {
 
         return (($cipher=$this->getCipher($cid)))
             ? $cipher['method']: '';
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — OpenSSL cipher resolver
     function getCipher($cid) {
         return parent::getCipher($cid, array($this, '_checkCipher'));
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — OpenSSL cipher usability predicate
     function _checkCipher($c) {
 
         return ($c
@@ -485,6 +522,7 @@ class CryptoOpenSSL extends CryptoAlgo {
      * text - (string) clear text subject to be encrypted
      * cid - (int) encryption configuration to be used. @see $this->ciphers
      */
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — OpenSSL encrypt, IV from openssl_random_pseudo_bytes
     function encrypt($text, $cid=0) {
 
         if(!$this->exists()
@@ -512,6 +550,7 @@ class CryptoOpenSSL extends CryptoAlgo {
      * text - (string<binary>) Unencoded, binary string which is the result
      *      of the ::encrypt() method.
      */
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — OpenSSL decrypt, split IV off
     function decrypt($ciphertext) {
 
 
@@ -537,6 +576,7 @@ class CryptoOpenSSL extends CryptoAlgo {
         return $plaintext;
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — OpenSSL availability check
     function exists() {
         return  (extension_loaded('openssl') && function_exists('openssl_cipher_iv_length'));
     }
@@ -556,6 +596,8 @@ class CryptoOpenSSL extends CryptoAlgo {
 
 define('CRYPTO_CIPHER_PHPSECLIB_AES_CBC', 1);
 
+// @implements FS-003.5 — Backend cipher behavior (AES-128) — pure-PHP phpseclib Crypt_AES/CBC fallback backend
+// @implements BS-003 — Cipher tags are immutable (phpseclib IV fixed at 16 bytes)
 class CryptoPHPSecLib extends CryptoAlgo {
 
     var $ciphers = array(
@@ -567,6 +609,7 @@ class CryptoPHPSecLib extends CryptoAlgo {
             );
 
 
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — instantiate Crypt_AES for resolved cipher
     function getCrypto($cid) {
         if(!$cid
                 || !($c=$this->getCipher($cid))
@@ -578,10 +621,12 @@ class CryptoPHPSecLib extends CryptoAlgo {
         return new $class($c['mode']);
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — phpseclib cipher resolver
     function getCipher($cid) {
         return  parent::getCipher($cid, array($this, '_checkCipher'));
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — phpseclib cipher usability predicate
     function _checkCipher($c) {
 
         return ($c
@@ -591,6 +636,7 @@ class CryptoPHPSecLib extends CryptoAlgo {
                 && class_exists($c['class']));
     }
 
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — phpseclib encrypt with 16-byte IV
     function encrypt($text, $cid=0) {
 
         if(!$this->exists()
@@ -608,6 +654,7 @@ class CryptoPHPSecLib extends CryptoAlgo {
         return sprintf('$%s$%s%s', $cipher['cid'], $iv, $crypto->encrypt($text));
     }
 
+    // @implements FS-003.5 — Backend cipher behavior (AES-128) — phpseclib decrypt, split 16-byte IV off
     function decrypt($ciphertext) {
 
         if(!$this->exists() || !$ciphertext || $ciphertext[0] != '$')
@@ -632,6 +679,7 @@ class CryptoPHPSecLib extends CryptoAlgo {
         return $crypto->decrypt($ciphertext);
     }
 
+    // @implements FS-003.4 — Automatic crypto backend selection & tagging — phpseclib availability (always-on fallback)
     function exists() {
         return  class_exists('Crypt_AES');
     }

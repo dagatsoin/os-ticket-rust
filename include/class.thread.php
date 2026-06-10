@@ -17,6 +17,7 @@
 include_once(INCLUDE_DIR.'class.ticket.php');
 
 //Ticket thread.
+// @implements FS-021.22: Ticket Thread Model — Thread aggregate: per-ticket message/response/note counts + entry add/list
 class Thread {
 
     var $id; // same as ticket ID.
@@ -107,6 +108,7 @@ class Thread {
         return $this->getEntries('N');
     }
 
+    // @implements FS-021.22: Ticket Thread Model — fetch thread entries by type (M/R/N) with attachment counts, ordered by created
     function getEntries($type, $order='ASC') {
 
         if(!$order || !in_array($order, array('DESC','ASC')))
@@ -141,6 +143,7 @@ class Thread {
         return ThreadEntry::lookup($id, $this->getTicketId());
     }
 
+    // @implements FS-021.22: Ticket Thread Model — build + create a Note (N) entry, escaping title/body
     function addNote($vars, &$errors) {
 
         //Add ticket Id.
@@ -153,6 +156,7 @@ class Thread {
         return Note::create($vars, $errors);
     }
 
+    // @implements FS-021.22: Ticket Thread Model — build + create a Message (M) entry (staff_id=0), escaping title/body
     function addMessage($vars, &$errors) {
 
         $vars['ticketId'] = $this->getTicketId();
@@ -165,6 +169,7 @@ class Thread {
         return Message::create($vars, $errors);
     }
 
+    // @implements FS-021.22: Ticket Thread Model — build + create a Response (R) entry, escaping title/body
     function addResponse($vars, &$errors) {
 
         $vars['ticketId'] = $this->getTicketId();
@@ -176,6 +181,8 @@ class Thread {
         return Response::create($vars, $errors);
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — clear ticket attachment refs + purge orphaned files
+    // @implements BS-022.10: Shared Files Are Reference-Counted; Bytes Purged Only When Orphaned — orphan-driven byte purge
     function deleteAttachments() {
 
         $deleted=0;
@@ -187,6 +194,8 @@ class Thread {
         return $deleted;
     }
 
+    // @implements FS-021.22: Ticket Thread Model — delete all thread entries + their attachments for the ticket
+    // @implements BS-021.16: Deletion Is Permanent and Cascades to Thread & Attachments — cascade delete
     function delete() {
 
         /* XXX: Leave this out until TICKET_EMAIL_INFO_TABLE has a primary
@@ -216,6 +225,7 @@ class Thread {
                 )?$thread:null;
     }
 
+    // @implements FS-040.11: Variable Substitution Grammar — thread template variables (original / last_message bodies)
     function getVar($name) {
         switch ($name) {
         case 'original':
@@ -231,6 +241,7 @@ class Thread {
 }
 
 
+// @implements FS-021.22: Ticket Thread Model — ThreadEntry base: a single typed thread post (title/body/poster/staff/attachments/email-info)
 Class ThreadEntry {
 
     var $id;
@@ -354,6 +365,7 @@ Class ThreadEntry {
         return Mail_Parse::splitHeaders($this->getEmailHeader());
     }
 
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — build References chain (entry mid + prior References) for reply matching
     function getEmailReferences() {
         if (!isset($this->_references)) {
             $this->_references = $this->getEmailMessageId();
@@ -389,11 +401,14 @@ Class ThreadEntry {
         return $this->ht['headers'];
     }
 
+    // @implements FS-041.7: Loop, Bounce & Auto-Response Protection — detect whether source email was an auto-response
+    // @implements BS-041.12: Auto-Response Suppression Triggers — auto-response header marks suppression
     function isAutoResponse() {
         return $this->getEmailHeader()?TicketFilter::isAutoResponse($this->getEmailHeader()):false;
     }
 
     //Web uploads - caller is expected to format, validate and set any errors.
+    // @implements FS-022.13: Upload Validation (Type & Size) — save web-uploaded files to the entry; log failures as SYSTEM notes
     function uploadFiles($files) {
 
         if(!$files || !is_array($files))
@@ -428,6 +443,8 @@ Class ThreadEntry {
         return $uploaded;
     }
 
+    // @implements FS-041.5.2: Attachment Extraction — import emailed attachment set onto the entry
+    // @implements FS-043.5: API Attachment Intake & Validation — import API-supplied attachment set onto the entry
     function importAttachments($attachments) {
 
         if(!$attachments || !is_array($attachments))
@@ -442,6 +459,8 @@ Class ThreadEntry {
     }
 
     /* Emailed & API attachments handler */
+    // @implements FS-041.5.2: Attachment Extraction — import single emailed attachment; log failure as SYSTEM note
+    // @implements FS-043.5: API Attachment Intake & Validation — import single API attachment; log failure as SYSTEM note
     function importAttachment($attachment) {
 
         if(!$attachment || !is_array($attachment))
@@ -466,6 +485,7 @@ Class ThreadEntry {
     Save attachment to the DB.
     @file is a mixed var - can be ID or file hashtable.
     */
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — persist an attachment join row (file_id/ticket/ref) for this entry
     function saveAttachment($file) {
 
         if(!($fileId=is_numeric($file)?$file:AttachmentFile::save($file)))
@@ -489,6 +509,7 @@ Class ThreadEntry {
         return $ids;
     }
 
+    // @implements FS-022.12: Content-Addressed Chunked File Storage — list attachments (file id/size/hash/name) joined to this entry
     function getAttachments() {
 
         if($this->attachments)
@@ -511,6 +532,8 @@ Class ThreadEntry {
         return $this->attachments;
     }
 
+    // @implements FS-022.10: Authorized Attachment Download & Inline Display — render download links with per-session hash token
+    // @implements BS-022.8: Download Access Requires a Fresh Session-Bound Hash — per-session hash in each link
     function getAttachmentsLinks($file='attachment.php', $target='', $separator=' ') {
 
         $str='';
@@ -542,6 +565,8 @@ Class ThreadEntry {
      *      - subject - (string) email subject line (decoded)
      *      - body - (string) email message body (decoded)
      */
+    // @implements FS-041.8: Email-Sourced Thread Append Semantics — append inbound email; classify by sender identity
+    // @implements BS-041.8: Append Type By Sender Identity — owner→Message, staff→Note, other→attributed Message
     function postEmail($mailinfo) {
         // +==================+===================+=============+
         // | Orig Thread-Type | Reply Thread-Type | Requires    |
@@ -621,6 +646,7 @@ Class ThreadEntry {
      * TODO: Refactor it to include outgoing emails on responses.
      */
 
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — persist message-id + raw headers (dedupe/threading data)
     function saveEmailInfo($vars) {
 
         // Don't save empty message ID
@@ -636,6 +662,7 @@ Class ThreadEntry {
     }
 
     /* static */
+    // @implements BS-041.9: Idempotent Processing (Message-Id De-duplication) — insert email-info row (message_id, email_mid, headers) for dedupe
     function logEmailHeaders($id, $mid, $header=false) {
         $sql='INSERT INTO '.TICKET_EMAIL_INFO_TABLE
             .' SET message_id='.db_input($id) //TODO: change it to thread_id
@@ -651,6 +678,7 @@ Class ThreadEntry {
         return $this->getBody();
     }
 
+    // @implements FS-040.11: Variable Substitution Grammar — thread-entry template variables (create_date/update_date formatting)
     function getVar($tag) {
         global $cfg;
 
@@ -700,6 +728,8 @@ Class ThreadEntry {
      *      previously seen. This is useful if no thread-id is associated
      *      with the email (if it was rejected for instance).
      */
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — find existing thread by mid → reference chain → subject #number
+    // @implements BS-041.7: Thread-Match Precedence — message-id, then References chain, then subject ticket-number
     function lookupByEmailHeaders($mailinfo, &$seen=false) {
         // Search for messages using the References header, then the
         // in-reply-to header
@@ -751,6 +781,8 @@ Class ThreadEntry {
     }
 
     //new entry ... we're trusting the caller to check validity of the data.
+    // @implements FS-021.22: Ticket Thread Model — insert a thread entry (M/R/N) + attachments + email-info
+    // @implements BS-041.18: Thread-Post Message-Id Backfill — backfill the entry's email message-id post-insert
     function create($vars) {
         global $cfg;
 
@@ -812,6 +844,7 @@ Class ThreadEntry {
 }
 
 /* Message - Ticket thread entry of type message */
+// @implements FS-021.22: Ticket Thread Model — Message (M) entry: requester-originated post + first/last-by-ticket lookups
 class Message extends ThreadEntry {
 
     function Message($id, $ticketId=0) {
@@ -872,6 +905,7 @@ class Message extends ThreadEntry {
 }
 
 /* Response - Ticket thread entry of type response */
+// @implements FS-021.22: Ticket Thread Model — Response (R) entry: staff reply, defaults parent to answered message id
 class Response extends ThreadEntry {
 
     function Response($id, $ticketId=0) {
@@ -919,6 +953,8 @@ class Response extends ThreadEntry {
 }
 
 /* Note - Ticket thread entry of type note (Internal Note) */
+// @implements FS-021.22: Ticket Thread Model — Note (N) entry: internal note
+// @implements BS-021.10: Internal Notes Are Never E-mailed to the Requester — Note type stays internal
 class Note extends ThreadEntry {
 
     function Note($id, $ticketId=0) {

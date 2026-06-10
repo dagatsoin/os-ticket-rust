@@ -20,6 +20,9 @@ include_once(INCLUDE_DIR.'class.team.php');
 include_once(INCLUDE_DIR.'class.group.php');
 include_once(INCLUDE_DIR.'class.passwd.php');
 
+// @implements FS-031.3: Create / Edit a Staff Account — Staff account entity + CRUD
+// @implements FS-002.15: Group permission flags (capability authorization) — staff capability accessors
+// @implements BS-031-001: Staff Identity Is Username + Email, Both Unique
 class Staff {
 
     var $ht;
@@ -32,11 +35,14 @@ class Staff {
     var $timezone;
     var $stats;
 
+    // @implements FS-031.3: Create / Edit a Staff Account — construct + load staff by id/email/username
     function Staff($var) {
         $this->id =0;
         return ($this->load($var));
     }
 
+    // @implements FS-031.3: Create / Edit a Staff Account — load staff row joined to group, derive password-age
+    // @implements FS-002.9: Identifier resolution (username or email)
     function load($var='') {
 
         if(!$var && !($var=$this->getId()))
@@ -93,6 +99,7 @@ class Staff {
     }
 
     /*compares user password*/
+    // @implements FS-002.5: Password verification with legacy fallback and silent rehash
     function check_passwd($password, $autoupdate=true) {
 
         /*bcrypt based password match*/
@@ -113,15 +120,19 @@ class Staff {
         return true;
     }
 
+    // @implements FS-002.5: Password verification with legacy fallback and silent rehash — compare-only (no rehash)
     function cmp_passwd($password) {
         return $this->check_passwd($password, false);
     }
 
+    // @implements FS-002.12: Periodic forced password change (password aging) — flag account for forced change
     function forcePasswdRest() {
         return db_query('UPDATE '.STAFF_TABLE.' SET change_passwd=1 WHERE staff_id='.db_input($this->getId()));
     }
 
     /* check if passwd reset is due. */
+    // @implements FS-002.12: Periodic forced password change (password aging) — is the reset period elapsed
+    // @implements FS-031.12: Periodic Password-Reset Aging (Forced Change on Login)
     function isPasswdResetDue() {
         global $cfg;
         return ($cfg && $cfg->getPasswdResetPeriod()
@@ -192,6 +203,8 @@ class Staff {
         return ($this->ht['change_passwd']);
     }
 
+    // @implements FS-002.17: Department access model — effective dept access (group + primary + managed)
+    // @implements BS-031-005: Primary Department & Effective Department Access
     function getDepartments() {
 
         if($this->departments)
@@ -222,6 +235,7 @@ class Staff {
         return $this->getDepartments();
     }
 
+    // @implements FS-002.17: Department access model — departments this staff manages
     function getManagedDepartments() {
 
         return ($depts=Dept::getDepartments(
@@ -254,6 +268,7 @@ class Staff {
     }
 
 
+    // @implements FS-002.17: Department access model — is this staff the manager of their primary dept
     function isManager() {
         return (($dept=$this->getDept()) && $dept->getManagerId()==$this->getId());
     }
@@ -278,6 +293,7 @@ class Staff {
         return ($this->ht['onvacation']);
     }
 
+    // @implements FS-002.16: Account availability and the admin-vs-staff distinction — active + group-enabled + not on vacation
     function isAvailable() {
         return ($this->isactive() && $this->isGroupActive() && !$this->onVacation());
     }
@@ -298,6 +314,8 @@ class Staff {
         return ($teamId && in_array($teamId, $this->getTeams()));
     }
 
+    // @implements FS-002.17: Department access model — dept reachable unless access-limited
+    // @implements BS-031-006: Limited Access Overrides Department Access
     function canAccessDept($deptId) {
         return ($deptId && in_array($deptId, $this->getDepts()) && !$this->isAccessLimited());
     }
@@ -338,6 +356,7 @@ class Staff {
         return ($this->ht['can_ban_emails']);
     }
 
+    // @implements FS-002.15: Group permission flags (capability authorization) — derived manage-tickets capability
     function canManageTickets() {
         return ($this->isAdmin()
                  || $this->canDeleteTickets()
@@ -365,6 +384,8 @@ class Staff {
                 && ($this->isAdmin() || $this->isManager()));
     }
 
+    // @implements FS-002.17: Department access model — team memberships (cross-department)
+    // @implements BS-031-007: Team Membership Is Cross-Department
     function getTeams() {
 
         if(!$this->teams) {
@@ -384,6 +405,7 @@ class Staff {
     }
 
     /* returns staff's quick stats - used on nav menu...etc && warnings */
+    // @implements FS-020: Staff Ticket Queue, Dashboard & Search — per-staff quick ticket stats
     function getTicketsStats() {
 
         if(!$this->stats['tickets'])
@@ -401,6 +423,9 @@ class Staff {
     }
 
     //Staff profile update...unfortunately we have to separate it from admin update to avoid potential issues
+    // @implements FS-031.10: Own Profile View & Edit — validate + persist staff's own profile
+    // @implements FS-031.13: Own-Profile Password Change Section
+    // @implements BS-031-032: Profile Edits Self Only
     function updateProfile($vars, &$errors) {
         global $cfg;
 
@@ -497,6 +522,7 @@ class Staff {
     }
 
 
+    // @implements FS-031.3: Create / Edit a Staff Account — sync staff team memberships
     function updateTeams($teams) {
 
         if($teams) {
@@ -516,6 +542,7 @@ class Staff {
         return true;
     }
 
+    // @implements FS-031.3: Create / Edit a Staff Account — admin update of a staff account + teams
     function update($vars, &$errors) {
 
         if(!$this->save($this->getId(), $vars, $errors))
@@ -529,6 +556,9 @@ class Staff {
         return true;
     }
 
+    // @implements FS-031.4: Staff Mass Actions (Enable / Lock / Delete) — delete staff + cascade cleanup
+    // @implements BS-031-015: Self-Action Protection (Staff Mass Actions)
+    // @implements BS-031-016: Staff Deletion Side Effects
     function delete() {
         global $thisstaff;
 
@@ -550,6 +580,8 @@ class Staff {
     }
 
     /**** Static functions ********/
+    // @implements FS-031.2: Staff List, Filter, Sort & Paginate — staff id=>name list (optionally available-only)
+    // @implements FS-021.7: Assign / Reassign Ticket — assignee picker source
     function getStaffMembers($availableonly=false) {
 
         $sql='SELECT s.staff_id,CONCAT_WS(", ",s.lastname, s.firstname) as name '
@@ -570,10 +602,12 @@ class Staff {
         return $users;
     }
 
+    // @implements FS-021.7: Assign / Reassign Ticket — available staff only (active, enabled group, not on vacation)
     function getAvailableStaffMembers() {
         return self::getStaffMembers(true);
     }
 
+    // @implements FS-031.5: Staff Field Validation — username lookup for uniqueness
     function getIdByUsername($username) {
 
         $sql='SELECT staff_id FROM '.STAFF_TABLE.' WHERE username='.db_input($username);
@@ -582,6 +616,7 @@ class Staff {
 
         return $id;
     }
+    // @implements FS-031.5: Staff Field Validation — email lookup for uniqueness
     function getIdByEmail($email) {
 
         $sql='SELECT staff_id FROM '.STAFF_TABLE.' WHERE email='.db_input($email);
@@ -591,10 +626,13 @@ class Staff {
         return $id;
     }
 
+    // @implements FS-031.3: Create / Edit a Staff Account — id-validated staff lookup
     function lookup($id) {
         return ($id && ($staff= new Staff($id)) && $staff->getId()) ? $staff : null;
     }
 
+    // @implements FS-002.1: Staff login — credential check, session establishment, strike handling
+    // @implements FS-002.2: Brute-force strike lockout
     function login($username, $passwd, &$errors, $strike=true) {
         global $ost, $cfg;
 
@@ -646,6 +684,7 @@ class Staff {
         return false;
     }
 
+    // @implements FS-002.6: Session establishment on login — last-login, session payload, id regeneration
     function _do_login($user, $username) {
         global $ost;
 
@@ -676,6 +715,7 @@ class Staff {
         return $user;
     }
 
+    // @implements FS-031.3: Create / Edit a Staff Account — create new staff + assign teams
     function create($vars, &$errors) {
         if(($id=self::save(0, $vars, $errors)) && $vars['teams'] && ($staff=Staff::lookup($id))) {
             $staff->updateTeams($vars['teams']);
@@ -685,6 +725,7 @@ class Staff {
         return $id;
     }
 
+    // @implements FS-002.3: Staff password reset — drop all outstanding reset tokens for the account
     function cancelResetTokens() {
         // TODO: Drop password-reset tokens from the config table for
         //       this user id
@@ -694,6 +735,7 @@ class Staff {
         unset($_SESSION['_staff']['reset-token']);
     }
 
+    // @implements FS-002.4: Reset-email token issuance and storage — mint token, template email, persist token
     function sendResetEmail() {
         global $ost, $cfg;
 
@@ -727,6 +769,9 @@ class Staff {
         $email->send($this->getEmail(), $msg['subj'], $msg['body']);
     }
 
+    // @implements FS-031.3: Create / Edit a Staff Account — validate + persist (insert/update) staff account
+    // @implements FS-031.5: Staff Field Validation
+    // @implements BS-031-014: Last-Administrator Protection
     function save($id, $vars, &$errors) {
 
         $vars['username']=Format::striptags($vars['username']);

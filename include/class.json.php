@@ -20,7 +20,9 @@
 
 include_once "JSON.php";
 
+// @implements FS-043.4: External Ticket-Create API Endpoint — JSON-format request body parser
 class JsonDataParser {
+    // @implements FS-043.4: External Ticket-Create API Endpoint — reads stream then decodes JSON body
     function parse($stream) {
         $contents = '';
         while (!feof($stream)) {
@@ -29,6 +31,7 @@ class JsonDataParser {
         return self::decode($contents);
     }
 
+    // @implements FS-043.4: External Ticket-Create API Endpoint — native json_decode with pure-PHP fallback
     function decode($contents) {
         if (function_exists("json_decode")) {
             return json_decode($contents, true);
@@ -38,6 +41,7 @@ class JsonDataParser {
             return $decoder->decode($contents);
         }
     }
+    // @implements FS-043.4: External Ticket-Create API Endpoint — parser last-error message for HTTP 400 body
     function lastError() {
         if (function_exists("json_last_error")) {
             $errors = array(
@@ -58,7 +62,9 @@ class JsonDataParser {
     }
 }
 
+// @implements FS-090.22: JSON Exporter Format — shared JSON encoder reused by exporter, report views, backup writer
 class JsonDataEncoder {
+    // @implements FS-090.22: JSON Exporter Format — native json_encode with pure-PHP fallback
     function encode($var) {
         if (function_exists('json_encode'))
             return json_encode($var);

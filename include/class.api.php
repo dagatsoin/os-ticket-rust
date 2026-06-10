@@ -13,17 +13,21 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-043.1: API Key Entity & Auto-Generated Secret — API key record + accessors
+// @implements BS-431: API Key Secret Is System-Generated and Immutable
 class API {
 
     var $id;
 
     var $ht;
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — load record by id
     function API($id) {
         $this->id = 0;
         $this->load($id);
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — fetch key row from ost_api_key
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -39,42 +43,54 @@ class API {
         return true;
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — reload record
     function reload() {
         return $this->load();
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — id accessor
     function getId() {
         return $this->id;
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — secret value accessor
     function getKey() {
         return $this->ht['apikey'];
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — bound source IP accessor
     function getIPAddr() {
         return $this->ht['ipaddr'];
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — admin notes accessor
     function getNotes() {
         return $this->ht['notes'];
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — raw record accessor
     function getHashtable() {
         return $this->ht;
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — active/disabled status check
     function isActive() {
         return ($this->ht['isactive']);
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — can_create_tickets permission flag
+    // @implements BS-430: API Keys Are IP-Bound, Single-Permission-Gated Secrets
     function canCreateTickets() {
         return ($this->ht['can_create_tickets']);
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — can_exec_cron permission flag
+    // @implements BS-430: API Keys Are IP-Bound, Single-Permission-Gated Secrets
     function canExecuteCron() {
         return ($this->ht['can_exec_cron']);
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — edit mutable fields (status/flags/notes)
     function update($vars, &$errors) {
 
         if(!API::save($this->getId(), $vars, $errors))
@@ -85,20 +101,24 @@ class API {
         return true;
     }
 
+    // @implements FS-043.2: API Key Administration Screens — delete key (irreversible)
     function delete() {
         $sql='DELETE FROM '.API_KEY_TABLE.' WHERE id='.db_input($this->getId()).' LIMIT 1';
         return (db_query($sql) && ($num=db_affected_rows()));
     }
 
     /** Static functions **/
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — add new key
     function add($vars, &$errors) {
         return API::save(0, $vars, $errors);
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — secret+IP both required for lookup
     function validate($key, $ip) {
         return ($key && $ip && self::getIdByKey($key, $ip));
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — lookup by secret AND bound IP
     function getIdByKey($key, $ip='') {
 
         $sql='SELECT id FROM '.API_KEY_TABLE.' WHERE apikey='.db_input($key);
@@ -111,14 +131,18 @@ class API {
         return $id;
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — resolve key object by secret+IP
     function lookupByKey($key, $ip='') {
         return self::lookup(self::getIdByKey($key, $ip));
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — load key object by id
     function lookup($id) {
         return ($id && is_numeric($id) && ($k= new API($id)) && $k->getId()==$id)?$k:null;
     }
 
+    // @implements FS-043.1: API Key Entity & Auto-Generated Secret — insert/update; mints 32-char MD5 secret, validates IP
+    // @implements BS-431: API Key Secret Is System-Generated and Immutable
     function save($id, $vars, &$errors) {
 
         if(!$id && (!$vars['ipaddr'] || !Validator::is_ip($vars['ipaddr'])))
@@ -162,10 +186,14 @@ class API {
  * API request.
  */
 
+// @implements FS-043.6: API Key Authentication & IP Binding — per-request API auth controller
+// @implements FS-043.12: API Error Logging & Response Pipeline
 class ApiController {
 
     var $apikey;
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — require active, IP-bound key
+    // @implements BS-430: API Keys Are IP-Bound, Single-Permission-Gated Secrets
     function requireApiKey() {
         # Validate the API key -- required to be sent via the X-API-Key
         # header
@@ -178,6 +206,7 @@ class ApiController {
         return $key;
     }
 
+    // @implements FS-043.6: API Key Authentication & IP Binding — read X-API-Key header, cache resolved key
     function getApiKey() {
 
         if (!$this->apikey && isset($_SERVER['HTTP_X_API_KEY']) && isset($_SERVER['REMOTE_ADDR']))
@@ -191,6 +220,9 @@ class ApiController {
      * hashtable. For JSON formats, this is mostly a noop, the conversion
      * work will be done for XML requests
      */
+    // @implements FS-043.4: External Ticket-Create API Endpoint — read raw body, select format parser, validate structure
+    // @implements EC-448: Unreadable request stream — 400 "Unable to read request body"
+    // @implements EC-436: XML capability absent — 501 "XML extension not supported"
     function getRequest($format) {
         global $ost;
 
@@ -226,6 +258,7 @@ class ApiController {
         return $data;
     }
 
+    // @implements FS-043.14: Email-Format Reply Detection & Default Fill-In — email-format request entry
     function getEmailRequest() {
         return $this->getRequest('email');
     }
@@ -235,12 +268,15 @@ class ApiController {
      * Structure to validate the request against -- must be overridden to be
      * useful
      */
+    // @implements FS-043.4: External Ticket-Create API Endpoint — field allow-list hook (overridden by subclass)
     function getRequestStructure($format) { return array(); }
     /**
      * Simple validation that makes sure the keys of a parsed request are
      * expected. It is assumed that the functions actually implementing the
      * API will further validate the contents of the request
      */
+    // @implements FS-043.4: External Ticket-Create API Endpoint — reject keys outside the allow-list
+    // @implements EC-434: Unexpected field — 400 "<path>: Unexpected data received"
     function validateRequestStructure($data, $structure, $prefix="") {
 
         foreach ($data as $key=>$info) {
@@ -263,6 +299,7 @@ class ApiController {
      * Validate request.
      *
      */
+    // @implements FS-043.4: External Ticket-Create API Endpoint — validate parsed payload against structure
     function validate(&$data, $format) {
         return $this->validateRequestStructure(
                 $data,
@@ -276,6 +313,7 @@ class ApiController {
      */
 
     /* If possible - DO NOT - overwrite the method downstream */
+    // @implements FS-043.12: API Error Logging & Response Pipeline — emit status + log warning with API key appended
     function exerr($code, $error='') {
         global $ost;
 
@@ -293,6 +331,7 @@ class ApiController {
     }
 
     //Default response method - can be overwritten in subclasses.
+    // @implements FS-043.12: API Error Logging & Response Pipeline — default HTTP responder
     function response($code, $resp) {
         Http::response($code, $resp);
         exit();
@@ -300,8 +339,10 @@ class ApiController {
 }
 
 include_once "class.xml.php";
+// @implements FS-043.4: External Ticket-Create API Endpoint — XML wire-format parser
 class ApiXmlDataParser extends XmlDataParser {
 
+    // @implements FS-043.4: External Ticket-Create API Endpoint — parse XML then normalize
     function parse($stream) {
         return $this->fixup(parent::parse($stream));
     }
@@ -309,6 +350,7 @@ class ApiXmlDataParser extends XmlDataParser {
      * Perform simple operations to make data consistent between JSON and
      * XML data types
      */
+    // @implements FS-043.4: External Ticket-Create API Endpoint — XML normalization (ticket unwrap, phone_ext, bool coercion, attachment data)
     function fixup($current) {
 
         if($current['ticket'])
@@ -347,10 +389,14 @@ class ApiXmlDataParser extends XmlDataParser {
 }
 
 include_once "class.json.php";
+// @implements FS-043.4: External Ticket-Create API Endpoint — JSON wire-format parser
 class ApiJsonDataParser extends JsonDataParser {
+    // @implements FS-043.4: External Ticket-Create API Endpoint — parse JSON then normalize
     function parse($stream) {
         return $this->fixup(parent::parse($stream));
     }
+    // @implements FS-043.4: External Ticket-Create API Endpoint — JSON normalization (phone X-ext split, data-URL attachments, bool coercion)
+    // @implements KL-438: JSON attachment charset hint is effectively ignored
     function fixup($current) {
         if (!is_array($current))
             return $current;
@@ -403,12 +449,16 @@ class ApiJsonDataParser extends JsonDataParser {
 
 /* Email parsing */
 include_once "class.mailparse.php";
+// @implements FS-043.14: Email-Format Reply Detection & Default Fill-In — API email-format payload parser
 class ApiEmailDataParser extends EmailDataParser {
 
+    // @implements FS-043.14: Email-Format Reply Detection & Default Fill-In — parse RFC-822 then apply fixup defaults
     function parse($stream) {
         return $this->fixup(parent::parse($stream));
     }
 
+    // @implements FS-041.5.3: (email payload fixup defaults — source/message/subject/emailId fallbacks, priority strip)
+    // @implements BS-439: Email-Format Submissions Thread Before Creating
     function fixup($data) {
         global $cfg;
 

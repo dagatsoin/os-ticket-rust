@@ -24,6 +24,7 @@
  * that for every given Signal::connect() function call, somewhere else in
  * the codebase there exists a Signal::send() for the same named signal.
  */
+// @implements FS-003.21: Signal (publish/subscribe) hooks — string-named pub/sub event model
 class Signal {
     /**
      * Subscribe to a signal.
@@ -51,6 +52,7 @@ class Signal {
      * signal handler. The function will receive the signal data and should
      * return true if the signal handler should be called.
      */
+    // @implements FS-003.21: Signal (publish/subscribe) hooks — connect registers a subscriber tuple
     /*static*/ function connect($signal, $callable, $object=null,
             $check=null) {
         global $_subscribers;
@@ -85,6 +87,7 @@ class Signal {
      * possible to propogate changes in the signal handlers back to the
      * originating context.
      */
+    // @implements FS-003.21: Signal (publish/subscribe) hooks — send invokes subscribers in registration order
     /*static*/ function send($signal, $object, &$data=null) {
         global $_subscribers;
         if (!isset($_subscribers[$signal]))

@@ -1,7 +1,9 @@
 <?php
+// @implements FS-050.14: Staff Category Listing & Search (`faq-categories.inc.php`) — staff access gate; FAQ landing: search form + category browse listing
 if(!defined('OSTSTAFFINC') || !$thisstaff) die('Access Denied');
 
 ?>
+<?php /* @implements FS-050.14: Staff Category Listing & Search (`faq-categories.inc.php`) — FAQ search form: free-text query + category + help-topic filters (only categories/topics with FAQs offered) */ ?>
 <h2>Frequently Asked Questions</h2>
 <form id="kbSearch" action="kb.php" method="get">
     <input type="hidden" name="a" value="search">
@@ -53,6 +55,7 @@ if(!defined('OSTSTAFFINC') || !$thisstaff) die('Access Denied');
 <hr>
 <div>
 <?php
+// @implements FS-050.14: Staff Category Listing & Search (`faq-categories.inc.php`) — branch: when query/category/topic present -> FAQ search results (question/answer/keywords/category LIKE); else -> category listing
 if($_REQUEST['q'] || $_REQUEST['cid'] || $_REQUEST['topicId']) { //Search.
     $sql='SELECT faq.faq_id, question, ispublished, count(attach.file_id) as attachments, count(ft.topic_id) as topics '
         .' FROM '.FAQ_TABLE.' faq '

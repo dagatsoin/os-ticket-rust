@@ -1,4 +1,6 @@
 <?php if(!defined('SETUPINC')) die('Kwaheri!');
+// @implements FS-060.1: Installer bootstrap & step state machine — subscribe view pre-fills from $_SESSION['info']
+// @implements KL-060-02: `subscribe` step is dead/RC scaffolding — view unreachable in normal flow
 $info=($_POST && $errors)?Format::htmlchars($_POST):$_SESSION['info'];
 ?>
     <div id="main">

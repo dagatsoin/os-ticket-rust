@@ -18,15 +18,19 @@
  * Mainly used as a helper...
  */
 
+// @implements FS-021.18: Collaborative Edit Locking — TicketLock handle for per-staff ticket view lock
+// @implements BS-021.3: One Active Lock Per Ticket; Locks Block Conflicting Replies
 class TicketLock {
     var $id;
     var $ht;
     
+    // @implements FS-021.18: Collaborative Edit Locking — construct + load lock by id/ticket
     function TicketLock($id, $tid=0) {
         $this->id=0;
         $this->load($id, $tid);
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — load lock + compute load-time remaining seconds
     function load($id=0, $tid=0) {
 
         if(!$id && $this->ht['id'])
@@ -75,16 +79,19 @@ class TicketLock {
         return $this->ht['expire'];
     }
     //Get remaiming time before the lock expires
+    // @implements FS-021.18: Collaborative Edit Locking — remaining lock time (expire − now) at load
     function getTime() {
         return $this->isExpired()?0:($this->ht['expiretime']-time());
     }
 
     //Should we be doing realtime check here? (Ans: not really....expiretime is local & based on loadtime)
+    // @implements FS-021.18: Collaborative Edit Locking — expired when now exceeds load-time snapshot
     function isExpired() {
         return (time()>$this->ht['expiretime']);
     }
    
     //Renew existing lock.
+    // @implements FS-021.18: Collaborative Edit Locking — renew re-extends by the original lock window
     function renew($lockTime=0) {
 
         if(!$lockTime || !is_numeric($lockTime)) //XXX: test to  make it works.
@@ -104,6 +111,7 @@ class TicketLock {
     }
 
     //release aka delete a lock.
+    // @implements FS-021.18: Collaborative Edit Locking — release deletes the lock row
     function release() {
         //FORCED release - we don't give a ....
         $sql='DELETE FROM '.TICKET_LOCK_TABLE.' WHERE lock_id='.db_input($this->getId()).' LIMIT 1';
@@ -111,11 +119,14 @@ class TicketLock {
     }
 
     /* ----------------------- Static functions ---------------------------*/
+    // @implements FS-021.18: Collaborative Edit Locking — lookup lock by id/ticket
     function lookup($id, $tid) {
         return ($id  && ($lock = new TicketLock($id,$tid)) && $lock->getId()==$id)?$lock:null;
     }
 
     //Create a ticket lock...this function assumes the caller checked for access & validity of ticket & staff x-ship.    
+    // @implements FS-021.18: Collaborative Edit Locking — acquire deletes expired locks then insert-if-absent
+    // @implements BS-021.3: One Active Lock Per Ticket — expired locks cleared on acquire
     function acquire($ticketId, $staffId, $lockTime) {
 
         if(!$ticketId or !$staffId or !$lockTime)
@@ -133,12 +144,14 @@ class TicketLock {
         return db_query($sql)?db_insert_id():0;
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — create = acquire then lookup the new lock
     function create($ticketId, $staffId, $lockTime) {
         if(($id=self::acquire($ticketId, $staffId, $lockTime)))
             return self::lookup($id);
     }
 
     //Simply remove ALL locks a user (staff) holds on a ticket(s).
+    // @implements FS-021.18: Collaborative Edit Locking — remove all of a staff's locks on a/all tickets
     function removeStaffLocks($staffId, $ticketId=0) {
         $sql='DELETE FROM '.TICKET_LOCK_TABLE.' WHERE staff_id='.db_input($staffId);
         if($ticketId)
@@ -148,6 +161,8 @@ class TicketLock {
     }
 
     //Called  via cron 
+    // @implements FS-021.18: Collaborative Edit Locking — cron sweep deletes all expired locks
+    // @implements FS-043.7: Cron Job Inventory — invoked by the cron cleanup cycle
     function cleanup() {
         //Cleanup any expired locks.
         db_query('DELETE FROM '.TICKET_LOCK_TABLE.' WHERE expire<NOW()');

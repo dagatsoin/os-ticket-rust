@@ -17,17 +17,21 @@ require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.banlist.php');
 
 /* Get the system ban list filter */
+// @implements FS-042.11: Banlist — Banned Email Address Interface — auto-created SYSTEM BAN LIST filter + disabled/empty warnings
 if(!($filter=Banlist::getFilter())) 
     $warn = 'System ban list is empty.';
 elseif(!$filter->isActive())
     $warn = 'SYSTEM BAN LIST filter is <b>DISABLED</b> - <a href="filters.php">enable here</a>.'; 
  
+// @implements FS-042.11: Banlist — Banned Email Address Interface — resolve ban rule by id
 $rule=null; //ban rule obj.
 if($filter && $_REQUEST['id'] && !($rule=$filter->getRule($_REQUEST['id'])))
     $errors['err'] = 'Unknown or invalid ban list ID #';
 
+// @implements FS-042.11: Banlist — Banned Email Address Interface — POST dispatch
 if($_POST && !$errors && $filter){
     switch(strtolower($_POST['do'])){
+        // @implements FS-042.11: Banlist — Banned Email Address Interface — edit a ban entry (valid email required)
         case 'update':
             if(!$rule){
                 $errors['err']='Unknown or invalid ban rule.';
@@ -47,6 +51,8 @@ if($_POST && !$errors && $filter){
                 }
             }
             break;
+        // @implements FS-042.11: Banlist — Banned Email Address Interface — Ban New Email (valid + not already present)
+        // @implements BS-042-14: Ban entry shape — adds an email+equal+address rule on the reserved filter
         case 'add':
             if(!$filter) {
                 $errors['err']='Unknown or invalid ban list';
@@ -62,6 +68,7 @@ if($_POST && !$errors && $filter){
                 $errors['err']='Error creating ban rule. Try again!';
             }
             break;
+        // @implements FS-042.11: Banlist — Banned Email Address Interface — mass enable/disable/delete ban entries
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one email to process.';
@@ -119,6 +126,7 @@ if($_POST && !$errors && $filter){
     }
 }
 
+// @implements FS-042.11: Banlist — Banned Email Address Interface — list vs. single-entry add/edit routing
 $page='banlist.inc.php';
 if(!$filter || ($rule || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add'))))
     $page='banrule.inc.php';

@@ -6,6 +6,7 @@
 #  key => API's Key (see admin panel on how to generate a key)
 #
 
+// @implements FS-043.4: External Ticket-Create API Endpoint — reference client: POST a new ticket to tickets.json with X-API-Key (expects HTTP 201 + ticket #)
 $config = array(
         'url'=>'http://domain.com/api/tickets.json',
         'key'=>'<api key>'

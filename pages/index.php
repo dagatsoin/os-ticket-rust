@@ -20,6 +20,9 @@ require_once('client.inc.php');
 require_once(INCLUDE_DIR.'class.format.php');
 require_once(INCLUDE_DIR.'class.page.php');
 
+// @implements FS-033: Admin Logs, Pages & Content — public servlet resolving a slug to an active 'other'-type content Page and printing its body (no dedicated public-render .N)
+// @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — Format::slugify maps the path-info to a comparable page slug
+// @implements FS-010.9: Client Page Bootstrap & Guard — boots the client shell so the page renders inside the standard client header/footer
 // Determine the requested page
 // - Strip extension
 $slug = Format::slugify($ost->get_path_info());

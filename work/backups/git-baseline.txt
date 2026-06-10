@@ -1,0 +1,64 @@
+# Git baseline — captured 2026-06-10 11:36:27 CEST
+# Branch: develop
+
+## git log --oneline -1
+4b94d0a Merge pull request #909 from dberkowitz/patch-1
+
+## git status --porcelain
+?? CLAUDE.md
+?? specs/
+?? work/
+
+## Untracked files expanded (git status --porcelain -uall)
+?? CLAUDE.md
+?? specs/CLAUDE.md
+?? specs/FS-001-app-bootstrap-request-lifecycle.md
+?? specs/FS-002-staff-authentication-sessions-access-control.md
+?? specs/FS-003-crypto-validation-formatting-infrastructure.md
+?? specs/FS-010-public-client-portal-lookup-view-login.md
+?? specs/FS-011-public-ticket-submission-web-form.md
+?? specs/FS-020-staff-ticket-queue-dashboard-search.md
+?? specs/FS-021-staff-ticket-view-workflow.md
+?? specs/FS-022-canned-responses-ticket-attachments.md
+?? specs/FS-030-admin-departments-teams-help-topics.md
+?? specs/FS-031-admin-staff-groups-directory.md
+?? specs/FS-032-admin-system-settings-sla-priorities-categories.md
+?? specs/FS-033-admin-logs-pages-content.md
+?? specs/FS-040-email-accounts-templates-outbound-mail.md
+?? specs/FS-041-inbound-email-pipeline-fetch-pipe-parse.md
+?? specs/FS-042-ticket-filters-banlist-inbound-routing.md
+?? specs/FS-043-external-api-cron-scheduler.md
+?? specs/FS-050-knowledge-base-faq.md
+?? specs/FS-060-installer-setup-wizard.md
+?? specs/FS-061-upgrader-database-migration-streams.md
+?? specs/FS-090-shared-ui-navigation-data-export.md
+?? specs/FS-091-reference-data-enums-data-model.md
+?? work/GAP_REPORT.md
+?? work/REVERSE_ENGINEER_PROGRESS.md
+?? work/SPEC_REVERSE_ENGINEER_PLAN.md
+?? work/backups/.gitkeep
+?? work/backups/BACKUP_RUNBOOK.md
+?? work/backups/git-baseline.txt
+?? work/backups/pre-tag-php-20260610.tar.gz
+?? work/coverage/PARTITIONS.md
+?? work/gaps/FS-001-gaps.md
+?? work/gaps/FS-002-gaps.md
+?? work/gaps/FS-003-gaps.md
+?? work/gaps/FS-010-gaps.md
+?? work/gaps/FS-011-gaps.md
+?? work/gaps/FS-020-gaps.md
+?? work/gaps/FS-021-gaps.md
+?? work/gaps/FS-022-gaps.md
+?? work/gaps/FS-030-gaps.md
+?? work/gaps/FS-031-gaps.md
+?? work/gaps/FS-032-gaps.md
+?? work/gaps/FS-033-gaps.md
+?? work/gaps/FS-040-gaps.md
+?? work/gaps/FS-041-gaps.md
+?? work/gaps/FS-042-gaps.md
+?? work/gaps/FS-043-gaps.md
+?? work/gaps/FS-050-gaps.md
+?? work/gaps/FS-060-gaps.md
+?? work/gaps/FS-061-gaps.md
+?? work/gaps/FS-090-gaps.md
+?? work/gaps/FS-091-gaps.md

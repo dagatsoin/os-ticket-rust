@@ -14,6 +14,8 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-060.1: Installer bootstrap & step state machine — SetupWizard installer engine
+// @implements FS-060.2: Prerequisite check (step `prereq`) — minimum PHP/MySQL requirements
 Class SetupWizard {
 
     //Mimimum requirements
@@ -34,6 +36,7 @@ Class SetupWizard {
 
     }
 
+    // @implements FS-060.7: Schema load, default seeding, admin & config provisioning — load SQL schema from file
     function load_sql_file($file, $prefix, $abort=true, $debug=false) {
 
         if(!file_exists($file) || !($schema=file_get_contents($file)))
@@ -45,6 +48,8 @@ Class SetupWizard {
     /*
         load SQL schema - assumes MySQL && existing connection
         */
+    // @implements FS-060.7: Schema load, default seeding, admin & config provisioning — apply prefixed SQL statements
+    // @implements FS-061.4: Per-patch batched application with time-boxing — shared SQL loader reused by upgrader
     function load_sql($schema, $prefix, $abort=true, $debug=false) {
 
         # Strip comments and remarks
@@ -83,14 +88,17 @@ Class SetupWizard {
         return $this->prereq['mysql'];
     }
 
+    // @implements FS-060.2: Prerequisite check (step `prereq`) — PHP version satisfies minimum
     function check_php() {
         return (version_compare(PHP_VERSION, $this->getPHPVersion())>=0);
     }
 
+    // @implements FS-060.2: Prerequisite check (step `prereq`) — MySQL driver presence (not version)
     function check_mysql() {
         return (extension_loaded('mysql'));
     }
 
+    // @implements FS-060.2: Prerequisite check (step `prereq`) — combined PHP + MySQL prerequisite gate
     function check_prereq() {
         return ($this->check_php() && $this->check_mysql());
     }
@@ -98,6 +106,7 @@ Class SetupWizard {
     /*
         @error is a mixed var.
     */
+    // @implements FS-060.7: Schema load, default seeding, admin & config provisioning — abort install on error
     function abort($error, $debug=false) {
 
         if($debug) echo $error;
@@ -106,6 +115,7 @@ Class SetupWizard {
         return false; // Always false... It's an abort.
     }
 
+    // @implements FS-060.1: Installer bootstrap & step state machine — accumulate installer errors
     function setError($error) {
 
         if($error && is_array($error))

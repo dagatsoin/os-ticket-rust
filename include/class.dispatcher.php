@@ -20,12 +20,18 @@
  * URL resolver and dispatcher. It's meant to be quite lightweight, so the
  * functions aren't separated
  */
+// @implements FS-043.3: HTTP API URL Dispatcher — lightweight URL resolver/router
+// @implements KL-440: Dispatcher is method-capable but only POST is wired
 class Dispatcher {
+    // @implements FS-043.3: HTTP API URL Dispatcher — construct (optional lazy-load file)
     function Dispatcher($file=false) {
         $this->urls = array();
         $this->file = $file;
     }
 
+    // @implements FS-043.3: HTTP API URL Dispatcher — match path to first matcher, _method emulation, 400 on no match
+    // @implements EC-446: Method emulation — _method=POST GET arg overrides request method
+    // @implements EC-433: Unknown URL/format — 400 "URL not supported"
     function resolve($url, $args=null) {
         if ($this->file) { $this->lazy_load(); }
         # Support HTTP method emulation with the _method GET argument
@@ -44,10 +50,12 @@ class Dispatcher {
      * Returns the url for the given function and arguments (arguments
      * aren't declared, but will be handled
      */
+    // @implements FS-043.3: HTTP API URL Dispatcher — reverse-route stub (unused)
     function reverse($func) { }
     /**
      * Add the url to the list of supported URLs
      */
+    // @implements FS-043.3: HTTP API URL Dispatcher — append a matcher to the route list
     function append($url, $prefix=false) {
         if ($prefix) { $url->setPrefix($prefix); }
         array_push($this->urls, $url);
@@ -55,11 +63,13 @@ class Dispatcher {
     /**
      * Add the urls from another dispatcher onto this one
      */
+    // @implements FS-043.3: HTTP API URL Dispatcher — merge routes from another dispatcher
     function extend($dispatcher) {
         foreach ($dispatcher->urls as $url) { $this->append($url); }
         /* allow inlining / chaining */ return $this;
     }
 
+    // @implements FS-043.3: HTTP API URL Dispatcher — lazy-loadable sub-route file inclusion
     /* static */ function include_urls($file, $absolute=false, $lazy=true) {
         if (!$absolute) {
             # Fetch the working path of the caller
@@ -74,13 +84,16 @@ class Dispatcher {
      * $this->file to where the file to be loaded is located. When this
      * dispatcher is first accessed, the file will be loaded.
      */
+    // @implements FS-043.3: HTTP API URL Dispatcher — load deferred route file on first access (at most once)
     function lazy_load() {
         $this->extend(include $this->file);
         $this->file=false;
     }
 }
 
+// @implements FS-043.3: HTTP API URL Dispatcher — single pattern→target route matcher
 class UrlMatcher {
+    // @implements FS-043.3: HTTP API URL Dispatcher — construct regex/target/args/method
     function UrlMatcher($regex, $func, $args=false, $method=false) {
         # Add the slashes for the Perl syntax
         $this->regex = "@" . $regex . "@";
@@ -90,8 +103,10 @@ class UrlMatcher {
         $this->method = $method;
     }
 
+    // @implements FS-043.3: HTTP API URL Dispatcher — set class prefix for nested routes
     function setPrefix($prefix) { $this->prefix = $prefix; }
 
+    // @implements FS-043.3: HTTP API URL Dispatcher — method-gated regex match
     function matches($url) {
         if ($this->method && $_SERVER['REQUEST_METHOD'] != $this->method) {
             return false;
@@ -99,6 +114,8 @@ class UrlMatcher {
         return preg_match($this->regex, $url, $this->matches) == 1;
     }
 
+    // @implements FS-043.3: HTTP API URL Dispatcher — invoke target / recurse sub-dispatcher with carried args
+    // @implements EC-433: Unknown URL/format — 500 "Dispatcher compile error. Function not callable"
     function dispatch($url, $prev_args=null) {
         # Remove named values from the match array
         $this->matches = array_flip(array_intersect(
@@ -146,6 +163,7 @@ class UrlMatcher {
      * return the appropriate $class, and $func that should be invoked to
      * dispatch the URL.
      */
+    // @implements FS-043.3: HTTP API URL Dispatcher — resolve file:Class prefix, lazy-include target file
     function apply_prefix() {
         if (is_array($this->func)) { list($class, $func) = $this->func; }
         else { $func = $this->func; $class = ""; }
@@ -159,6 +177,7 @@ class UrlMatcher {
     }
 }
 
+// @implements FS-043.3: HTTP API URL Dispatcher — build a sub-dispatcher of prefixed patterns
 function patterns($prefix) {
     $disp = new Dispatcher();
     for ($i=1, $k=func_num_args(); $i<$k; $i++) {
@@ -171,18 +190,25 @@ function patterns($prefix) {
     return $disp;
 }
 
+// @implements FS-043.3: HTTP API URL Dispatcher — any-method matcher factory
 function url($regex, $func, $args=false, $method=false) {
     return new UrlMatcher($regex, $func, $args, $method);
 }
 
+// @implements FS-043.3: HTTP API URL Dispatcher — POST matcher factory
+// @implements BS-438: Only Ticket-Create and Cron Are Exposed Over HTTP API
 function url_post($regex, $func, $args=false) {
     return url($regex, $func, $args, "POST");
 }
 
+// @implements FS-043.3: HTTP API URL Dispatcher — GET matcher factory (unmounted in 1.7)
+// @implements KL-440: Dispatcher is method-capable but only POST is wired
 function url_get($regex, $func, $args=false) {
     return url($regex, $func, $args, "GET");
 }
 
+// @implements FS-043.3: HTTP API URL Dispatcher — DELETE matcher factory (unmounted in 1.7)
+// @implements KL-440: Dispatcher is method-capable but only POST is wired
 function url_del($regex, $func, $args=false) {
     return url($regex, $func, $args, "DELETE");
 }

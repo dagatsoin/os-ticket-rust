@@ -1,4 +1,6 @@
 <?php
+// @implements FS-002.1: Staff login — login form (userid/passwd, do=scplogin) with CSRF token
+// @implements BS-002-09: Forgot-password link visibility — "Forgot my password" link only after strikes>1 AND reset enabled
 include_once(INCLUDE_DIR.'staff/login.header.php');
 $info = ($_POST && $errors)?Format::htmlchars($_POST):array();
 ?>

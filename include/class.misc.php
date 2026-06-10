@@ -13,8 +13,10 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-003.18: Random code generation — Misc helper bundle for random codes/numbers, time conversion, current-URL and time-dropdown
 class Misc {
 
+	// @implements FS-003.18: Random code generation — generates a random alphanumeric code of length len from cryptographic random bytes
 	function randCode($len=8, $chars=false) {
         $chars = $chars ? $chars : 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -41,6 +43,7 @@ class Misc {
         return substr($output, 0, $len);
 	}
 
+    // @implements FS-003.18: Random code generation — seeds the mt_rand PRNG from connection-timing entropy (called on db_connect)
     function __rand_seed($value=0) {
         // Form a 32-bit figure for the random seed with the lower 16-bits
         // the microseconds of the current time, and the upper 16-bits from
@@ -51,6 +54,8 @@ class Misc {
     }
 
     /* Helper used to generate ticket IDs */
+    // @implements FS-091.2: External Ticket Number Generation (Random vs. Sequential) — random numeric generator backing random ticket ids
+    // @implements BS-024: randNumber ignores explicit bounds when len is set — range derived purely from len when len is non-zero
     function randNumber($len=6,$start=false,$end=false) {
 
         $start=(!$len && $start)?$start:str_pad(1,$len,"0",STR_PAD_RIGHT);
@@ -60,6 +65,7 @@ class Misc {
     }
 
     /* misc date helpers...this will go away once we move to php 5 */
+    // @implements FS-003.19: Time conversion helpers — converts a stored DB timestamp to GMT using the DB timezone offset
     function db2gmtime($var){
         global $cfg;
         if(!$var) return;
@@ -69,6 +75,7 @@ class Misc {
     }
 
     //Take user time or gmtime and return db (mysql) time.
+    // @implements FS-003.19: Time conversion helpers — converts user/GM time to DB (MySQL) time applying session TZ/DST and DB offset
     function dbtime($var=null){
          global $cfg;
 
@@ -84,11 +91,13 @@ class Misc {
     }
 
     /*Helper get GM time based on timezone offset*/
+    // @implements FS-003.19: Time conversion helpers — returns current GM time (local time minus the runtime UTC offset)
     function gmtime() {
         return time()-date('Z');
     }
 
     /* Needed because of PHP 4 support */
+    // @implements FS-003.19: Time conversion helpers — float microtime helper (PHP 4 compatibility)
     function micro_time() {
         list($usec, $sec) = explode(" ", microtime());
 
@@ -96,6 +105,7 @@ class Misc {
     }
 
     //Current page
+    // @implements FS-003.20: Current-URL reconstruction & time dropdown — reconstructs the full current request URL (scheme/host/port/uri), backing THISPAGE
     function currentURL() {
 
         $str = 'http';
@@ -118,6 +128,7 @@ class Misc {
         return $str;
     }
 
+    // @implements FS-003.20: Current-URL reconstruction & time dropdown — renders a 15-minute-granularity HH:MM time-selection dropdown
     function timeDropdown($hr=null, $min =null,$name='time') {
         $hr =is_null($hr)?0:$hr;
         $min =is_null($min)?0:$min;

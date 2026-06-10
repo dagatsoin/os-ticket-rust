@@ -15,10 +15,12 @@
 **********************************************************************/
 require('staff.inc.php');
 require_once(INCLUDE_DIR.'class.faq.php');
+// @implements FS-050.11: Staff KB Entry & Routing — optional category resolution, "Unknown or invalid FAQ category"
 $category=null;
 if($_REQUEST['cid'] && !($category=Category::lookup($_REQUEST['cid'])))
     $errors['err']='Unknown or invalid FAQ category';
 
+// @implements FS-050.11: Staff KB Entry & Routing — category-detail vs. categories landing/search view selection
 $inc='faq-categories.inc.php'; //KB landing page.
 if($category && $_REQUEST['a']!='search') {
     $inc='faq-category.inc.php';

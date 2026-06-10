@@ -1,4 +1,10 @@
 <?php
+/* @implements FS-033.1: System Log Viewer Entry Point & Access Gate — admin gate */
+/* @implements FS-033.2: Log Filtering — Type and Date Span — type filter (error/warning/debug), date-span filter (>=8 char bounds, invalid span ignored) */
+/* @implements FS-033.4: Log Sorting — sort map (id/title/type/ip/date default DESC) */
+/* @implements FS-033.5: Log Pagination — paginated result set */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
 $qstr='';
@@ -83,6 +89,12 @@ else
     $showing='No logs found!';
 ?>
 
+<?php
+/* @implements FS-033.2: Log Filtering — Type and Date Span — filter form (date span + type select) */
+/* @implements FS-033.3: Log Results Table — results table (Title, Type, Date, IP) */
+/* @implements FS-033.6: Bulk Manual Deletion of Log Entries — bulk Delete (do=mass_process, ids[]) with confirm dialog */
+/* @implements FS-033.8: Single Log Record Detail (Content AJAX — `/content/log/<id>`) — Title links to /content/log/<id> detail */
+?>
 <h2>System Logs</h2>
 <div id='filter' >
  <form action="logs.php" method="get">

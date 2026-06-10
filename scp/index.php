@@ -14,5 +14,6 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 //Nothing for now...simply redirect to tickets page.
+// @implements FS-020.1: Queue Entry & Default Landing — staff root falls through to the ticket queue
 require('tickets.php');
 ?>

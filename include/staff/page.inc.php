@@ -1,4 +1,5 @@
 <?php
+// @implements FS-033.13: Create & Edit a Site Page — add/edit partial admin gate (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $pageTypes = array(
         'landing' => 'Landing page',
@@ -24,6 +25,7 @@ if($page && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-033.13: Create & Edit a Site Page — page form (Name, Type, Status, rich-text body, Admin Notes; CSRF) */ ?>
 <form action="pages.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">

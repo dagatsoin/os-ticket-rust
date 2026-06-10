@@ -14,12 +14,14 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-002.14: Database-backed session store — custom DB-backed PHP session handler
 class osTicketSession {
 
     var $ttl = SESSION_TTL;
     var $data = '';
     var $id = '';
 
+    // @implements FS-002.14: Database-backed session store — resolve TTL, set OSTSESSID cookie, register save handlers
     function osTicketSession($ttl=0){
         foreach (array($ttl, ini_get('session.gc_maxlifetime'), SESSION_TTL) as $T) {
             if ($T) {
@@ -70,6 +72,8 @@ class osTicketSession {
         session_start();
     }
 
+    // @implements FS-002.14: Database-backed session store — regenerate session id, destroy prior row (fixation defence)
+    // @implements FS-002.6: Session establishment on login — session id regeneration on login
     function regenerate_id(){
         $oldId = session_id();
         session_regenerate_id();
@@ -84,6 +88,7 @@ class osTicketSession {
         return (true);
     }
 
+    // @implements FS-002.14: Database-backed session store — read unexpired session row (per-instance cache)
     function read($id){
         if (!$this->data || $this->id != $id) {
             $sql='SELECT session_data FROM '.SESSION_TABLE
@@ -98,6 +103,7 @@ class osTicketSession {
         return $this->data;
     }
 
+    // @implements FS-002.14: Database-backed session store — upsert session row with owner/IP/agent + expiry
     function write($id, $data){
         global $thisstaff;
 
@@ -116,11 +122,13 @@ class osTicketSession {
         return (db_query($sql) && db_affected_rows());
     }
 
+    // @implements FS-002.14: Database-backed session store — delete a session row
     function destroy($id){
         $sql='DELETE FROM '.SESSION_TABLE.' WHERE session_id='.db_input($id);
         return (db_query($sql) && db_affected_rows());
     }
 
+    // @implements FS-002.14: Database-backed session store — garbage-collect expired session rows
     function gc($maxlife){
         $sql='DELETE FROM '.SESSION_TABLE.' WHERE session_expire<NOW()';
         db_query($sql);
@@ -132,6 +140,8 @@ class osTicketSession {
         return $this->ttl;
     }
 
+    // @implements FS-002.14: Database-backed session store — enumerate currently-online staff ids
+    // @implements FS-020: Staff Ticket Queue, Dashboard & Search — "who is online" display source
     function get_online_users($sec=0){
         $sql='SELECT user_id FROM '.SESSION_TABLE.' WHERE user_id>0 AND session_expire>NOW()';
         if($sec)
@@ -147,6 +157,7 @@ class osTicketSession {
     }
 
     /* ---------- static function ---------- */
+    // @implements FS-002.14: Database-backed session store — static factory starting a DB-backed session
     function start($ttl=0) {
         return New osTicketSession($ttl);
     }

@@ -13,12 +13,15 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-003.17 — Charset normalization & transcoding — charset util class
 class Charset {
 
     const UTF8 = 'utf-8';
 
     // Cleanup invalid charsets
     // Thanks in part to https://github.com/mikel/mail/commit/88457e
+    // @implements FS-003.17 — Charset normalization & transcoding — map bogus/ambiguous charset labels
+    // @implements BS-018: (charset label normalization map)
     static function normalize($charset) {
 
         $match = array();
@@ -41,6 +44,8 @@ class Charset {
     }
 
     // Translate characters ($text) from one encoding ($from) to another ($to)
+    // @implements FS-003.17 — Charset normalization & transcoding — convert between encodings (iconv/mbstring/utf8_encode)
+    // @implements BS-019: (lossless fallback — return original on empty/false conversion)
     static function transcode($text, $from, $to) {
 
         //Try auto-detecting charset/encoding
@@ -68,6 +73,7 @@ class Charset {
     }
 
     //Wrapper for utf-8 transcoding.
+    // @implements FS-003.17 — Charset normalization & transcoding — UTF-8 convenience wrapper
     function utf8($text, $charset=null) {
         return self::transcode($text, $charset, self::UTF8);
     }

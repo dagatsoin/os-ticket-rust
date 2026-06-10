@@ -13,17 +13,22 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-033.16: Single-Page Enable/Disable/Delete Guards (Entity Rules) — Site Page entity
+// @implements FS-033.13: Create & Edit a Site Page
+// @implements BS-033.9: Default (Bound) Pages Are In-Use and Protected
 class Page {
 
     var $id;
     var $ht;
 
+    // @implements FS-033.13: Create & Edit a Site Page — construct + load page by id
     function Page($id) {
         $this->id=0;
         $this->ht = array();
         $this->load($id);
     }
 
+    // @implements FS-033.13: Create & Edit a Site Page — load page row + linked-topic count
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -76,6 +81,8 @@ class Page {
         return ($this->ht['isactive']);
     }
 
+    // @implements FS-033.16: Single-Page Enable/Disable/Delete Guards — in-use = linked topics OR default page
+    // @implements BS-033.9: Default (Bound) Pages Are In-Use and Protected
     function isInUse() {
         global $cfg;
 
@@ -96,6 +103,7 @@ class Page {
         return $this->ht['topics'];
     }
 
+    // @implements FS-033.16: Single-Page Enable/Disable/Delete Guards — reject disabling an in-use page
     function update($vars, &$errors) {
 
         if(!$vars['isactive'] && $this->isInUse()) {
@@ -111,6 +119,7 @@ class Page {
         return true;
     }
 
+    // @implements FS-033.16: Single-Page Enable/Disable/Delete Guards — disable no-op when inactive, fail when in-use
     function disable() {
 
         if(!$this->isActive())
@@ -131,6 +140,7 @@ class Page {
         return true;
     }
 
+    // @implements FS-033.16: Single-Page Enable/Disable/Delete Guards — delete fails when in-use, unlinks topics
     function delete() {
 
         if($this->isInUse())
@@ -150,6 +160,7 @@ class Page {
 
     /* ------------------> Static methods <--------------------- */
 
+    // @implements FS-033.13: Create & Edit a Site Page — add = create then lookup
     function add($vars, &$errors) {
         if(!($id=self::create($vars, $errors)))
             return false;
@@ -161,6 +172,7 @@ class Page {
         return self::save(0, $vars, $errors);
     }
 
+    // @implements FS-033.12: Site Pages Results Table, Sorting & Pagination — list pages by criteria, name-ordered
     function getPages($criteria=array()) {
 
         $sql = ' SELECT id FROM '.PAGE_TABLE.' WHERE 1';
@@ -179,6 +191,7 @@ class Page {
         return array_filter($pages);
     }
 
+    // @implements FS-033.12: Site Pages Results Table, Sorting & Pagination — active-only page listing
     function getActivePages($criteria=array()) {
 
         $criteria = array_merge($criteria, array('active'=>true));
@@ -186,10 +199,12 @@ class Page {
         return self::getPages($criteria);
     }
 
+    // @implements FS-011: Public Ticket Submission Web Form — active thank-you pages for post-submit landing
     function getActiveThankYouPages() {
         return self::getActivePages(array('type' => 'thank-you'));
     }
 
+    // @implements FS-033.14: Site Page Field Validation & Uniqueness — name lookup for uniqueness check
     function getIdByName($name) {
 
         $id = 0;
@@ -200,6 +215,7 @@ class Page {
         return $id;
     }
 
+    // @implements FS-033.13: Create & Edit a Site Page — id-validated page lookup
     function lookup($id) {
         return ($id
                 && is_numeric($id)
@@ -208,6 +224,8 @@ class Page {
             ? $p : null;
     }
 
+    // @implements FS-033.14: Site Page Field Validation & Uniqueness — validate type/name/body + persist
+    // @implements BS-033.8: A Site Page Has Exactly One of Four Types
     function save($id, $vars, &$errors) {
 
         //Cleanup.

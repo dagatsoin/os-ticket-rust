@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — Site Pages tab (pages): landing_page_id, offline_page_id, thank-you_page_id selects filtered by page type */
+/* @implements FS-032.1: Settings Panel Entry & Tab Routing — in-partial admin re-check */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin() || !$config) die('Access Denied');
 $pages = Page::getPages();
 ?>
@@ -67,6 +71,12 @@ $pages = Page::getPages();
         </tr>
     </tbody>
 </table>
+<?php
+/* @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — Client logo selection (client_logo_id): radio for system-default(0) vs custom uploaded logos, delete checkboxes (non-selected only), new-logo upload */
+/* @implements KL-032.12: New-logo upload uses the logo[] field name */
+/* @implements EC-032.13: Logo delete checkboxes offered only for non-selected logos */
+/* @implements EC-032.14: System-default logo (id 0) cannot be deleted */
+?>
 <table class="form_table settings_table" width="940" border="0" cellspacing="0" cellpadding="2">
     <thead>
         <tr>
@@ -158,6 +168,10 @@ $pages = Page::getPages();
     <div class="clear"></div>
 </div>
 
+<?php
+/* @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — confirm dialog JS intercepts submit when ANY checkbox is checked */
+/* @implements EC-032.12: Confirm intercept fires for any checked checkbox (broader than delete-only) */
+?>
 <script type="text/javascript">
 $(function() {
     $('#save input:submit.button').bind('click', function(e) {

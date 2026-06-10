@@ -13,6 +13,8 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-030.5: Department creation & update — department model + persistence
+// @implements FS-030.6: Department deletion & re-homing
 class Dept {
     var $id;
 
@@ -24,11 +26,13 @@ class Dept {
 
     var $ht;
 
+    // @implements FS-030.4: Department add/edit form — construct department by id
     function Dept($id) {
         $this->id=0;
         $this->load($id);
     }
 
+    // @implements FS-030.3: Department list view — load department row + staff count
     function load($id=0) {
         global $cfg;
 
@@ -55,27 +59,34 @@ class Dept {
         return true;
     }
 
+    // @implements FS-030.5: Department creation & update — reload after save
     function reload() {
         return $this->load();
     }
 
+    // @implements FS-030.3: Department list view — template-variable name
     function asVar() {
         return $this->getName();
     }
 
+    // @implements FS-030.3: Department list view — id accessor
     function getId() {
         return $this->id;
     }
 
+    // @implements FS-030.3: Department list view — name accessor
     function getName() {
         return $this->ht['name'];
     }
 
 
+    // @implements FS-030.4: Department add/edit form — outbound email id accessor
+    // @implements BS-030-02 — Email identity required
     function getEmailId() {
         return $this->ht['email_id'];
     }
 
+    // @implements FS-030.4: Department add/edit form — resolve outbound email account
     function getEmail() {
 
         if(!$this->email && $this->getEmailId())
@@ -84,19 +95,25 @@ class Dept {
         return $this->email;
     }
 
+    // @implements FS-030.6: Department deletion & re-homing — home-staff count (delete guard)
+    // @implements BS-030-06 — Department deletion requires zero home staff
     function getNumStaff() {
         return $this->ht['users'];
     }
 
 
+    // @implements FS-030.6: Department deletion & re-homing — users-count alias (delete guard)
     function getNumUsers() {
         return $this->getNumStaff();
     }
 
+    // @implements FS-030.3: Department list view — effective member count
     function getNumMembers() {
         return count($this->getMembers());
     }
 
+    // @implements FS-030.5: Department creation & update — resolve effective members (home + manager + group access)
+    // @implements BS-030-08 — Allowed-group access is a full-replace sync
     function getMembers() {
 
         if(!$this->members) {
@@ -121,10 +138,12 @@ class Dept {
     }
 
 
+    // @implements FS-030.4: Department add/edit form — SLA plan id accessor
     function getSLAId() {
         return $this->ht['sla_id'];
     }
 
+    // @implements FS-030.4: Department add/edit form — resolve SLA plan
     function getSLA() {
 
         if(!$this->sla && $this->getSLAId())
@@ -133,10 +152,13 @@ class Dept {
         return $this->sla;
     }
 
+    // @implements FS-030.4: Department add/edit form — template group id accessor
+    // @implements BS-030-03 — Template required
     function getTemplateId() {
          return $this->ht['tpl_id'];
     }
 
+    // @implements FS-030.4: Department add/edit form — resolve template group
     function getTemplate() {
 
         if(!$this->template && $this->getTemplateId())
@@ -145,6 +167,7 @@ class Dept {
         return $this->template;
     }
 
+    // @implements FS-030.4: Department add/edit form — auto-response email (falls back to dept email)
     function getAutoRespEmail() {
 
         if(!$this->autorespEmail && $this->ht['autoresp_email_id'] && ($email=Email::lookup($this->ht['autoresp_email_id'])))
@@ -155,23 +178,29 @@ class Dept {
         return $this->autorespEmail;
     }
 
+    // @implements FS-030.4: Department add/edit form — outbound email address accessor
     function getEmailAddress() {
         if(($email=$this->getEmail()))
             return $email->getAddress();
     }
 
+    // @implements FS-030.4: Department add/edit form — signature accessor
+    // @implements BS-030-10 — Signature is public-only and optional
     function getSignature() {
         return $this->ht['signature'];
     }
 
+    // @implements BS-030-10 — Signature is public-only and optional — offer signature only when public + present
     function canAppendSignature() {
         return ($this->getSignature() && $this->isPublic());
     }
 
+    // @implements FS-030.4: Department add/edit form — manager staff id accessor
     function getManagerId() {
         return $this->ht['manager_id'];
     }
 
+    // @implements FS-030.4: Department add/edit form — resolve manager staff
     function getManager() {
 
         if(!$this->manager && $this->getManagerId())
@@ -180,6 +209,7 @@ class Dept {
         return $this->manager;
     }
 
+    // @implements FS-030.5: Department creation & update — is-manager check (retains access regardless of group list)
     function isManager($staff) {
 
         if(is_object($staff)) $staff=$staff->getId();
@@ -188,37 +218,48 @@ class Dept {
     }
 
 
+    // @implements FS-030.4: Department add/edit form — public/private flag accessor
+    // @implements BS-030-04 — Default department cannot be private
     function isPublic() {
          return ($this->ht['ispublic']);
     }
 
+    // @implements FS-030.4: Department add/edit form — new-ticket autoresponse flag
     function autoRespONNewTicket() {
         return ($this->ht['ticket_auto_response']);
     }
 
+    // @implements FS-030.4: Department add/edit form — new-message autoresponse flag
     function autoRespONNewMessage() {
         return ($this->ht['message_auto_response']);
     }
 
+    // @implements FS-030.4: Department add/edit form — no-reply autoresponse flag
     function noreplyAutoResp() {
          return ($this->ht['noreply_autoresp']);
     }
 
 
+    // @implements FS-030.4: Department add/edit form — group-membership-access flag
+    // @implements BS-030-08 — Allowed-group access is a full-replace sync
     function isGroupMembershipEnabled() {
         return ($this->ht['group_membership']);
     }
 
+    // @implements FS-030.4: Department add/edit form — raw record accessor (form prefill)
     function getHashtable() {
         return $this->ht;
     }
 
+    // @implements FS-030.4: Department add/edit form — info alias (form prefill)
     function getInfo() {
         return $this->getHashtable();
     }
 
 
 
+    // @implements FS-030.5: Department creation & update — read allowed-group access set
+    // @implements BS-030-08 — Allowed-group access is a full-replace sync
     function getAllowedGroups() {
 
         if($this->groups) return $this->groups;
@@ -234,6 +275,8 @@ class Dept {
         return $this->groups;
     }
 
+    // @implements FS-030.5: Department creation & update — full-replace sync of allowed-group access
+    // @implements BS-030-08 — Allowed-group access is a full-replace sync
     function updateAllowedGroups($groups) {
 
         if($groups && is_array($groups)) {
@@ -255,6 +298,7 @@ class Dept {
 
     }
 
+    // @implements FS-030.5: Department creation & update — update existing department + sync groups + reload
     function update($vars, &$errors) {
 
         if(!$this->save($this->getId(), $vars, $errors))
@@ -266,6 +310,10 @@ class Dept {
         return true;
     }
 
+    // @implements FS-030.6: Department deletion & re-homing — guarded delete + re-home tickets/staff/topics, drop group rows
+    // @implements BS-030-05 — Default department cannot be deleted or disabled
+    // @implements BS-030-06 — Department deletion requires zero home staff
+    // @implements BS-030-07 — Deletion re-homes dependents to the default department
     function delete() {
         global $cfg;
 
@@ -290,6 +338,7 @@ class Dept {
     }
 
     /*----Static functions-------*/
+	// @implements BS-030-01 — Department name required, minimum length, unique — name→id lookup (uniqueness check)
 	function getIdByName($name) {
         $id=0;
         $sql ='SELECT dept_id FROM '.DEPT_TABLE.' WHERE dept_name='.db_input($name);
@@ -299,10 +348,12 @@ class Dept {
         return $id;
     }
 
+    // @implements FS-030.3: Department list view — load department by id
     function lookup($id) {
         return ($id && is_numeric($id) && ($dept = new Dept($id)) && $dept->getId()==$id)?$dept:null;
     }
 
+    // @implements FS-030.3: Department list view — resolve department name by id
     function getNameById($id) {
 
         if($id && ($dept=Dept::lookup($id)))
@@ -311,11 +362,13 @@ class Dept {
         return $name;
     }
 
+    // @implements FS-030.6: Department deletion & re-homing — default department name (re-home target)
     function getDefaultDeptName() {
         global $cfg;
         return ($cfg && $cfg->getDefaultDeptId() && ($name=Dept::getNameById($cfg->getDefaultDeptId())))?$name:null;
     }
 
+    // @implements FS-030.3: Department list view — list departments (optional public-only / manager filter)
     function getDepartments( $criteria=null) {
 
         $depts=array();
@@ -334,10 +387,12 @@ class Dept {
         return $depts;
     }
 
+    // @implements FS-030.3: Department list view — public departments only
     function getPublicDepartments() {
         return self::getDepartments(array('publiconly'=>true));
     }
 
+    // @implements FS-030.5: Department creation & update — create + seed allowed-group access
     function create($vars, &$errors) {
         if(($id=self::save(0, $vars, $errors)) && ($dept=self::lookup($id)))
             $dept->updateAllowedGroups($vars['groups']);
@@ -345,6 +400,12 @@ class Dept {
         return $id;
     }
 
+    // @implements FS-030.5: Department creation & update — validate + insert/update department row (HTML-strip name/signature)
+    // @implements BS-030-01 — Department name required, minimum length, unique
+    // @implements BS-030-02 — Email identity required
+    // @implements BS-030-03 — Template required
+    // @implements BS-030-04 — Default department cannot be private
+    // @implements BS-030-11 — Name and signature are HTML-stripped on save
     function save($id, $vars, &$errors) {
         global $cfg;
 

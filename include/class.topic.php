@@ -14,6 +14,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-030.15: Help topic creation & update — requester-selectable subject → dept/priority/SLA/assignment + CRUD
 class Topic {
     var $id;
 
@@ -141,6 +142,7 @@ class Topic {
         return true;
     }
 
+    // @implements FS-030.16: Help topic deletion & dependent cleanup — reparent children, zero topic_id on tickets, drop FAQ links
     function delete() {
 
         $sql='DELETE FROM '.TOPIC_TABLE.' WHERE topic_id='.db_input($this->getId()).' LIMIT 1';
@@ -157,6 +159,8 @@ class Topic {
         return self::save(0, $vars, $errors);
     }
 
+    // @implements FS-030.13: Help topic list view — list active help topics (parent/child names)
+    // @implements FS-011.4: Help-Topic Selection and Routing Effects — publicOnly filter feeds the public web form
     function getHelpTopics($publicOnly=false) {
 
         $topics=array();
@@ -195,6 +199,7 @@ class Topic {
         return ($id && is_numeric($id) && ($t= new Topic($id)) && $t->getId()==$id)?$t:null;
     }
 
+    // @implements FS-030.15: Help topic creation & update — validate + insert/update; decode overloaded auto-assign (staff/team)
     function save($id, $vars, &$errors) {
 
         $vars['topic']=Format::striptags(trim($vars['topic']));

@@ -1,7 +1,9 @@
 <?php
+// @implements FS-040.2: Email Account Create / Edit Form — in-partial admin gate (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $info=array();
 $qstr='';
+// @implements FS-040.2: Email Account Create / Edit Form — add-vs-update mode; derive postfetch radio from mail_delete/mail_archivefolder state
 if($email && $_REQUEST['a']!='add'){
     $title='Update Email';
     $action='update';
@@ -29,6 +31,7 @@ if($email && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-040.2: Email Account Create / Edit Form — account form (address, name, default new-ticket priority/dept, per-email auto-response override; CSRF) */ ?>
 <h2>Email Address</h2>
 <form action="emails.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
@@ -137,6 +140,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 <br><em><?php echo $passwdtxt; ?></em>
             </td>
         </tr>
+        <?php /* @implements FS-040.2: Email Account Create / Edit Form — Mail Account (inbound fetch) block: status, host/port/protocol/encryption, fetch frequency + max, postfetch disposition (archive/delete/nothing) */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Mail Account</strong>: Optional setting for fetching incoming emails. Mail fetching must be enabled with autocron active or external cron setup. &nbsp;<font class="error">&nbsp;<?php echo $errors['mail']; ?></font></em>
@@ -205,6 +209,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             </td>
         </tr>
 
+        <?php /* @implements FS-040.2: Email Account Create / Edit Form — SMTP (outbound) block: status, host/port, auth toggle, header-spoofing allowance */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>SMTP Settings</strong>: When enabled the <b>email account</b> will use SMTP server instead of internal PHP mail() function for outgoing emails. &nbsp;<font class="error">&nbsp;<?php echo $errors['smtp']; ?></font></em>

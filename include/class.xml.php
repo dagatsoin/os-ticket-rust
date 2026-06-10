@@ -16,8 +16,10 @@
     $Id: $
 **********************************************************************/
 
+// @implements FS-043.4: External Ticket-Create API Endpoint — xml-format request-body parser
 class XmlDataParser {
 
+    // @implements FS-043.4: External Ticket-Create API Endpoint — expat parser init (element/character handlers)
     function XmlDataParser() {
         $this->parser = xml_parser_create();
         xml_set_object($this->parser, $this);
@@ -29,6 +31,8 @@ class XmlDataParser {
         $this->stack = array();
     }
 
+    // @implements FS-043.4: External Ticket-Create API Endpoint — parse XML stream into reduced PHP array
+    // @implements EC-435: Malformed body — unparseable XML returns false → HTTP 400 parser error
     function parse($stream) {
         while ($data = fread($stream, 4096)) {
             if (!xml_parse($this->parser, $data, feof($stream)))

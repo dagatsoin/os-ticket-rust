@@ -16,12 +16,15 @@
 require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.sla.php');
 
+// @implements FS-032.9: SLA Plan Listing & Mass Actions — SLA id lookup (copy-paste "API key" error text per KL-032.4)
 $sla=null;
 if($_REQUEST['id'] && !($sla=SLA::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid API key ID.';
 
+// @implements FS-032.10: SLA Plan Create / Edit Form — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-032.10: SLA Plan Create / Edit Form — update existing plan
         case 'update':
             if(!$sla){
                 $errors['err']='Unknown or invalid SLA plan.';
@@ -31,6 +34,7 @@ if($_POST){
                 $errors['err']='Error updating SLA plan. Try again!';
             }
             break;
+        // @implements FS-032.10: SLA Plan Create / Edit Form — create new plan
         case 'add':
             if(($id=SLA::create($_POST,$errors))){
                 $msg='SLA plan added successfully';
@@ -39,6 +43,7 @@ if($_POST){
                 $errors['err']='Unable to add SLA plan. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-032.9: SLA Plan Listing & Mass Actions — mass enable/disable/delete
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one plan.';
@@ -95,6 +100,8 @@ if($_POST){
     }
 }
 
+// @implements FS-032.9: SLA Plan Listing & Mass Actions — list partial routing
+// @implements FS-032.10: SLA Plan Create / Edit Form — form partial routing
 $page='slaplans.inc.php';
 if($sla || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='slaplan.inc.php';

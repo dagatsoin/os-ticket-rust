@@ -1,4 +1,6 @@
 <?php
+// @implements FS-030.1: Admin access gate & navigation context — admin-only access gate
+// @implements FS-030.14: Help topic add/edit form — add/edit a help topic
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $info=array();
 $qstr='';
@@ -20,6 +22,7 @@ if($topic && $_REQUEST['a']!='add') {
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-030.14: Help topic add/edit form — help-topic form: topic name, status, type (public/private), parent topic (hierarchy); CSRF */ ?>
 <form action="helptopics.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">
@@ -88,6 +91,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             </td>
         </tr>
 
+        <?php /* @implements FS-030.14: Help topic add/edit form — new-ticket routing options: priority, department, SLA override, thank-you page, auto-assign (staff/team), autoresponse disable */ ?>
         <tr><th colspan="2"><em>New ticket options</em></th></tr>
         <tr>
             <td width="180" class="required">

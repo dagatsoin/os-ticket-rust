@@ -1,3 +1,4 @@
+<?php /* @implements FS-050.6: Public Category View (`faq-category.inc.php`) — public category-listing view: self-guard OSTCLIENTINC + category present + isPublic(); lists published FAQs in the category */ ?>
 <?php
 if(!defined('OSTCLIENTINC') || !$category || !$category->isPublic()) die('Access Denied');
 ?>

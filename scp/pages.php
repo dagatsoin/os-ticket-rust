@@ -16,12 +16,16 @@
 require('admin.inc.php');
 require_once(INCLUDE_DIR.'class.page.php');
 
+// @implements FS-033.11: Site Pages List & Access Gate — page lookup, "Unknown or invalid page" on miss
+// @implements FS-033.13: Create & Edit a Site Page — resolve page id for edit
 $page = null;
 if($_REQUEST['id'] && !($page=Page::lookup($_REQUEST['id'])))
    $errors['err']='Unknown or invalid page';
 
+// @implements FS-033.13: Create & Edit a Site Page — POST dispatch (add/update)
 if($_POST) {
     switch(strtolower($_POST['do'])) {
+        // @implements FS-033.13: Create & Edit a Site Page — create new page
         case 'add':
             if(($pageId=Page::create($_POST, $errors))) {
                 $_REQUEST['a'] = null;
@@ -29,6 +33,7 @@ if($_POST) {
             } elseif(!$errors['err'])
                 $errors['err'] = 'Unable to add page. Try again!';
         break;
+        // @implements FS-033.13: Create & Edit a Site Page — update existing page
         case 'update':
             if(!$page)
                 $errors['err'] = 'Invalid or unknown page';
@@ -38,6 +43,7 @@ if($_POST) {
             } elseif(!$errors['err'])
                 $errors['err'] = 'Unable to update page. Try again!';
             break;
+        // @implements FS-033.15: Enable / Disable / Delete Pages (Bulk Actions) — mass enable/disable/delete with in-use protection
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one page.';
@@ -97,6 +103,8 @@ if($_POST) {
     }
 }
 
+// @implements FS-033.12: Site Pages Results Table, Sorting & Pagination — list view routing
+// @implements FS-033.13: Create & Edit a Site Page — add/edit form routing
 $inc='pages.inc.php';
 if($page || $_REQUEST['a']=='add')
     $inc='page.inc.php';

@@ -13,16 +13,20 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-042.2: Create / Edit Filter — Filter entity (CRUD, lifecycle)
+// @implements FS-042.5: Filter Actions — action getters consumed by apply()
 class Filter {
 
     var $id;
     var $ht;
 
+    // @implements FS-042.2: Create / Edit Filter — load a filter by id
     function Filter($id) {
         $this->id=0;
         $this->load($id);
     }
 
+    // @implements FS-042.2: Create / Edit Filter — hydrate filter + rule count
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -83,6 +87,7 @@ class Filter {
         return ($this->ht['isactive']);
     }
 
+    // @implements BS-042-13: Banlist is a reserved, special-cased filter — name == "SYSTEM BAN LIST" (case-insensitive)
     function isSystemBanlist() {
         return !strcasecmp($this->getName(),'SYSTEM BAN LIST');
     }
@@ -135,6 +140,7 @@ class Filter {
         return (!$this->disableAlerts());
     }
 
+    // @implements FS-042.3: Match Rules — load this filter's (what,how,val) rule triples
     function getRules() {
         if (!$this->ht['rules']) {
             $rules=array();
@@ -149,6 +155,7 @@ class Filter {
         return $this->ht['rules'];
     }
 
+    // @implements FS-042.2: Create / Edit Filter — flatten rules into rule_w/h/v form fields for the editor
     function getFlatRules() { //Format used on html... I'm ashamed
 
         $info=array();
@@ -163,6 +170,7 @@ class Filter {
         return $info;
     }
 
+    // @implements BS-042-14: Ban entry shape — add a single (what,how,val) rule (used by per-ticket ban)
     function addRule($what, $how, $val,$extra=array()) {
 
         $rule= array_merge($extra,array('w'=>$what, 'h'=>$how, 'v'=>$val));
@@ -171,6 +179,7 @@ class Filter {
         return FilterRule::create($rule,$errors);               # nolint
     }
 
+    // @implements BS-042-14: Ban entry shape — remove a single (what,how,val) rule (used by per-ticket unban)
     function removeRule($what, $how, $val) {
 
         $sql='DELETE FROM '.FILTER_RULE_TABLE
@@ -190,6 +199,7 @@ class Filter {
         return FilterRule::lookup($id,$this->getId());
     }
 
+    // @implements BS-042-10: Unique rule per filter — test whether a (what,how,val) triple already exists
     function containsRule($what, $how, $val) {
         $val = trim($val);
         if (isset($this->ht['rules'])) {
@@ -224,6 +234,9 @@ class Filter {
      *   headers - array of email headers
      *   emailId - osTicket system email id
      */
+    // @implements FS-042.3: Match Rules — Criteria, Operators & Values — per-rule operator evaluation
+    // @implements FS-042.4: Match Logic — Match-All vs Match-Any — combination mode + case-insensitive compare
+    // @implements BS-042-26: Email-id scope honored only for Email-targeted filters — email_id guard fires only for target=Email
     function matches($what) {
 
         if(!$what || !is_array($what)) return false;
@@ -273,6 +286,8 @@ class Filter {
      * If the matches() method returns TRUE, send the initial ticket to this
      * method to apply the filter actions defined
      */
+    // @implements FS-042.5: Filter Actions — apply matched filter's actions to pending ticket
+    // @implements FS-042.13: Filter Action Variable Mapping & Default Interaction — writes pending ticket vars
     function apply(&$ticket, $info=null) {
         # TODO: Disable alerting
         # XXX: Does this imply turning it on as well? (via ->sendAlerts())
@@ -299,6 +314,7 @@ class Filter {
         if ($this->getCannedResponse())
             $ticket['cannedResponseId'] = $this->getCannedResponse();
     }
+    // @implements FS-042.3: Match Rules — criterion (what) vocabulary offered in the editor
     /* static */ function getSupportedMatches() {
         return array(
             'name'=>    'Name',
@@ -307,6 +323,7 @@ class Filter {
             'body'=>    'Body/Text'
         );
     }
+    // @implements FS-042.3: Match Rules — operator (how) vocabulary
     /* static */ function getSupportedMatchTypes() {
         return array(
             'equal'=>       'Equal',
@@ -318,6 +335,7 @@ class Filter {
         );
     }
 
+    // @implements FS-042.2: Create / Edit Filter — update an existing filter
     function update($vars,&$errors) {
 
         if(!Filter::save($this->getId(),$vars,$errors))
@@ -328,6 +346,7 @@ class Filter {
         return true;
     }
 
+    // @implements FS-042.10: Mass Filter Operations — delete a filter cascades to its rules
     function delete() {
 
         $id=$this->getId();
@@ -340,6 +359,7 @@ class Filter {
     }
 
     /** static functions **/
+    // @implements FS-042.6: Channel Targeting & Email-ID Scoping — target vocabulary
     function getTargets() {
         return array(
                 'Any' => 'Any',
@@ -348,10 +368,12 @@ class Filter {
                 'Email' => 'Emails');
     }
 
+    // @implements FS-042.2: Create / Edit Filter — create a new filter
     function create($vars,&$errors) {
         return Filter::save(0,$vars,$errors);
     }
 
+    // @implements BS-042-12: Unique filter name — resolve filter id by name (uniqueness check)
     function getIdByName($name) {
 
         $sql='SELECT id FROM '.FILTER_TABLE.' WHERE name='.db_input($name);
@@ -361,14 +383,21 @@ class Filter {
         return $id;
     }
 
+    // @implements FS-042.2: Create / Edit Filter — lookup helper
     function lookup($id) {
         return ($id && is_numeric($id) && ($f= new Filter($id)) && $f->getId()==$id)?$f:null;
     }
 
+    // @implements FS-042.3: Match Rules — validate-only entry point (id=0 short-circuits before persist)
     function validate_rules($vars,&$errors) {
         return self::save_rules(0,$vars,$errors);
     }
 
+    // @implements FS-042.3: Match Rules — Criteria, Operators & Values — per-row rule validation
+    // @implements BS-042-08: At least one rule — reject save with no rules
+    // @implements BS-042-09: Rule cap — bounded at 25 rule rows
+    // @implements BS-042-11: Mass-save replaces all rules — clear-and-reinsert on each save
+    // @implements BS-042-24: Banlist filter may exist with zero rules — pre-built rules[] bypasses the >=1 check
     function save_rules($id,$vars,&$errors) {
 
         $matches = array_keys(self::getSupportedMatches());
@@ -414,6 +443,10 @@ class Filter {
         return $num;
     }
 
+    // @implements FS-042.2: Create / Edit Filter — persist filter row (insert/update)
+    // @implements FS-042.5: Filter Actions — persist action columns + overloaded staff/team assignment
+    // @implements FS-042.6: Channel Targeting & Email-ID Scoping — numeric target => Email + email_id
+    // @implements BS-042-12: Unique filter name — "Name already in use" guard
     function save($id,$vars,&$errors) {
 
 
@@ -490,6 +523,7 @@ class Filter {
     }
 }
 
+// @implements FS-042.3: Match Rules — Criteria, Operators & Values — filter rule entity
 class FilterRule {
 
     var $id;
@@ -497,11 +531,13 @@ class FilterRule {
 
     var $filter;
 
+    // @implements FS-042.3: Match Rules — load a rule by id (optionally scoped to parent filter)
     function FilterRule($id,$filterId=0) {
         $this->id=0;
         $this->load($id,$filterId);
     }
 
+    // @implements FS-042.3: Match Rules — hydrate rule row
     function load($id,$filterId=0) {
 
         $sql='SELECT rule.* FROM '.FILTER_RULE_TABLE.' rule '
@@ -546,6 +582,7 @@ class FilterRule {
         return $this->ht['filter_id'];
     }
 
+    // @implements FS-042.3: Match Rules — resolve owning filter for this rule
     function getFilter() {
 
         if(!$this->filter && $this->getFilterId())
@@ -554,6 +591,7 @@ class FilterRule {
         return $this->filter;
     }
 
+    // @implements FS-042.11: Banlist — edit a single rule/entry (address, status, notes)
     function update($vars,&$errors) {
         if(!$this->save($this->getId(),$vars,$errors))
             return false;
@@ -562,6 +600,7 @@ class FilterRule {
         return true;
     }
 
+    // @implements FS-042.11: Banlist — delete a single rule (mass banlist delete / unban)
     function delete() {
 
         $sql='DELETE FROM '.FILTER_RULE_TABLE.' WHERE id='.db_input($this->getId()).' AND filter_id='.db_input($this->getFilterId());
@@ -569,10 +608,12 @@ class FilterRule {
         return (db_query($sql) && db_affected_rows());
     }
 
+    // @implements FS-042.3: Match Rules — create a single rule
     /* static */ function create($vars,&$errors) {
         return self::save(0,$vars,$errors);
     }
 
+    // @implements FS-042.3: Match Rules — persist a single rule row (insert/update)
     /* static private */ function save($id,$vars,&$errors) {
 
         if(!$vars['filter_id'])
@@ -605,6 +646,7 @@ class FilterRule {
         return false;
     }
 
+    // @implements FS-042.3: Match Rules — lookup helper
     /* static */ function lookup($id,$filterId=0) {
         return ($id && is_numeric($id) && ($r= new FilterRule($id,$filterId)) && $r->getId()==$id)?$r:null;
     }
@@ -617,6 +659,7 @@ class FilterRule {
  * the incoming tickets against the defined rules, and, if the email matches,
  * the ticket will be modified as described in the filter actions.
  */
+// @implements FS-042.7: Filter Evaluation Pipeline (Inbound Routing) — per-ticket filter engine
 class TicketFilter {
 
     var $target;
@@ -640,6 +683,8 @@ class TicketFilter {
      *  deal with the data in the incoming ticket (based on $vars) will be considered.
      *  @see ::quickList() for more information.
      */
+    // @implements FS-042.7: Filter Evaluation Pipeline — construct run from origin + incoming fields
+    // @implements FS-042.6: Channel Targeting & Email-ID Scoping — normalize origin to target
     function TicketFilter($origin, $vars=null) {
 
         //Normalize the target based on ticket's origin.
@@ -661,6 +706,7 @@ class TicketFilter {
         $this->build();
     }
 
+    // @implements FS-042.7: Filter Evaluation Pipeline — build candidate filter set (quickList vs getAllActive)
     function build() {
 
         //Clear any memoized filters
@@ -686,6 +732,7 @@ class TicketFilter {
      * constructor. This function is memoized so subsequent calls will
      * return immediately.
      */
+    // @implements FS-042.7: Filter Evaluation Pipeline — authoritative matches() subset, preserving execution order
     function getMatchingFilterList() {
 
         if (!isset($this->short_list)) {
@@ -706,6 +753,9 @@ class TicketFilter {
      * should be rejected, the first filter that matches and has reject
      * ticket set is returned.
      */
+    // @implements FS-042.7: Filter Evaluation Pipeline — iterate matches: reject short-circuit, apply, stop-on-match
+    // @implements BS-042-02: Reject is absolute — first reject filter aborts via RejectedException
+    // @implements BS-042-03: Stop-on-match short-circuit — halt after applying a stop-on-match filter
     function apply(&$ticket) {
         foreach ($this->getMatchingFilterList() as $filter) {
             if ($filter->rejectOnMatch())
@@ -715,6 +765,7 @@ class TicketFilter {
         }
     }
 
+    // @implements FS-042.7: Filter Evaluation Pipeline — all active target/account-scoped filters (no-email path)
     function getAllActive() {
 
         $sql='SELECT id FROM '.FILTER_TABLE
@@ -753,6 +804,8 @@ class TicketFilter {
      * information from the database. Whether the filter will completely
      * match or not is determined in the Filter::matches() method.
      */
+     // @implements FS-042.7: Filter Evaluation Pipeline — fast data-layer candidate pre-narrowing ("quick list")
+     // @implements EC-042-18: quickList over-inclusion is by design; matches() is authoritative
      function quickList() {
 
         if(!$this->vars || !$this->vars['email'])
@@ -823,6 +876,9 @@ class TicketFilter {
      *      Filter::matches() method.
      *      Peter - Let's keep it as a quick scan for obviously banned emails.
      */
+    // @implements FS-042.8: Fast Ban Pre-Screen (isBanned) — quick banned-sender check
+    // @implements BS-042-16: Ban pre-screen scope — active, reject, match-any, unscoped, email equal/contains rules only
+    // @implements KL-042.8: equal operator mis-coded — behaves like contains in the pre-screen
     /* static */
     function isBanned($addr) {
 
@@ -865,6 +921,8 @@ class TicketFilter {
      * X-Auto-Response-Supress is outlined here,
      *    http://msdn.microsoft.com/en-us/library/ee219609(v=exchg.80).aspx
      */
+    // @implements FS-042.9: Auto-Response & Auto-Bounce Header Detection — auto-response classification
+    // @implements BS-042-19: Auto-response/bounce markers are start-anchored, case-insensitive
     /* static */
     function isAutoResponse($headers) {
 
@@ -907,6 +965,8 @@ class TicketFilter {
         return false;
     }
 
+    // @implements FS-042.9: Auto-Response & Auto-Bounce Header Detection — auto-bounce classification
+    // @implements BS-042-19: Auto-response/bounce markers are start-anchored, case-insensitive
     function isAutoBounce($headers) {
 
         if($headers && !is_array($headers))
@@ -938,6 +998,7 @@ class TicketFilter {
      * Normalize ticket source to supported filter target
      *
      */
+    // @implements FS-042.6: Channel Targeting & Email-ID Scoping — normalize ticket origin to filter target
     function origin2target($origin) {
         $sources=array('web' => 'Web', 'email' => 'Email', 'phone' => 'Web', 'staff' => 'Web', 'api' => 'API');
 
@@ -945,13 +1006,17 @@ class TicketFilter {
     }
 }
 
+// @implements FS-042.7: Filter Evaluation Pipeline — rejection signal carrying the rejecting filter
+// @implements BS-042-02: Reject is absolute — signals abort of ticket creation (errno 403)
 class RejectedException /* extends Exception */ {
     var $filter;
 
+    // @implements FS-042.7: Filter Evaluation Pipeline — capture the rejecting filter
     function RejectedException($filter) {
         $this->filter = $filter;
     }
 
+    // @implements FS-042.7: Filter Evaluation Pipeline — expose the filter that rejected the ticket
     function getRejectingFilter() {
         return $this->filter;
     }
@@ -963,6 +1028,7 @@ class RejectedException /* extends Exception */ {
  * Returns TRUE if the haystack ends with needle and FALSE otherwise.
  * Thanks, http://stackoverflow.com/a/834355
  */
+// @implements FS-042.4: Match Logic — Match-All vs Match-Any — backing helper for the `ends` operator
 function endsWith($haystack, $needle)
 {
     $length = strlen($needle);

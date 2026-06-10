@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-031.1: Staff Management Access Gate — admin gate */
+/* @implements FS-031.2: Staff List, Filter, Sort & Paginate — dept/group/team filters (AND, numeric only), sort map (name/username/status/group/dept/created/login, default name ASC), pagination */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $qstr='';
 $select='SELECT staff.*,CONCAT_WS(" ",firstname,lastname) as name, grp.group_name, dept.dept_name as dept,count(m.team_id) as teams ';
@@ -54,6 +58,7 @@ $qstr.='&order='.($order=='DESC'?'ASC':'DESC');
 $query="$select $from $where GROUP BY staff.staff_id ORDER BY $order_by LIMIT ".$pageNav->getStart().",".$pageNav->getLimit();
 //echo $query;
 ?>
+<?php /* @implements FS-031.2: Staff List, Filter, Sort & Paginate — filter form (did/gid/tid drop-downs seeded only with non-empty depts/groups/teams, Apply button) + Add New Staff link */ ?>
 <h2>Staff Members</h2>
 <div style="width:700px; float:left;">
     <form action="staff.php" method="GET" name="filter">
@@ -114,6 +119,10 @@ if($res && ($num=db_num_rows($res)))
     $showing=$pageNav->showing();
 else
     $showing='No staff found!';
+?>
+<?php
+/* @implements FS-031.2: Staff List, Filter, Sort & Paginate — staff list table (Name/UserName/Status w/ vacation/Group/Dept/Created/Last Login) */
+/* @implements FS-031.4: Staff Mass Actions (Enable / Lock / Delete) — mass actions Enable/Lock/Delete (do=mass_process, ids[]) with confirm dialog */
 ?>
 <form action="staff.php" method="POST" name="staff" >
  <?php csrf_token(); ?>

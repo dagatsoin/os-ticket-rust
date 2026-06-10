@@ -1,12 +1,16 @@
 #!/usr/bin/env php
 <?php
 
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — CLI-only invocation gate
+// @implements BS-092-01: CLI-only execution — die when not run from the command line
+// @implements EC-092-01: Non-CLI invocation — terminates "Only command-line packaging is supported"
 if (php_sapi_name() != 'cli')
     die("Only command-line packaging is supported");
 
 $stage_folder = "stage";
 $stage_path = dirname(__file__) . '/' . $stage_folder;
 
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — locate repo root by walking up to main.inc.php
 function get_osticket_root_path() {
     # Hop up to the root folder
     $start = dirname(__file__);
@@ -22,6 +26,7 @@ function run_tests($root) {
 }
 
 # Check PHP syntax across all php files
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — recursive glob helper (used to wipe the stage/ tree)
 function glob_recursive($pattern, $flags = 0) {
     $files = glob($pattern, $flags);
     foreach (glob(dirname($pattern).'/*', GLOB_ONLYDIR|GLOB_NOSORT) as $dir) {
@@ -33,6 +38,7 @@ function glob_recursive($pattern, $flags = 0) {
 
 $root = get_osticket_root_path();
 
+// @implements FS-092.11: Release packager — staged layout (`stage/upload` tree) — fnmatch-based exclusion helper for the staging copy
 function exclude($pattern, $match) {
     if (is_array($pattern)) {
         foreach ($pattern as $p)
@@ -44,6 +50,7 @@ function exclude($pattern, $match) {
     return false;
 }
 
+// @implements FS-092.11: Release packager — staged layout (`stage/upload` tree) — copy matched files into stage/<destination> tree (recursive, exclusion-aware)
 function package($pattern, $destination, $recurse=false, $exclude=false) {
     global $root, $stage_path;
     $search = $root . '/' . $pattern;
@@ -69,10 +76,14 @@ function package($pattern, $destination, $recurse=false, $exclude=false) {
 }
 
 # Run tests before continuing
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — regression test pre-flight gate
+// @implements BS-092-07: Tests gate the release — any failure aborts packaging
+// @implements EC-092-08: Tests fail during packaging — abort "Regression tests failed. Cowardly refusing to package"
 if (run_tests($root) > 0)
     die("Regression tests failed. Cowardly refusing to package\n");
 
 # Create the stage folder for the install files
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — (re)create a clean stage/ tree: wipe files, remove dirs deepest-first
 if (!is_dir($stage_path))
     mkdir($stage_path);
 else {
@@ -88,6 +99,7 @@ else {
 }
 
 # Source code goes into 'upload'
+// @implements FS-092.11: Release packager — staged layout (`stage/upload` tree) — app source under stage/upload, scripts/ standalone, license/docs at root
 mkdir($stage_path . '/upload');
 
 # Load the root directory files
@@ -133,6 +145,7 @@ if(($mds = glob("$stage_path/*.md"))) {
 }
 
 # Make an archive of the stage folder
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — release version label from git describe (stamp + archive names)
 $version = exec('git describe');
 
 $pwd = getcwd();
@@ -140,12 +153,15 @@ chdir($stage_path);
 
 // Replace THIS_VERSION in the stage/ folder
 
+// @implements FS-092.12: Release packager — version stamp & production error-display hardening — stamp THIS_VERSION + force display_errors/display_startup_errors=0
+// @implements BS-092-08: Shipped builds suppress error display (inverse of install-time) — packaged build forces error display off
 shell_exec("find . -name '*.inc.php' -print0 | xargs -0 sed -ri -e \"
     s/( *)define\('THIS_VERSION'.*/\\1define('THIS_VERSION', '$version');/
     s/( *)ini_set\( *'display_errors'[^)]+\);/\\1ini_set('display_errors', 0);/
     s/( *)ini_set\( *'display_startup_errors'[^)]+\);/\\1ini_set('display_startup_errors', 0);/
     \"");
 
+// @implements FS-092.10: Release packager — pre-flight, staging, version stamping & archiving — produce .tar.bz2 + .zip release archives named for the version
 shell_exec("tar cjf '$pwd/osTicket-$version.tar.bz2' *");
 shell_exec("zip -r '$pwd/osTicket-$version.zip' *");
 

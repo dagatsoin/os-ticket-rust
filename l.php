@@ -13,6 +13,8 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-003.9: Standalone format validators — Validator::is_url guards the redirect target before emitting the meta-refresh
+// @implements FS-001.11: Cross-Site Request Forgery Protection — validateLinkToken authenticates the redirect link's auth token
 require 'secure.inc.php';
 //Basic url validation + token check.
 if (!($url=trim($_GET['url'])) || !Validator::is_url($url) || !$ost->validateLinkToken($_GET['auth']))

@@ -1,3 +1,4 @@
+<?php /* @implements FS-032.10: SLA Plan Create / Edit Form — admin gate, add-vs-update mode + defaults (active/escalation on), error-repopulation */ ?>
 <?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $info=array();
@@ -19,6 +20,12 @@ if($sla && $_REQUEST['a']!='add'){
     $qstr.='&a='.urlencode($_REQUEST['a']);
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
+?>
+<?php
+/* @implements FS-032.10: SLA Plan Create / Edit Form — SLA form fields: name (unique), grace_period (hours), isactive radio, enable_priority_escalation, transient (namespaced), disable_overdue_alerts, notes */
+/* @implements FS-032.11: SLA Overdue Computation & Behavioral Hooks — escalation + disable_overdue_alerts behavioral flags */
+/* @implements BS-032.9: SLA grace period & active-state rules */
+/* @implements BS-032.11: SLA overdue-alert suppression rule */
 ?>
 <form action="slas.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>

@@ -18,6 +18,8 @@
 require_once('client.inc.php');
 
 //If the user is NOT logged in - try auto-login (if params exists).
+// @implements FS-010.4: Access-Link (Auto) Login — auto-logs in via GET t/e/a params, then redirects to the ticket view
+// @implements BS-010.2: Auth Token Is Mandatory For Link (GET) Login — Client::login passed the auth token on the GET path
 if(!$thisclient || !$thisclient->isValid()) {
     // * On login Client::login will redirect the user to tickets.php view.
     // * See TODO above for planned multi-view.

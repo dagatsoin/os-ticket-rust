@@ -16,6 +16,9 @@
 
 require_once(INCLUDE_DIR.'class.email.php');
 
+// @implements FS-091: Reference Data, Enums & Data Model — namespaced (namespace,key) config store (Config entity #32)
+// @implements BS-091.7: Installed Configuration Defaults Are Authoritative At First Run — $defaults backfill
+// @implements BS-091.11: config `updated` auto-updates on change
 class Config {
     var $config = array();
 
@@ -31,6 +34,7 @@ class Config {
     # new settings and the corresponding default values.
     var $defaults = array();                # List of default values
 
+    // @implements FS-091: Reference Data, Enums & Data Model — load a config namespace into memory (session-backed)
     function Config($section=null) {
         if ($section)
             $this->section = $section;
@@ -50,10 +54,12 @@ class Config {
                 $this->config[$row['key']] = $row;
     }
 
+    // @implements FS-091: Reference Data, Enums & Data Model — config namespace accessor
     function getNamespace() {
         return $this->section;
     }
 
+    // @implements BS-091.7: Installed Configuration Defaults Are Authoritative At First Run — merge defaults under stored values
     function getInfo() {
         $info = $this->defaults;
         foreach ($this->config as $key=>$setting)
@@ -61,6 +67,7 @@ class Config {
         return $info;
     }
 
+    // @implements BS-091.7: Installed Configuration Defaults Are Authoritative At First Run — resolve session→stored→default
     function get($key, $default=null) {
         if (isset($this->session[$key]))
             return $this->session[$key];
@@ -72,19 +79,23 @@ class Config {
         return $default;
     }
 
+    // @implements FS-091: Reference Data, Enums & Data Model — key-presence test
     function exists($key) {
         return $this->get($key, null) ? true : false;
     }
 
+    // @implements FS-032.7: Settings Persistence Semantics — set a single config key
     function set($key, $value) {
         return ($this->update($key, $value)) ? $value : null;
     }
 
+    // @implements FS-091: Reference Data, Enums & Data Model — session-only (non-persisted) config value
     function persist($key, $value) {
         $this->session[$key] = $value;
         return true;
     }
 
+    // @implements BS-091.11: config `updated` auto-updates on change — read a key's updated timestamp
     function lastModified($key) {
         if (isset($this->config[$key]))
             return $this->config[$key]['updated'];
@@ -92,6 +103,7 @@ class Config {
             return false;
     }
 
+    // @implements FS-032.7: Settings Persistence Semantics — insert a new (namespace,key,value) row
     function create($key, $value) {
         $sql = 'INSERT INTO '.$this->table
             .' SET `'.$this->section_column.'`='.db_input($this->section)
@@ -104,6 +116,8 @@ class Config {
         return true;
     }
 
+    // @implements FS-032.7: Settings Persistence Semantics — upsert a key (no-op when unchanged, refresh updated)
+    // @implements BS-091.11: config `updated` auto-updates on change
     function update($key, $value) {
         if (!isset($this->config[$key]))
             return $this->create($key, $value);
@@ -120,6 +134,7 @@ class Config {
         return true;
     }
 
+    // @implements FS-032.7: Settings Persistence Semantics — batch upsert (all-or-nothing on first failure)
     function updateAll($updates) {
         foreach ($updates as $key=>$value)
             if (!$this->update($key, $value))
@@ -128,6 +143,8 @@ class Config {
     }
 }
 
+// @implements FS-032.7: Settings Persistence Semantics — runtime `$cfg` 'core' settings model + typed accessors
+// @implements FS-001: App Bootstrap & Request Lifecycle — $cfg loaded into the request context
 class OsticketConfig extends Config {
     var $table = CONFIG_TABLE;
     var $section = 'core';
@@ -143,6 +160,8 @@ class OsticketConfig extends Config {
         'pw_reset_window' =>    30,
     );
 
+    // @implements FS-001: App Bootstrap & Request Lifecycle — load core config + derive timezone offset
+    // @implements FS-061: Upgrader & Database Migration Streams — pre-1.7 single-row config fallback
     function OsticketConfig($section=null) {
         parent::Config($section);
 
@@ -168,27 +187,33 @@ class OsticketConfig extends Config {
         return true;
     }
 
+    // @implements FS-001: App Bootstrap & Request Lifecycle — helpdesk offline flag (drives offline page)
     function isHelpDeskOffline() {
         return !$this->isOnline();
     }
 
+    // @implements FS-001: App Bootstrap & Request Lifecycle — helpdesk online flag
     function isHelpDeskOnline() {
         return $this->isOnline();
     }
 
+    // @implements FS-001: App Bootstrap & Request Lifecycle — read `isonline` config flag
     function isOnline() {
         return ($this->get('isonline'));
     }
 
+    // @implements BS-050.2: Public KB Reachability Requires Toggle AND At Least One Published Public FAQ
     function isKnowledgebaseEnabled() {
         require_once(INCLUDE_DIR.'class.faq.php');
         return ($this->get('enable_kb') && FAQ::countPublishedFAQs());
     }
 
+    // @implements FS-061: Upgrader & Database Migration Streams — current code version (THIS_VERSION)
     function getVersion() {
         return THIS_VERSION;
     }
 
+    // @implements FS-061: Upgrader & Database Migration Streams — schema signature (drives upgrade detection)
     function getSchemaSignature($section=null) {
 
         if ((!$section || $section == $this->section)
@@ -213,6 +238,7 @@ class OsticketConfig extends Config {
         return md5(self::getDBVersion());
     }
 
+    // @implements FS-003.19: Time conversion helpers — database server timezone offset (cached)
     function getDBTZoffset() {
         if (!$this->exists('db_tz_offset')) {
             $sql='SELECT (TIME_TO_SEC(TIMEDIFF(NOW(), UTC_TIMESTAMP()))/3600) as db_tz_offset';
@@ -223,6 +249,7 @@ class OsticketConfig extends Config {
     }
 
     /* Date & Time Formats */
+    // @implements FS-003.19: Time conversion helpers — daylight-saving observance flag (config-driven)
     function observeDaylightSaving() {
         return ($this->get('enable_daylight_saving'));
     }
@@ -498,6 +525,8 @@ class OsticketConfig extends Config {
         return $this->get('pw_reset_window') * 60;
     }
 
+    // @implements FS-011.5: CAPTCHA Challenge (Anonymous Submitters) — runtime "CAPTCHA enabled" predicate
+    // @implements KL-011.1: CAPTCHA Silently Disabled Without Image Capability — enabled only when admin setting on AND server GD image capability present (extension_loaded('gd') && gd_info()); silently disabled otherwise
     function isCaptchaEnabled() {
         return (extension_loaded('gd') && function_exists('gd_info') && $this->get('enable_captcha'));
     }
@@ -719,6 +748,7 @@ class OsticketConfig extends Config {
         return $this->get('upload_dir');
     }
 
+    // @implements FS-032.2: Settings Save Dispatch & Per-Tab Validation — dispatch save on the active tab
     function updateSettings($vars, &$errors) {
 
         if(!$vars || $errors)
@@ -753,6 +783,7 @@ class OsticketConfig extends Config {
         return false;
     }
 
+    // @implements FS-032.3: System Settings Tab Fields — validate + persist system settings
     function updateSystemSettings($vars, &$errors) {
 
         $f=array();
@@ -803,6 +834,7 @@ class OsticketConfig extends Config {
         ));
     }
 
+    // @implements FS-032.4: Ticket Settings & Options Tab Fields — validate + persist ticket settings
     function updateTicketsSettings($vars, &$errors) {
 
 
@@ -876,6 +908,7 @@ class OsticketConfig extends Config {
     }
 
 
+    // @implements FS-032.5: Email Settings Tab Fields — validate + persist email settings (defaults from FS-040)
     function updateEmailsSettings($vars, &$errors) {
 
         $f=array();
@@ -904,6 +937,7 @@ class OsticketConfig extends Config {
          ));
     }
 
+    // @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — resolve configured logo file
     function getLogo($site) {
         $id = $this->get("{$site}_logo_id", false);
         return ($id) ? AttachmentFile::lookup($id) : null;
@@ -918,6 +952,7 @@ class OsticketConfig extends Config {
         return $this->getLogoId('client');
     }
 
+    // @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — persist pages + logo upload (pages owned by FS-033)
     function updatePagesSettings($vars, &$errors) {
 
         $f=array();
@@ -955,6 +990,7 @@ class OsticketConfig extends Config {
            ));
     }
 
+    // @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — persist autoresponder settings
     function updateAutoresponderSettings($vars, &$errors) {
 
         if($errors) return false;
@@ -968,6 +1004,7 @@ class OsticketConfig extends Config {
     }
 
 
+    // @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — persist enable_kb (effect owned by FS-050)
     function updateKBSettings($vars, &$errors) {
 
         if($errors) return false;
@@ -979,6 +1016,7 @@ class OsticketConfig extends Config {
     }
 
 
+    // @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — validate recipients + persist alert settings
     function updateAlertsSettings($vars, &$errors) {
 
 
@@ -1057,6 +1095,7 @@ class OsticketConfig extends Config {
     }
 
     //Used to detect version prior to 1.7 (useful during upgrade)
+    // @implements FS-061: Upgrader & Database Migration Streams — read pre-1.7 ostversion column
     /* static */ function getDBVersion() {
         $sql='SELECT `ostversion` FROM '.TABLE_PREFIX.'config '
             .'WHERE id=1';

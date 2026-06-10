@@ -1,4 +1,7 @@
 <?php
+// @implements FS-061.9: Upgrade wizard UX & access gating — prereq screen (intro + requirements check + Start Upgrade Now)
+// @implements FS-061.16: Minimum-requirement check semantics — PHP version compare + MySQL driver-presence indicators
+// @implements BS-061-03: Only an authenticated admin may run the upgrade — Access Denied unless SCP-context admin
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 ?>
 <h2>osTicket Upgrader</h2>

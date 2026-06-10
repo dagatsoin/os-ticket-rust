@@ -15,6 +15,8 @@
 include_once(INCLUDE_DIR.'class.dept.php');
 include_once(INCLUDE_DIR.'class.mailfetch.php');
 
+// @implements FS-040.3: Email Account Save Validation & Provisioning — email account model + persistence
+// @implements FS-040.12: Outbound Mail Composition & From-Address Selection
 class Email {
     var $id;
     var $address;
@@ -22,11 +24,13 @@ class Email {
     var $dept;
     var $ht;
 
+    // @implements FS-040.2: Email Account Create / Edit Form — construct account by id
     function Email($id) {
         $this->id=0;
         $this->load($id);
     }
 
+    // @implements FS-040.1: Email Account Listing — load account row + compose "Name <email>" address
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -46,34 +50,42 @@ class Email {
         return true;
     }
 
+    // @implements FS-040.3: Email Account Save Validation & Provisioning — reload after save
     function reload() {
         return $this->load();
     }
 
+    // @implements FS-040.1: Email Account Listing — id accessor
     function getId() {
         return $this->id;
     }
 
+    // @implements FS-040.1: Email Account Listing — bare email address accessor
     function getEmail() {
         return $this->ht['email'];
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — "Name <email>" From address
     function getAddress() {
         return $this->address;
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — display name accessor
     function getName() {
         return $this->ht['name'];
     }
 
+    // @implements FS-040.2: Email Account Create / Edit Form — default priority id accessor
     function getPriorityId() {
         return $this->ht['priority_id'];
     }
 
+    // @implements FS-040.2: Email Account Create / Edit Form — routing department id accessor
     function getDeptId() {
         return $this->ht['dept_id'];
     }
 
+    // @implements FS-040.2: Email Account Create / Edit Form — resolve routing department
     function getDept() {
 
         if(!$this->dept && $this->getDeptId())
@@ -82,22 +94,28 @@ class Email {
         return $this->dept;
     }
 
+    // @implements FS-040.2: Email Account Create / Edit Form — autoresponder-enabled flag
     function autoRespond() {
         return (!$this->ht['noautoresp']);
     }
 
+    // @implements FS-040.3: Email Account Save Validation & Provisioning — decrypt stored mailbox/SMTP password
+    // @implements BS-040.24: Blank Password on Edit Preserves the Stored Secret
     function getPasswd() {
         return $this->ht['userpass']?Crypto::decrypt($this->ht['userpass'], SECRET_SALT, $this->ht['userid']):'';
     }
 
+    // @implements FS-040.2: Email Account Create / Edit Form — raw record accessor (form prefill)
     function getHashtable() {
         return $this->ht;
     }
 
+    // @implements FS-040.2: Email Account Create / Edit Form — info alias (form prefill)
     function getInfo() {
         return $this->getHashtable();
     }
 
+    // @implements FS-040.3: Email Account Save Validation & Provisioning — assemble fetch-account descriptor (consumed by FS-041 MailFetcher)
     function getMailAccountInfo() {
 
         /*NOTE: Do not change any of the tags - otherwise mail fetching will fail */
@@ -119,6 +137,7 @@ class Email {
         return $info;
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — SMTP-transport-available predicate
     function isSMTPEnabled() {
 
         return (
@@ -128,10 +147,12 @@ class Email {
                 );
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — header-spoofing-allowed flag
     function allowSpoofing() {
         return ($this->ht['smtp_spoofing']);
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — assemble SMTP transport descriptor
     function getSMTPInfo() {
 
         $info = array (
@@ -145,6 +166,7 @@ class Email {
         return $info;
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — compose + dispatch via Mailer
     function send($to, $subject, $message, $attachments=null, $options=null) {
 
         $mailer = new Mailer($this);
@@ -154,16 +176,20 @@ class Email {
         return $mailer->send($to, $subject, $message, $options);
     }
 
+    // @implements FS-040.13: Specialized Send Wrappers — auto-reply send (Precedence: auto_reply headers)
     function sendAutoReply($to, $subject, $message, $attachments=null, $options=array()) {
         $options+= array('autoreply' => true);
         return $this->send($to, $subject, $message, $attachments, $options);
     }
 
+    // @implements FS-040.13: Specialized Send Wrappers — notice/alert send (auto-generated suppress headers)
     function sendAlert($to, $subject, $message, $attachments=null, $options=array()) {
         $options+= array('notice' => true);
         return $this->send($to, $subject, $message, $attachments, $options);
     }
 
+    // @implements FS-040.3: Email Account Save Validation & Provisioning — update account (carry current password forward)
+    // @implements BS-040.24: Blank Password on Edit Preserves the Stored Secret
     function update($vars,&$errors) {
         $vars=$vars;
         $vars['cpasswd']=$this->getPasswd(); //Current decrypted password.
@@ -177,6 +203,7 @@ class Email {
     }
 
 
+   // @implements FS-040.4: Email Account Bulk Delete — guarded delete (not default/alert account) + re-home dept refs
    function delete() {
         global $cfg;
         //Make sure we are not trying to delete default emails.
@@ -197,6 +224,7 @@ class Email {
 
     /******* Static functions ************/
 
+   // @implements BS-040.1: Email Address Uniqueness — address→id lookup (uniqueness check)
    function getIdByEmail($email) {
 
         $sql='SELECT email_id FROM '.EMAIL_TABLE.' WHERE email='.db_input($email);
@@ -206,16 +234,23 @@ class Email {
         return $id;
     }
 
+    // @implements FS-040.1: Email Account Listing — load account by id or address
     function lookup($var) {
         $id=is_numeric($var)?$var:Email::getIdByEmail($var);
         return ($id && is_numeric($id) && ($email=new Email($id)) && $email->getId())?$email:null;
     }
 
+    // @implements FS-040.3: Email Account Save Validation & Provisioning — create new account
     function create($vars,&$errors) {
         return Email::save(0,$vars,$errors);
     }
 
 
+    // @implements FS-040.3: Email Account Save Validation & Provisioning — validate, live-check IMAP/SMTP, persist account
+    // @implements BS-040.1: Email Address Uniqueness
+    // @implements BS-040.2: Mailbox Host + Username Uniqueness
+    // @implements BS-040.25: Hidden Record-Id Integrity Guard
+    // @implements BS-040.26: Save Normalizes Operational Fields and Defaults
     function save($id,$vars,&$errors) {
         global $cfg;
         //very basic checks

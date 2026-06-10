@@ -13,6 +13,9 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-032.10: SLA Plan Create / Edit Form — SLA plan entity + CRUD
+// @implements FS-032.11: SLA Overdue Computation & Behavioral Hooks — grace/escalation/alert flags
+// @implements BS-032.9: SLA Name and Grace Period Are Required and the Name Is Unique
 class SLA {
 
     var $id;
@@ -20,11 +23,13 @@ class SLA {
     var $info;
     var $config;
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — construct + load SLA plan by id
     function SLA($id) {
         $this->id=0;
         $this->load($id);
     }
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — load SLA plan row
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -67,6 +72,7 @@ class SLA {
         return $this->getHashtable();
     }
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — per-plan transient config (sla.{id} namespace)
     function getConfig() {
         if (!isset($this->config))
             $this->config = new SlaConfig($this->getId());
@@ -89,10 +95,12 @@ class SLA {
         return $this->sendAlerts();
     }
 
+    // @implements FS-032.11: SLA Overdue Computation & Behavioral Hooks — priority escalation flag
     function priorityEscalation() {
         return ($this->ht['enable_priority_escalation']);
     }
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — update plan + persist transient flag
     function update($vars,&$errors) {
 
         if(!SLA::save($this->getId(),$vars,$errors))
@@ -104,6 +112,8 @@ class SLA {
         return true;
     }
 
+    // @implements FS-032.12: SLA Plan Deletion Constraints & Reassignment — block default, re-home refs
+    // @implements BS-032.12: The Default SLA Cannot Be Deleted; Deletion Re-homes References
     function delete() {
         global $cfg;
 
@@ -122,6 +132,7 @@ class SLA {
     }
 
     /** static functions **/
+    // @implements FS-032.10: SLA Plan Create / Edit Form — create new plan + set transient
     function create($vars,&$errors) {
         if (($id = SLA::save(0,$vars,$errors)) && ($sla = self::lookup($id)))
             $sla->getConfig()->set('transient',
@@ -129,6 +140,8 @@ class SLA {
         return $id;
     }
 
+    // @implements FS-032.4: Ticket Settings & Options Tab Fields — SLA option list for Default SLA select
+    // @implements FS-032.9: SLA Plan Listing & Mass Actions — name-ordered plan listing
     function getSLAs() {
 
         $slas=array();
@@ -145,6 +158,7 @@ class SLA {
     }
 
 
+    // @implements BS-032.9: SLA Name and Grace Period Are Required and the Name Is Unique — name lookup for uniqueness
     function getIdByName($name) {
 
         $sql='SELECT id FROM '.SLA_TABLE.' WHERE name='.db_input($name);
@@ -154,10 +168,13 @@ class SLA {
         return $id;
     }
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — id-validated plan lookup
     function lookup($id) {
         return ($id && is_numeric($id) && ($sla= new SLA($id)) && $sla->getId()==$id)?$sla:null;
     }
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — validate + persist (insert/update) a plan
+    // @implements BS-032.9: SLA Name and Grace Period Are Required and the Name Is Unique
     function save($id,$vars,&$errors) {
 
 
@@ -200,9 +217,11 @@ class SLA {
 }
 
 require_once(INCLUDE_DIR.'class.config.php');
+// @implements FS-032.10: SLA Plan Create / Edit Form — per-plan Config under sla.{id} namespace
 class SlaConfig extends Config {
     var $table = CONFIG_TABLE;
 
+    // @implements FS-032.10: SLA Plan Create / Edit Form — bind config to sla.{id} namespace
     function SlaConfig($id) {
         parent::Config("sla.$id");
     }

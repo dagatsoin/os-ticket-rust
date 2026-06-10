@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-032.9: SLA Plan Listing & Mass Actions — admin gate, sort map (name/status/period/date/updated, default name ASC), pagination */
+/* @implements KL-032.10: 'Date Added' header links sort=created (unrecognized) + $created_sort/$updated_sort never assigned */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
 $qstr='';
@@ -45,6 +49,10 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
  <b><a href="slas.php?a=add" class="Icon newsla">Add New SLA Plan</a></b></div>
 <div class="clear"></div>
+<?php
+/* @implements FS-032.9: SLA Plan Listing & Mass Actions — SLA list table + mass actions (Enable/Disable/Delete via do=mass_process, ids[]) with confirm dialog */
+/* @implements BS-032.12: SLA plan mass-action semantics */
+?>
 <form action="slas.php" method="POST" name="slas">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >

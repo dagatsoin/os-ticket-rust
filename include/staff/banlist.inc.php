@@ -1,6 +1,8 @@
 <?php
+// @implements FS-042.11: Banlist — Banned Email Address Interface — in-partial admin gate; requires the reserved SYSTEM BAN LIST $filter (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin() || !$filter) die('Access Denied');
 
+// @implements FS-042.11: Banlist — Banned Email Address Interface — search (email exact / substring), sort/order, pagination over the ban-filter's rules
 $qstr='';
 $select='SELECT rule.* ';
 $from='FROM '.FILTER_RULE_TABLE.' rule ';
@@ -46,6 +48,7 @@ $qstr.='&order='.($order=='DESC'?'ASC':'DESC');
 $query="$select $from $where ORDER BY $order_by LIMIT ".$pageNav->getStart().",".$pageNav->getLimit();
 //echo $query;
 ?>
+<?php /* @implements FS-042.11: Banlist — Banned Email Address Interface — search form + "Ban New Email" action */ ?>
 <h2>Banned Email Addresses</h2>
 <div style="width:600; float:left;padding-top:5px;">
     <form action="banlist.php" method="GET" name="filter">
@@ -69,6 +72,7 @@ if($search)
     $showing='Search Results: '.$showing;
     
 ?>
+<?php /* @implements FS-042.11: Banlist — Banned Email Address Interface — ban rules list table (email/status/created/updated) + mass_process form (CSRF) */ ?>
 <form action="banlist.php" method="POST" name="banlist">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -124,6 +128,7 @@ if($search)
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
 ?>
+<?php /* @implements FS-042.11: Banlist — Banned Email Address Interface — bulk Enable / Disable / Delete selected ban rules (with confirm dialog) */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable" >
     &nbsp;&nbsp;

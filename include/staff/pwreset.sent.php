@@ -1,4 +1,5 @@
 <?php
+// @implements FS-002.18: Reset-request confirmation template selection (inverted trigger) — "reset sent" confirmation page (generic message to avoid account enumeration)
 include_once(INCLUDE_DIR.'staff/login.header.php');
 defined('OSTSCPINC') or die('Invalid path');
 $info = ($_POST && $errors)?Format::htmlchars($_POST):array();

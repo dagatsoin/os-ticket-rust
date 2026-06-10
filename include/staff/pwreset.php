@@ -1,4 +1,5 @@
 <?php
+// @implements FS-002.3: Staff password reset — request (sendmail) step form: enter username to send reset email (do=sendmail) with CSRF token
 include_once(INCLUDE_DIR.'staff/login.header.php');
 defined('OSTSCPINC') or die('Invalid path');
 $info = ($_POST && $errors)?Format::htmlchars($_POST):array();

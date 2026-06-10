@@ -1,3 +1,4 @@
+<?php /* @implements FS-021.15: Edit Ticket Properties (`a=edit` → `update`) — edit-ticket form (a=edit -> update): canEditTickets gate, error-repopulation; requester name/email/phone, source, help topic, priority, subject, SLA, due date+time, required reason note */ ?>
 <?php
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->canEditTickets() || !$ticket) die('Access Denied');
 

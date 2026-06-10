@@ -14,6 +14,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-030.10: Team creation, update & member removal — cross-department assignment unit (members/lead/alerts)
 class Team {
 
     var $id;
@@ -67,6 +68,7 @@ class Team {
         return $this->ht['members'];
     }
 
+    // @implements FS-030.10: Team creation, update & member removal — load active team members (assignment alert recipients)
     function getMembers() {
 
         if(!$this->members && $this->getNumMembers()) {
@@ -126,6 +128,7 @@ class Team {
         return !$this->ht['noalerts'];
     }
 
+    // @implements FS-030.10: Team creation, update & member removal — update team, remove flagged members, reset lead if removed
     function update($vars, &$errors) {
 
         //reset team lead if they're being deleted
@@ -153,6 +156,7 @@ class Team {
         return true;
     }
 
+    // @implements FS-030.11: Team deletion & ticket release — delete team + member rows, clear team_id on owned tickets
     function delete() {
         global $thisstaff;
 
@@ -192,6 +196,7 @@ class Team {
         return $id;
     }
 
+    // @implements FS-030.8: Team list view — list teams (optionally only those with active/available members)
     function getTeams( $availableOnly=false ) {
         
         $teams=array();
@@ -220,10 +225,12 @@ class Team {
         return self::getTeams(true);
     }
 
+    // @implements FS-030.10: Team creation, update & member removal — create new team (delegates to save id=0)
     function create($vars, &$errors) { 
         return self::save(0, $vars, $errors);
     }
 
+    // @implements FS-030.10: Team creation, update & member removal — validate + insert/update team (name >=3 chars, unique)
     function save($id, $vars, &$errors) {
 
         if($id && $vars['id']!=$id)

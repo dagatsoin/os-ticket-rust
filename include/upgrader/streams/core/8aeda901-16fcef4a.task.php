@@ -1,10 +1,13 @@
 <?php
 require_once INCLUDE_DIR.'class.migrater.php';
 
+// @implements FS-061.5: Resumable procedural migration tasks — single-shot mail-account password re-encryption
+// @implements FS-003.1: Two-key reversible encryption — re-encrypts stored userpass via Crypto::encrypt under the new tagged scheme
 class CryptoMigrater extends MigrationTask {
     var $description = "Migrating encrypted password";
     var $status ='Making the world a better place!';
 
+    // @implements FS-003.1: Two-key reversible encryption — decrypts legacy ciphertext then Crypto::encrypt re-wraps it per email account
     function run() {
 
         $sql='SELECT email_id, userpass, userid FROM '.EMAIL_TABLE
@@ -25,6 +28,7 @@ class CryptoMigrater extends MigrationTask {
       XXX: This is not a  good way of decrypting data - use to descrypt old
       data.
      */
+    // @implements FS-003.1: Two-key reversible encryption — legacy mcrypt Rijndael-256 ECB decryption of pre-1.7 ciphertext (one-way migration helper)
     function _decrypt($text, $salt) {
 
         if(!function_exists('mcrypt_encrypt') || !function_exists('mcrypt_decrypt'))

@@ -16,8 +16,11 @@
 
 if(!defined('INCLUDE_DIR')) die('!');
 
+// @implements FS-033.8: Single Log Record Detail (Content AJAX — /content/log/<id>) — read-only HTML projections
+// @implements FS-033.9: Ticket-Variable Reference Card (Content AJAX — /content/ticket_variables)
 class ContentAjaxAPI extends AjaxController {
 
+    // @implements FS-033.8: Single Log Record Detail (Content AJAX — /content/log/<id>) — title + body + Log Date/IP popover, error fragment on miss
     function log($id) {
 
         if($id && ($log=Log::lookup($id))) {
@@ -34,6 +37,8 @@ class ContentAjaxAPI extends AjaxController {
         return $content;
     }
 
+    // @implements FS-033.9: Ticket-Variable Reference Card (Content AJAX — /content/ticket_variables) — static help card content
+    // @implements FS-040: email templates & outbound mail — VariableReplacer is the substitution authority this card documents
     function ticket_variables() {
 
         $content='

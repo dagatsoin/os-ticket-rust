@@ -16,12 +16,15 @@
 require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.topic.php');
 
+// @implements FS-030.2: Page routing — list vs. form — topic id lookup, "Unknown or invalid help topic ID." on miss
 $topic=null;
 if($_REQUEST['id'] && !($topic=Topic::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid help topic ID.';
 
+// @implements FS-030.15: Help topic creation & update — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-030.15: Help topic creation & update — update existing topic
         case 'update':
             if(!$topic){
                 $errors['err']='Unknown or invalid help topic.';
@@ -31,6 +34,7 @@ if($_POST){
                 $errors['err']='Error updating help topic. Try again!';
             }
             break;
+        // @implements FS-030.15: Help topic creation & update — create new topic
         case 'create':
             if(($id=Topic::create($_POST,$errors))){
                 $msg='Help topic added successfully';
@@ -39,6 +43,7 @@ if($_POST){
                 $errors['err']='Unable to add help topic. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-030.17: Help topic bulk actions — mass enable/disable/delete
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one help topic';
@@ -97,6 +102,8 @@ if($_POST){
     }
 }
 
+// @implements FS-030.13: Help topic list view — list partial routing
+// @implements FS-030.14: Help topic add/edit form — form partial routing
 $page='helptopics.inc.php';
 if($topic || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='helptopic.inc.php';

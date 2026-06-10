@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-040.7: Per-Message Template Editing — email template message editor: implement-vs-edit mode (EmailTemplateGroup default lookup vs existing template), per-message subj/body, message-template selector */
+/* @implements FS-040.11: Variable Substitution Grammar — %{variable} substitution support in subject/body */
+?>
+<?php
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$_REQUEST);
 
 if (is_a($template, EmailTemplateGroup)) {

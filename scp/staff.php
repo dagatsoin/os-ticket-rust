@@ -14,12 +14,15 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 require('admin.inc.php');
+// @implements FS-031.2: Staff List, Filter, Sort & Paginate — staff id lookup, "Unknown or invalid staff ID." on miss
 $staff=null;
 if($_REQUEST['id'] && !($staff=Staff::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid staff ID.';
 
+// @implements FS-031.3: Create / Edit a Staff Account — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-031.3: Create / Edit a Staff Account — update existing staff
         case 'update':
             if(!$staff){
                 $errors['err']='Unknown or invalid staff.';
@@ -29,6 +32,7 @@ if($_POST){
                 $errors['err']='Unable to update staff. Correct any error(s) below and try again!';
             }
             break;
+        // @implements FS-031.3: Create / Edit a Staff Account — create new staff
         case 'create':
             if(($id=Staff::create($_POST,$errors))){
                 $msg=Format::htmlchars($_POST['name']).' added successfully';
@@ -37,6 +41,8 @@ if($_POST){
                 $errors['err']='Unable to add staff. Correct any error(s) below and try again.';
             }
             break;
+        // @implements FS-031.4: Staff Mass Actions (Enable / Lock / Delete) — bulk enable/lock/delete
+        // @implements BS-031-015: Self-Action Protection (Staff Mass Actions) — refuse acting admin in selection
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one staff member.';
@@ -96,6 +102,8 @@ if($_POST){
     }
 }
 
+// @implements FS-031.2: Staff List, Filter, Sort & Paginate — list partial routing
+// @implements FS-031.3: Create / Edit a Staff Account — form partial routing
 $page='staffmembers.inc.php';
 if($staff || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='staff.inc.php';

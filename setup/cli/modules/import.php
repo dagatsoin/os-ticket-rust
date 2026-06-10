@@ -15,6 +15,8 @@
 **********************************************************************/
 require_once dirname(__file__) . "/class.module.php";
 
+// @implements FS-092.13: Backup importer — stream input, header verification & restore loop — Importer module consumes the FS-090.27 dump
+// @implements FS-092.16: Backup importer — DDL reconstruction & batched INSERT emission — reconstructs CREATE/INDEX/batched INSERT SQL
 class Importer extends Module {
     var $prologue =
         "Imports data from a previous backup (using the exporter)";
@@ -42,6 +44,9 @@ class Importer extends Module {
     var $header;
     var $source_ost_info;
 
+    // @implements FS-092.14: Backup importer — dump-format consumption (block framing) — verify header: signature match + mysql-only dbtype guard
+    // @implements BS-092-09: Only MySQL backups are importable — dbtype must equal mysql
+    // @implements FS-090.27: Full-Database Backup Exporter — consumes the documented dump framing
     function verify_header() {
         list($header, $info) = $this->read_block();
         if (!$header || $header[0] != OSTICKET_BACKUP_SIGNATURE) {
@@ -59,6 +64,8 @@ class Importer extends Module {
         return true;
     }
 
+    // @implements FS-092.14: Backup importer — dump-format consumption (block framing) — read one \x1e-terminated JSON block (format owned by FS-090.27)
+    // @implements EC-092-11: Unreadable / undecodable block — non-empty undecodable block dies "Unable to read block from input"
     function read_block() {
         $block = '';
         while (!feof($this->stream) && (($c = fgetc($this->stream)) != "\x1e"))
@@ -73,6 +80,8 @@ class Importer extends Module {
         }
     }
 
+    // @implements FS-092.16: Backup importer — DDL reconstruction & batched INSERT emission — statement sink
+    // @implements BS-092-13: Default import sink is SQL to stdout, not live execution — live in prime-time mode, else write SQL + ";" to stdout
     function send_statement($stmt) {
         if ($this->getOption('prime-time'))
             db_query($stmt);
@@ -82,6 +91,9 @@ class Importer extends Module {
         }
     }
 
+    // @implements FS-092.15: Backup importer — per-table reconstruction loop — read table block, emit DDL, stream rows until end-table
+    // @implements EC-092-12: Table block out of order — non-table block writes "Unable to read table header" and ends the loop
+    // @implements EC-092-13: Truncated table stream — end-of-stream without end-table returns failure for that table
     function import_table() {
         if (!($header = $this->read_block()))
             return false;
@@ -107,6 +119,8 @@ class Importer extends Module {
         return false;
     }
 
+    // @implements FS-092.16: Backup importer — DDL reconstruction & batched INSERT emission — reconstruct CREATE TABLE from dumped column metadata (PK assembly, utf8)
+    // @implements BS-092-10: Table prefix is re-applied locally on import — local TABLE_PREFIX concatenated with dumped table name
     function create_table($info) {
         if ($this->getOption('drop'))
             $this->send_statement('DROP TABLE IF EXISTS `'.TABLE_PREFIX.'`');
@@ -141,6 +155,9 @@ class Importer extends Module {
         $this->send_statement($sql);
     }
 
+    // @implements FS-092.16: Backup importer — DDL reconstruction & batched INSERT emission — reconstruct CREATE INDEX
+    // @implements BS-092-10: Table prefix is re-applied locally on import — strip source prefix, re-apply local prefix
+    // @implements KL-092-05: Single-prefix index reconstruction — index table re-prefixed by stripping the source prefix
     function create_indexes($header) {
         $indexes = array();
         foreach ($header[3] as $idx) {
@@ -173,6 +190,7 @@ class Importer extends Module {
         }
     }
 
+    // @implements FS-092.16: Backup importer — DDL reconstruction & batched INSERT emission — restore-over-existing helper: TRUNCATE TABLE + DROP INDEX IF EXISTS per non-primary index
     function truncate_table($info) {
         $this->send_statement('TRUNCATE TABLE '.TABLE_PREFIX.$info[1]);
         $indexes = array();
@@ -186,6 +204,9 @@ class Importer extends Module {
             $this->send_statement('DROP INDEX IF EXISTS '.$fqn);
     }
 
+    // @implements FS-092.16: Backup importer — DDL reconstruction & batched INSERT emission — buffer rows into batched multi-row INSERT
+    // @implements BS-092-11: Binary-safe row values via hex literals — non-numeric values emitted as 0x hex binary literals
+    // @implements BS-092-12: Batched inserts bounded by accumulated value length — flush when accumulated values exceed ~16KB
     function load_row($info, $row, $flush=false) {
         static $header = null;
         static $rows = array();
@@ -217,6 +238,8 @@ class Importer extends Module {
         }
     }
 
+    // @implements FS-092.13: Backup importer — stream input, header verification & restore loop — run: boot app, open (optionally zlib) stream, verify header, loop import_table
+    // @implements EC-092-09: Backup header mismatch — failed verification dies "Unable to verify backup header"
     function run($args, $options) {
         require_once dirname(__file__) . '/../../../main.inc.php';
         require_once INCLUDE_DIR . 'class.json.php';

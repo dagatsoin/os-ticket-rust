@@ -1,3 +1,4 @@
+<!-- @implements FS-060.1: Installer bootstrap & step state machine — installer wizard footer chrome -->
 
             <div class="clear"></div>
         </div> <!-- content -->

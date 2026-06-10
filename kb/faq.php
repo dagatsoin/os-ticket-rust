@@ -16,6 +16,10 @@
 require('kb.inc.php');
 require_once(INCLUDE_DIR.'class.faq.php');
 
+// @implements FS-050.3: Public Article / Category Routing (kb/faq.php) — resolves id→FAQ or cid→Category and selects the view template
+// @implements FS-050.7: Public Single-Article View — routes to faq.inc.php only when the FAQ is published
+// @implements FS-050.6: Public Category View — routes to faq-category.inc.php only when the category is public
+// @implements BS-050.1: Public Visibility Requires Published Article AND Public Category — published/public guards on the routing branches
 $faq=$category=null;
 if($_REQUEST['id'] && !($faq=FAQ::lookup($_REQUEST['id'])))
    $errors['err']='Unknown or invalid FAQ';

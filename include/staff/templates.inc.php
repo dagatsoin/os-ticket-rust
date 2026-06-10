@@ -1,3 +1,4 @@
+<?php /* @implements FS-040.5: Email Template Set Listing — admin gate, sort map (name/status/created/updated, default name ASC), in-use derived (depts referencing or system default), pagination */ ?>
 <?php
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
@@ -48,6 +49,11 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
  <b><a href="templates.php?a=add" class="Icon newEmailTemplate">Add New Template</a></b></div>
 <div class="clear"></div>
+<?php
+/* @implements FS-040.5: Email Template Set Listing — template list table (Name w/ System Default badge + disabled checkbox, Status, In-Use, dates) */
+/* @implements KL-040.11: Template-Set "In-Use" Column Header Is a Dead Sort Link — header emits sort=inuse (not a recognized sort key; $inuse_sort never assigned), so the click silently reverts to default Name sort */
+/* @implements FS-040.9: Template Set Bulk Actions (Enable / Disable / Delete) — mass actions Enable/Disable/Delete (do=mass_process, ids[]) with confirm dialog */
+?>
 <form action="templates.php" method="POST" name="tpls">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >

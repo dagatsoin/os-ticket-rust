@@ -15,6 +15,9 @@
 **********************************************************************/
 file_exists('../main.inc.php') or die('System Error');
 
+// @implements BS-436: Stateless API — No Sessions — installs a no-op session save handler and sets DISABLE_SESSION before booting
+// @implements FS-043.13: Shared AJAX Controller Base (Infrastructure) — common API include boot loading the dispatcher + ApiController base
+// @implements FS-001.1: Master Bootstrap Include — routes API entry points through main.inc.php before any feature logic
 // Disable sessions for the API. API should be considered stateless and
 // shouldn't chew up database records to store sessions
 if (!function_exists('noop')) { function noop() {} }

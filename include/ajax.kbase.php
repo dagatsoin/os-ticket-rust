@@ -16,8 +16,11 @@
 if(!defined('INCLUDE_DIR')) die('!');
 
 
+// @implements FS-022.14: Canned Response Consumption (Reference) — canned-response/<id>.<format> retrieval co-located here
+// @implements FS-050.10: Inline FAQ Preview (AJAX) — kb/faq/<id> hover-preview fragment
 class KbaseAjaxAPI extends AjaxController {
 
+    // @implements FS-022.14: Canned Response Consumption (Reference) — txt/json fetch, variable-substituted body, attachment list with session key, 404 on unknown/disabled
     function cannedResp($id, $format='') {
         global $thisstaff, $_GET;
 
@@ -51,6 +54,7 @@ class KbaseAjaxAPI extends AjaxController {
         return $response;
     }
 
+    // @implements FS-050.10: Inline FAQ Preview (AJAX) — question + safe-HTML answer + last-updated + View/Attachments links, Edit link when canManageFAQ
     function faq($id, $format='html') {
         //XXX: user ajax->getThisStaff() (nolint)
         global $thisstaff;

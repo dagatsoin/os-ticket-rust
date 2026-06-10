@@ -1,5 +1,9 @@
 <?php
+// @implements FS-031.9: Staff Directory (Browse & Search) — staff-session (non-admin) access gate (else die 'Access Denied')
+// @implements BS-031-031: Directory Visibility Restriction — lists only directory-visible (isvisible=1) staff
 if(!defined('OSTSTAFFINC') || !$thisstaff || !$thisstaff->isStaff()) die('Access Denied');
+// @implements FS-031.9: Staff Directory (Browse & Search) — search + dept filter + sort/order/pagination
+// @implements BS-031-030: Directory Search Term Interpretation — numeric->phone/ext/mobile, email->exact, else name/email substring
 $qstr='';
 $select='SELECT staff.*,CONCAT_WS(" ",firstname,lastname) as name,dept.dept_name as dept ';
 $from='FROM '.STAFF_TABLE.' staff '.
@@ -60,6 +64,7 @@ $qstr.='&order='.($order=='DESC'?'ASC':'DESC');
 $query="$select $from $where GROUP BY staff.staff_id ORDER BY $order_by LIMIT ".$pageNav->getStart().",".$pageNav->getLimit();
 //echo $query;
 ?>
+<?php /* @implements FS-031.9: Staff Directory (Browse & Search) — search/filter form (free-text query + department dropdown, Filter button) */ ?>
 <h2>Staff Members</h2>
 <div style="width:700px; float:left;">
     <form action="directory.php" method="GET" name="filter">
@@ -91,6 +96,7 @@ if($res && ($num=db_num_rows($res)))
 else
     $showing='No staff members found!';
 ?>
+<?php /* @implements FS-031.9: Staff Directory (Browse & Search) — read-only results table (name, dept, email, phone, ext, mobile; no edit controls) */ ?>
 <table class="list" border="0" cellspacing="1" cellpadding="0" width="940">
     <caption><?php echo $showing; ?></caption>
     <thead>

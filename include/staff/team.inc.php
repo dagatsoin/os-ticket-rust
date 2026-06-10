@@ -1,3 +1,4 @@
+<?php /* @implements FS-030.9: Team add/edit form — admin gate, add-vs-update mode + defaults (isenabled on, noalerts off), error-repopulation; name, status, lead, assignment-alerts override, members(remove), notes */ ?>
 <?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $info=array();

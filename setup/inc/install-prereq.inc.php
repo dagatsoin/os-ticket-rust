@@ -1,4 +1,6 @@
 <?php
+// @implements FS-060.2: Prerequisite check (step `prereq`) — required PHP>=4.3 + mysql-extension checks, recommended gd/imap
+// @implements EC-060-01: Prereq label vs. real MySQL version check — prereq tests extension-loaded only; 4.4 enforced at connect
 if(!defined('SETUPINC')) die('Kwaheri!');
 
 ?>
@@ -14,6 +16,7 @@ if(!defined('SETUPINC')) die('Kwaheri!');
             <h3>Required: <font color="red"><?php echo $errors['prereq']; ?></font></h3>
             These items are necessary in order to install and use osTicket.
             <ul class="progress">
+                <!-- @implements FS-060.2: Prerequisite check (step `prereq`) — required checks: check_php() (true version compare) + check_mysql() (extension-loaded only) -->
                 <li class="<?php echo $installer->check_php()?'yes':'no'; ?>">
                 PHP v4.3 or greater - (<small><b><?php echo PHP_VERSION; ?></b></small>)</li>
                 <li class="<?php echo $installer->check_mysql()?'yes':'no'; ?>">

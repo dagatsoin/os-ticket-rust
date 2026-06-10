@@ -20,6 +20,7 @@
 #  key => API's Key (see admin panel on how to generate a key)
 #   
 
+// @implements FS-043.15: Local Email-Pipe Response Mapping (Reference) — reference email-pipe client: POST piped stdin email to tickets.email with X-API-Key
 $config = array(
         'url'=>'http://yourdomain.com/support/api/tickets.email',
         'key'=>'API KEY HERE'
@@ -47,6 +48,8 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
 $result=curl_exec($ch);        
 curl_close($ch);
 
+// @implements BS-440: Local Mail Pipe Reports via MTA Exit Codes, Not HTTP — map HTTP response to BSD-sendmail/postfix exit codes (201→0, 400→66, 401/403→77, 415..501→65, 503→69, else→75)
+// @implements EC-449: Local email-pipe outcomes map to MTA exit codes — success exits 0; failures map to MTA codes
 //Use postfix exit codes...expected by MTA.
 $code = 75;
 if(preg_match('/HTTP\/.* ([0-9]+) .*/', $result, $status)) {

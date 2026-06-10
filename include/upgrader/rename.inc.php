@@ -1,4 +1,7 @@
 <?php
+// @implements FS-061.13: Config-file rename precondition — rename screen (settings.php → ost-config.php instruction)
+// @implements FS-061.9: Upgrade wizard UX & access gating — rename screen selection
+// @implements BS-061-03: Only an authenticated admin may run the upgrade — Access Denied unless SCP-context admin
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 ?>
 <div id="upgrader">

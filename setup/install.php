@@ -13,6 +13,7 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-060.1: Installer bootstrap & step state machine — wizard entry point; loads setup bootstrap
 require('setup.inc.php');
 
 require_once INC_DIR.'class.installer.php';
@@ -30,16 +31,19 @@ $wizard['logo']='logo.png';
 $wizard['menu']=array('Installation Guide'=>'http://osticket.com/wiki/Installation',
         'Get Professional Help'=>'http://osticket.com/support');
 
+// @implements FS-060.1: Installer bootstrap & step state machine — POST step dispatcher advances the session step pointer
 if($_POST && $_POST['s']) {
     $errors = array();
     $_SESSION['ost_installer']['s']=$_POST['s'];
     switch(strtolower($_POST['s'])) {
+        // @implements FS-060.2: Prerequisite check (step `prereq`) — on pass advance pointer to config
         case 'prereq':
             if($installer->check_prereq())
                 $_SESSION['ost_installer']['s']='config';
             else
                 $errors['prereq']='Minimum requirements not met!';
             break;
+        // @implements FS-060.3: Configuration-file check (step `config`) — re-run exists+writable checks, advance to install
         case 'config':
             if(!$installer->config_exists())
                 $errors['err']='Configuration file does NOT exist. Follow steps below to add one.';
@@ -48,6 +52,9 @@ if($_POST && $_POST['s']) {
             else
                 $_SESSION['ost_installer']['s']='install';
             break;
+        // @implements FS-060.5: Install-form field validation — run install(), outer fallback error when no err registered
+        // @implements FS-060.7: Schema load, default seeding, admin & config provisioning — drives the master install routine
+        // @implements FS-060.8: Completion screen & post-install hardening (step `done`) — captures $_SESSION['info'] on success
         case 'install':
             if($installer->install($_POST)) {
                 $_SESSION['info']=array('name'  =>ucfirst($_POST['fname'].' '.$_POST['lname']),
@@ -59,6 +66,8 @@ if($_POST && $_POST['s']) {
                 $errors['err']='Error installing osTicket - correct the errors below and try again.';
             }
             break;
+        // @implements FS-060.1: Installer bootstrap & step state machine — subscribe POST handler (name/email/notify validation)
+        // @implements KL-060-02: `subscribe` step is dead/RC scaffolding — unreachable in normal flow
         case 'subscribe':
             if(!trim($_POST['name']))
                 $errors['name'] = 'Required';
@@ -76,11 +85,16 @@ if($_POST && $_POST['s']) {
             break;
     }
 
+// @implements FS-060.1: Installer bootstrap & step state machine — only GET-driven transition: "No thanks." subscribe → done
+// @implements KL-060-02: `subscribe` step is dead/RC scaffolding — dead subscribe → done GET branch
 }elseif($_GET['s'] && $_GET['s']=='ns' && $_SESSION['ost_installer']['s']=='subscribe') {
     $_SESSION['ost_installer']['s']='done';
 }
 
+// @implements FS-060.1: Installer bootstrap & step state machine — view selector keyed off the *current* pointer value
 switch(strtolower($_SESSION['ost_installer']['s'])) {
+    // @implements FS-060.3: Configuration-file check (step `config`) — four-way view select on config file state
+    // @implements BS-060-03: Install-step views re-validate clean config — mid-flow re-check, clearstatcache before file-perm
     case 'config':
     case 'install':
         if(!$installer->config_exists()) {
@@ -95,14 +109,18 @@ switch(strtolower($_SESSION['ost_installer']['s'])) {
             $inc='install.inc.php';
         }
         break;
+    // @implements KL-060-02: `subscribe` step is dead/RC scaffolding — dead subscribe view (TODO RC1)
     case 'subscribe': //TODO: Prep for v1.7 RC1
        $inc='subscribe.inc.php';
         break;
+    // @implements FS-060.8: Completion screen & post-install hardening (step `done`) — done view + defensive fallback to prereq when config gone
     case 'done':
         $inc='install-done.inc.php';
         if(!$installer->config_exists())
             $inc='install-prereq.inc.php';
         break;
+    // @implements FS-060.9: Re-run protection (already-installed detection) — default branch routes installed markers to file-unclean
+    // @implements BS-060-01: Already-installed detection blocks fresh install — settings.php / ostconfig.php / OSTINSTALLED=TRUE markers
     default:
         //Fail IF any of the old config files exists.
         if(file_exists(INCLUDE_DIR.'settings.php')

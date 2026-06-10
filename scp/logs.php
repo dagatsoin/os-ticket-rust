@@ -15,8 +15,10 @@
 **********************************************************************/
 require('admin.inc.php');
 
+// @implements FS-033.6: Bulk Manual Deletion of Log Entries — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-033.6: Bulk Manual Deletion of Log Entries — delete selected log records
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one log to delete';
@@ -44,6 +46,7 @@ if($_POST){
     }
 }
 
+// @implements FS-033.1: System Log Viewer Entry Point & Access Gate — render results table (under 'dashboard' tab)
 $page='syslogs.inc.php';
 $nav->setTabActive('dashboard');
 require(STAFFINC_DIR.'header.inc.php');

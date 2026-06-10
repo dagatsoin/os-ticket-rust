@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-032.3: System Settings Tab Fields — General: isonline, helpdesk_url/title, default_dept_id (public depts), default_template_id, max_page_size (5-50 step 5), log_level, log_graceperiod */
+/* @implements FS-032.1: Settings Panel Entry & Tab Routing — in-partial admin re-check */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin() || !$config) die('Access Denied');
 
 $gmtime = Misc::gmtime();
@@ -112,6 +116,7 @@ $gmtime = Misc::gmtime();
                 </select>
             </td>
         </tr>
+        <?php /* @implements FS-032.3: System Settings Tab Fields — Authentication section: passwd_reset_period, allow_pw_reset, pw_reset_window (min 1), staff/client max_logins+login_timeout (1-10), staff/client session_timeout, staff_ip_binding */ ?>
         <tr>
             <th colspan="2">
                 <em><b>Authentication Settings</b></em>
@@ -203,6 +208,10 @@ $gmtime = Misc::gmtime();
               <em>(binds staff session to originating IP address upon login)</em>
             </td>
         </tr>
+        <?php
+        /* @implements FS-032.3: System Settings Tab Fields — Date & Time section: time/date/datetime/daydatetime_format (all required, each with live preview), default_timezone_id (GMT offset - name), enable_daylight_saving */
+        /* @implements EC-032.2: Date/time format fields each render a live preview */
+        ?>
         <tr>
             <th colspan="2">
                 <em><b>Date and Time Options</b>: Please refer to <a href="http://php.net/date" target="_blank">PHP Manual</a> for supported parameters.</em>

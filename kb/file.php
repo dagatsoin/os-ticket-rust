@@ -19,6 +19,9 @@
 **********************************************************************/
 require('kb.inc.php');
 require_once(INCLUDE_DIR.'class.file.php');
+// @implements FS-050.9: FAQ Article Attachments — downloads a KB article's attached file after hash validation
+// @implements FS-022.10: Authorized Attachment Download & Inline Display — serves the stored file via the content-addressed file store
+// @implements BS-022.8: Download Access Requires a Fresh Session-Bound Hash — verifies the 64-char hash (file hash + md5(id+session+hash))
 $h=trim($_GET['h']);
 //basic checks
 if(!$h  || strlen($h)!=64  //32*2

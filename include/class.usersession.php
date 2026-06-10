@@ -18,6 +18,8 @@ include_once(INCLUDE_DIR.'class.client.php');
 include_once(INCLUDE_DIR.'class.staff.php');
 
 
+// @implements FS-002.11: Per-request session validation (the authenticated gate) — shared session-token mechanism
+// @implements FS-010.6: Client Session Lifecycle & Validation — shared token mechanism reused by client sessions
 class UserSession {
    var $session_id = '';
    var $userID='';
@@ -57,6 +59,7 @@ class UserSession {
        //nothing to do...clients need to worry about it.
    }
 
+   // @implements FS-002.11: Per-request session validation — mint session token md5(time+secret+userID):time:md5(ip)
    function sessionToken(){
 
       $time  = time();
@@ -66,6 +69,8 @@ class UserSession {
       return($token);
    }
 
+   // @implements FS-002.11: Per-request session validation — validate token: hash match, idle-timeout, optional IP-binding
+   // @implements BS-010.11: Client Sessions Are Not IP-Bound; Staff Sessions May Be — $checkip flag gates IP comparison
    function isvalidSession($htoken,$maxidletime=0,$checkip=false){
         global $cfg;
        
@@ -103,6 +108,7 @@ class UserSession {
 
 }
 
+// @implements FS-010.6: Client Session Lifecycle & Validation — ticket-scoped client identity, not IP-bound, client timeout
 class ClientSession extends Client {
     
     var $session;
@@ -141,6 +147,7 @@ class ClientSession extends Client {
 }
 
 
+// @implements FS-002.11: Per-request session validation — account-based staff identity; honors staff timeout + IP-binding
 class StaffSession extends Staff {
     
     var $session;

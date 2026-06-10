@@ -1,4 +1,6 @@
 <?php
+// @implements FS-060.3: Configuration-file check (step `config`) — config-file-missing view; copy template instructions, POSTs s=config
+// @implements EC-060-11: Direct access to step partials — SETUPINC guard dies Kwaheri!
 if(!defined('SETUPINC')) die('Kwaheri!');
 ?>
     <div id="main">

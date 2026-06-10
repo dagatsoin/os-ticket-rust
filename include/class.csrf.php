@@ -27,6 +27,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-001.11: Cross-Site Request Forgery Protection — per-session CSRF token holder (consumed by FS-002.7)
 Class CSRF {
 
     var $name;
@@ -34,6 +35,7 @@ Class CSRF {
 
     var $csrf;
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — construct holder with fixed token name + optional timeout
     function CSRF($name='__CSRFToken__', $timeout=0) {
 
         $this->name = $name;
@@ -41,23 +43,28 @@ Class CSRF {
         $this->csrf = &$_SESSION['csrf'];
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — clear stored token state
     function reset() {
         $this->csrf = array();
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — inactivity-timeout expiry check
     function isExpired() {
        return ($this->timeout && (time()-$this->csrf['time'])>$this->timeout);
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — token field name accessor
     function getTokenName() {
         return $this->name;
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — mint token = sha1(session_id + random + secret salt)
     function rotate() {
         $this->csrf['token'] = sha1(session_id().Crypto::random(16).SECRET_SALT);
         $this->csrf['time'] = time();
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — lazy-mint/rotate on read, reset activity timer
     function getToken() {
 
         if (!$this->csrf['token'] || $this->isExpired()) {
@@ -70,10 +77,13 @@ Class CSRF {
         return $this->csrf['token'];
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — validate presented token against current, non-expired
+    // @implements FS-002.7: CSRF protection on state-changing requests — server-side validation consumed by staff gate
     function validateToken($token) {
         return ($token && trim($token)==$this->getToken() && !$this->isExpired());
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — hidden form input emitter
     function getFormInput($name='') {
         if(!$name) $name = $this->name;
 
@@ -82,6 +92,7 @@ Class CSRF {
 }
 
 /* global function to add hidden token input with to forms */
+// @implements FS-001.11: Cross-Site Request Forgery Protection — global hidden-token form helper
 function csrf_token() {
     global $ost;
 

@@ -1,4 +1,5 @@
 <?php 
+// @implements FS-060.4: Basic installation form (step `install` — input collection) — System/Admin/Database fields, prefix/host defaults, re-populated escaped values on error
 if(!defined('SETUPINC')) die('Kwaheri!');
 $info=($_POST && $errors)?Format::htmlchars($_POST):array('prefix'=>'ost_','dbhost'=>'localhost');
 ?>

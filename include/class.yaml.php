@@ -25,8 +25,10 @@
 require_once "Spyc.php";
 require_once "class.error.php";
 
+// @implements BS-040.13: Packaged-Default Fallback for Missing Messages — loads packaged YAML initial-data via Spyc
 class YamlDataParser {
     /* static */
+    // @implements BS-040.13: Packaged-Default Fallback for Missing Messages — load YAML initial-data into PHP array (raise on missing)
     function load($file) {
         if (!file_exists($file)) {
             raise_error("$file: File does not exist", 'YamlParserError');
@@ -36,6 +38,7 @@ class YamlDataParser {
     }
 }
 
+// @implements FS-003.23: Formal error object with auto-logging — Error subclass for malformed YAML documents
 class YamlParserError extends Error {
     var $title = 'Error parsing YAML document';
 }

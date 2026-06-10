@@ -1,4 +1,5 @@
 <?php
+// @implements FS-090: Shared UI, Navigation & Data Export — staff login page chrome (head assets, noindex meta, first-input autofocus); shared by login + password-reset templates
 defined('OSTSCPINC') or die('Invalid path');
 ?>
 <!DOCTYPE html>

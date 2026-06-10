@@ -1,3 +1,4 @@
+<?php /* @implements FS-010.2: Check-Ticket-Status Login Form — Check-Ticket-Status login form: OSTCLIENTINC guard, lemail/lticket prefill from POST else GET, CSRF token, login-error banner, View Status submit */ ?>
 <?php
 if(!defined('OSTCLIENTINC')) die('Access Denied');
 

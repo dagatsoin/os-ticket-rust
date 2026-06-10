@@ -1,4 +1,5 @@
 <?php
+// @implements FS-033.11: Site Pages List & Access Gate — admin-only access gate; site pages list (w/ topic-reference count for in-use marker)
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
 $qstr='';
@@ -53,6 +54,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
  <b><a href="pages.php?a=add" class="Icon newPage">Add New Page</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-033.12: Site Pages Results Table, Sorting & Pagination — pages list table (name, status + in-use marker for default/topic-linked pages, dates) + mass_process form (CSRF) */ ?>
 <form action="pages.php" method="POST" name="tpls">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -115,6 +117,7 @@ else
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
 ?>
+<?php /* @implements FS-033.15: Enable / Disable / Delete Pages (Bulk Actions) — bulk Enable / Disable / Delete selected pages + confirm dialog */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable" >
     <input class="button" type="submit" name="disable" value="Disable" >

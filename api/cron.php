@@ -16,6 +16,8 @@
 @chdir(realpath(dirname(__FILE__)).'/'); //Change dir.
 require('api.inc.php');
 
+// @implements FS-043.10: Local (Command-Line) Cron Execution — entry point for local cron; refuses non-CLI invocation
+// @implements FS-001.16: System-Object Request & Environment Utilities — is_cli() distinguishes shell execution from HTTP requests
 if (!osTicket::is_cli())
     die('cron.php only supports local cron calls - use http -> api/tasks/cron');
 

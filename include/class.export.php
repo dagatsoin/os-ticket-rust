@@ -14,8 +14,11 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-090.20: Result-Set Export — Header-Mapped Column Projection — export entry points
 class Export {
 
+    // @implements FS-090.20: Result-Set Export — Header-Mapped Column Projection — pick exporter by format + dump
+    // @implements FS-090.31: Export Format Selection Has No Fallback
     /* static */ function dumpQuery($sql, $headers, $how='csv', $filter=false) {
         $exporters = array(
             'csv' => CsvResultsExporter,
@@ -32,6 +35,7 @@ class Export {
     #      SQL is exported, but for something like tickets, we will need to
     #      export attached messages, reponses, and notes, as well as
     #      attachments associated with each, ...
+    // @implements FS-090.25: Ticket Export Column Set — ticket-queue header map + dump (consumed by FS-020)
     /* static */ function dumpTickets($sql, $how='csv') {
         return self::dumpQuery($sql,
             array(
@@ -57,6 +61,8 @@ class Export {
             $how);
     }
 
+    // @implements FS-090.23: Ticket-Queue CSV Export Flow (Token-Backed) — buffer ticket dump → file download
+    // @implements FS-090.24: File-Download Response Helper
     /* static */ function saveTickets($sql, $filename, $how='csv') {
         ob_start();
         self::dumpTickets($sql, $how);
@@ -69,7 +75,12 @@ class Export {
     }
 }
 
+// @implements FS-090.20: Result-Set Export — Header-Mapped Column Projection — base streaming exporter
 class ResultSetExporter {
+    // @implements FS-090.20: Result-Set Export — Header-Mapped Column Projection — strip LIMIT, intersect headers with query columns
+    // @implements BS-090.9: Export Strips the Page LIMIT — Full Result Set
+    // @implements BS-090.10: Export Columns Are the Intersection of the Header Map and the Query
+    // @implements BS-090.15: Column Projection Requires a Non-Empty Result Set
     function ResultSetExporter($sql, $headers, $filter=false) {
         $this->headers = array_values($headers);
         if ($s = strpos(strtoupper($sql), ' LIMIT '))
@@ -95,10 +106,12 @@ class ResultSetExporter {
         }
     }
 
+    // @implements FS-090.30: Result-Set Exporter — Empty Result Set Header Behavior — resolved header labels
     function getHeaders() {
         return $this->headers;
     }
 
+    // @implements FS-090.20: Result-Set Export — Header-Mapped Column Projection — next projected row (positional lookups)
     function next() {
         if (!($row = db_fetch_row($this->_res)))
             return false;
@@ -109,12 +122,14 @@ class ResultSetExporter {
         return $record;
     }
 
+    // @implements FS-090.22: JSON Exporter Format — next projected row keyed by field name
     function nextArray() {
         if (!($row = $this->next()))
             return false;
         return array_combine($this->keys, $row);
     }
 
+    // @implements FS-090.20: Result-Set Export — Header-Mapped Column Projection — base dump (debug; overridden per format)
     function dump() {
         # Useful for debug output
         while ($row=$this->nextArray()) {
@@ -123,7 +138,10 @@ class ResultSetExporter {
     }
 }
 
+// @implements FS-090.21: CSV Exporter Format Rules — CSV result exporter
 class CsvResultsExporter extends ResultSetExporter {
+    // @implements FS-090.21: CSV Exporter Format Rules — quote every value, double embedded quotes
+    // @implements BS-090.11: CSV Values Are Always Quoted; Embedded Quotes Are Doubled
     function dump() {
         echo '"' . implode('","', $this->getHeaders()) . "\"\n";
         while ($row=$this->next()) {
@@ -135,7 +153,9 @@ class CsvResultsExporter extends ResultSetExporter {
     }
 }
 
+// @implements FS-090.22: JSON Exporter Format — JSON result exporter
 class JsonResultsExporter extends ResultSetExporter {
+    // @implements FS-090.22: JSON Exporter Format — encode all rows as a JSON array of field-keyed objects
     function dump() {
         require_once(INCLUDE_DIR.'class.json.php');
         $exp = new JsonDataEncoder();
@@ -151,6 +171,8 @@ require_once INCLUDE_DIR . 'class.json.php';
 require_once INCLUDE_DIR . 'class.migrater.php';
 require_once INCLUDE_DIR . 'class.signal.php';
 
+// @implements FS-090.27: Full-Database Backup Exporter — record-separated self-describing DB dump
+// @implements BS-090.14: Backup Dump Is Record-Separated and Self-Describing
 class DatabaseExporter {
 
     var $stream;
@@ -165,15 +187,19 @@ class DatabaseExporter {
         FILTER_TABLE, FILTER_RULE_TABLE, SLA_TABLE, API_KEY_TABLE,
         TIMEZONE_TABLE, SESSION_TABLE, PAGE_TABLE);
 
+    // @implements FS-090.27: Full-Database Backup Exporter — bind output stream
     function DatabaseExporter($stream) {
         $this->stream = $stream;
     }
 
+    // @implements FS-090.27: Full-Database Backup Exporter — write JSON block + 0x1E record separator
+    // @implements BS-090.14: Backup Dump Is Record-Separated and Self-Describing
     function write_block($what) {
         fwrite($this->stream, JsonDataEncoder::encode($what));
         fwrite($this->stream, "\x1e");
     }
 
+    // @implements FS-090.27: Full-Database Backup Exporter — emit signed header + per-table schema/index/row blocks
     function dump($error_stream) {
         // Allow plugins to change the tables exported
         Signal::send('export.tables', $this, $this->tables);

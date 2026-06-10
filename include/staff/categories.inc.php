@@ -1,6 +1,10 @@
 <?php
+// @implements FS-032.13: FAQ Category Listing & Mass Actions — staff access gate; FAQ-category management screen
+// @implements FS-032.15: FAQ Category Access Control — OSTSCPINC + staff gate guarding the management screen
 if(!defined('OSTSCPINC') || !$thisstaff) die('Access Denied');
 
+// @implements FS-032.13: FAQ Category Listing & Mass Actions — FAQ-category list w/ per-category FAQ count; sort/order/pagination
+// @implements FS-050.14: Staff Category Listing & Search (`faq-categories.inc.php`) — per-category FAQ count surfaced for the KB category browse
 $qstr='';
 $sql='SELECT cat.category_id, cat.name, cat.ispublic, cat.updated, count(faq.faq_id) as faqs '.
      ' FROM '.FAQ_CATEGORY_TABLE.' cat '.
@@ -46,6 +50,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="categories.php?a=add" class="Icon newCategory">Add New Category</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-032.13: FAQ Category Listing & Mass Actions — FAQ-category list table (name, public/internal type, FAQ count, updated) + mass_process form (CSRF) */ ?>
 <form action="categories.php" method="POST" name="cat">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -106,6 +111,10 @@ else
 <?php
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
+?>
+<?php
+/* @implements FS-032.13: FAQ Category Listing & Mass Actions — bulk Make Public / Make Internal / Delete + confirm dialog */
+/* @implements FS-032.16: FAQ Category Deletion Cascade — Delete cascades to FAQs under the category */
 ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="make_public" value="Make Public">

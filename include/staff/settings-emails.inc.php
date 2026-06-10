@@ -1,4 +1,9 @@
 <?php
+/* @implements FS-032.5: Email Settings Tab Fields — Email Settings tab (emails): in-partial admin re-check; default_email_id, alert_email_id (excludes default), admin_email, mail polling/auto-cron, strip_quoted_reply + reply_separator, default_smtp_id */
+/* @implements BS-032.7: Email settings field set */
+/* @implements BS-032.8: Mail polling / quoted-reply stripping configuration */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin() || !$config) die('Access Denied');
 ?>
 <h2>Email Settings and Options</h2>

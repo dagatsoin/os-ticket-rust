@@ -17,6 +17,8 @@
 require('secure.inc.php');
 if(!is_object($thisclient) || !$thisclient->isValid()) die('Access denied'); //Double check again.
 require_once(INCLUDE_DIR.'class.ticket.php');
+// @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — resolves the requested ticket by external id for the logged-in client
+// @implements BS-010.4: Client Ticket Access Is Scoped By Email (Or Login Ticket) — checkClientAccess gate, generic error on mismatch
 $ticket=null;
 if($_REQUEST['id']) {
     if(!($ticket=Ticket::lookupByExtId($_REQUEST['id']))) {
@@ -28,6 +30,8 @@ if($_REQUEST['id']) {
 }
 
 //Process post...depends on $ticket object above.
+// @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — handles the a=reply POST: re-checks access, validates message, posts the reply
+// @implements BS-010.4: Client Ticket Access Is Scoped By Email (Or Login Ticket) — re-verifies checkClientAccess before posting
 if($_POST && is_object($ticket) && $ticket->getId()):
     $errors=array();
     switch(strtolower($_POST['a'])){
@@ -59,6 +63,9 @@ if($_POST && is_object($ticket) && $ticket->getId()):
     }
     $ticket->reload();
 endif;
+// @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — selects view.inc.php when the client has access to the resolved ticket
+// @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — falls back to the related-tickets list when enabled and the client has tickets
+// @implements FS-090.4: Client Portal Navigation Links — sets the 'tickets'/'new' nav tab active for the chosen view
 $nav->setActiveNav('tickets');
 if($ticket && $ticket->checkClientAccess($thisclient)) {
     $inc='view.inc.php';

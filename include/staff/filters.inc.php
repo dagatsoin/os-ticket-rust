@@ -1,4 +1,5 @@
 <?php
+// @implements FS-042.1: Filter Catalogue & Listing — in-partial admin gate; ticket filters list (sortable, default name) (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 $targets = Filter::getTargets();
 $qstr='';
@@ -49,6 +50,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
  <b><a href="filters.php?a=add" class="Icon newTicketFilter">Add New Filter</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-042.1: Filter Catalogue & Listing — list table (name, status, exec order, rule count, target, dates) + mass_process form (CSRF) */ ?>
 <form action="filters.php" method="POST" name="filters">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -112,6 +114,7 @@ else
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
 ?>
+<?php /* @implements FS-042.10: Mass Filter Operations — bulk Enable / Disable / Delete selected filters + confirm dialog (banlist excluded from delete) */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable">
     <input class="button" type="submit" name="disable" value="Disable">

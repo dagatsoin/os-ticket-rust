@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — My Tickets list: guard requires showRelatedTickets; status filter (open/closed/all), sort map, deep/numeric search, pagination — scoped by client email */
+/* @implements KL-010.6: My-Tickets Latent Defects — numeric search uses undefined $queryterm; sort=subj/ID header mismatch; 'ticket_created' fallback literal; Phone column not projected */
+?>
+<?php
 if(!defined('OSTCLIENTINC') || !is_object($thisclient) || !$thisclient->isValid() || !$cfg->showRelatedTickets()) die('Access Denied');
 
 $qstr='&'; //Query string collector
@@ -89,6 +93,7 @@ if($search)
 $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting
 
 ?>
+<?php /* @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — My Tickets render: search form (q + status select w/ open/closed counts), sortable column headers, result rows linking to per-ticket view, pagination */ ?>
 <h1>My Tickets</h1>
 <br>
 <form action="tickets.php" method="get" id="ticketSearchForm">

@@ -25,6 +25,9 @@ require_once(INCLUDE_DIR.'class.ticket.php');
 // different CSRF token. This will help ward off both parallel and serial
 // brute force attacks, because new tokens will have to be requested for
 // each attempt.
+// @implements FS-010.3: Interactive Login (Ticket ID + Email) — validates CSRF, rotates the token, then Client::login on the email/ticket pairing
+// @implements BS-010.6: Each Login Attempt Consumes A One-Time CSRF Token — rotate() after validation so a captured token cannot be replayed
+// @implements FS-001.11: Cross-Site Request Forgery Protection — checkCSRFToken on the login POST, HTTP 400 on failure
 if($_POST) {
     // Check CSRF token
     if (!$ost->checkCSRFToken())
@@ -43,6 +46,8 @@ if($_POST) {
     }
 }
 
+// @implements FS-010.2: Check-Ticket-Status Login Form — renders the login/lookup form with nav active = 'status'
+// @implements FS-090.4: Client Portal Navigation Links — UserNav built with the 'status' (Check Ticket Status) tab active
 $nav = new UserNav();
 $nav->setActiveNav('status');
 require(CLIENTINC_DIR.'header.inc.php');

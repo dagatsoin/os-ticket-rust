@@ -17,10 +17,14 @@ require_once 'admin.inc.php';
 require_once INCLUDE_DIR.'class.upgrader.php';
 
 //$_SESSION['ost_upgrader']=null;
+// @implements FS-061.17: Time-limit removal at stream-upgrader construction — instantiate the stream upgrader
 $upgrader = new Upgrader(TABLE_PREFIX, UPGRADE_DIR.'streams/');
 $errors=array();
+// @implements FS-061.9: Upgrade wizard UX & access gating — manual POST step dispatch (non-AJAX fallback)
 if($_POST && $_POST['s'] && !$upgrader->isAborted()) {
     switch(strtolower($_POST['s'])) {
+        // @implements FS-061.16: Minimum-requirement check semantics — prereq step (upgradable + prereqs + config-file rename)
+        // @implements FS-061.13: Config-file rename precondition
         case 'prereq':
             if(!$ost->isUpgradePending()) {
                 $errors['err']=' Nothing to do! System already upgraded to the current version';
@@ -34,6 +38,8 @@ if($_POST && $_POST['s'] && !$upgrader->isAborted()) {
                 $upgrader->setState('upgrade');
             }
             break;
+        // @implements FS-061.4: Per-patch batched application with time-boxing — manual upgrade step (task/patch advancement)
+        // @implements FS-061.5: Resumable procedural migration tasks
         case 'upgrade': //Manual upgrade.... when JS (ajax) is not supported.
             if($upgrader->getPendingTask()) {
                 $upgrader->doTask();
@@ -52,6 +58,8 @@ if($_POST && $_POST['s'] && !$upgrader->isAborted()) {
     }
 }
 
+// @implements FS-061.9: Upgrade wizard UX & access gating — select wizard view by upgrader state
+// @implements FS-061.15: Persistence of upgrade run state across requests — branch on persisted run state
 switch(strtolower($upgrader->getState())) {
     case 'aborted':
         $inc='aborted.inc.php';

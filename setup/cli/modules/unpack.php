@@ -2,6 +2,7 @@
 
 require_once dirname(__file__) . "/class.module.php";
 
+// @implements FS-092.7: Unpack a built archive into an installation path — Unpacker module: unpack upload/ tree into install path, optionally relocating include/
 class Unpacker extends Module {
 
     var $prologue = "Unpacks osTicket into target install path";
@@ -34,6 +35,7 @@ class Unpacker extends Module {
              main installation path.",
     );
 
+    // @implements FS-092.7: Unpack a built archive into an installation path — locate the build's upload/ folder by walking up
     function find_upload_folder() {
         # Hop up to the root folder
         $start = dirname(__file__);
@@ -44,6 +46,9 @@ class Unpacker extends Module {
         return realpath($start.'/upload');
     }
 
+    // @implements FS-092.8: `INCLUDE_DIR` rewriting & `ROOT_DIR`-relative resolution — rewrite INCLUDE_DIR in main.inc.php
+    // @implements BS-092-05: Include relocation prefers `ROOT_DIR`-relative form — ROOT_DIR-relative when include is a subpath, else absolute literal
+    // @implements EC-092-06: `INCLUDE_DIR` rewrite failure — die when the main.inc.php write fails
     function change_include_dir($include_path) {
         # Read the main.inc.php script
         $main_inc_php = $this->destination . '/main.inc.php';
@@ -97,6 +102,9 @@ class Unpacker extends Module {
      *      it will be excluded from the copy procedure. Omit or use false
      *      to disable exclusions
      */
+    // @implements FS-092.9: Idempotent copy with content-hash skip and recursion control — bounded/unbounded recursion, exclusions, dry-run/verbose
+    // @implements BS-092-04: Idempotent copy via content-hash skip — md5 content-hash skip of identical destinations
+    // @implements EC-092-07: Re-run skips identical files — matching md5 destinations are not re-copied
     function unpackage($folder, $destination, $recurse=0, $exclude=false) {
         $dryrun = $this->getOption('dry-run', false);
         $verbose = $this->getOption('verbose') || $dryrun;
@@ -133,6 +141,8 @@ class Unpacker extends Module {
         }
     }
 
+    // @implements FS-092.8: `INCLUDE_DIR` rewriting & `ROOT_DIR`-relative resolution — read existing INCLUDE_DIR (ROOT_DIR pre-defined)
+    // @implements KL-092-02: `change_include_dir` is line-pattern based — value read by eval of the definition line
     function get_include_dir() {
         $main_inc_php = $this->destination . '/main.inc.php';
         $lines = preg_grep("/define\s*\(\s*'INCLUDE_DIR'/",
@@ -147,6 +157,9 @@ class Unpacker extends Module {
         return INCLUDE_DIR;
     }
 
+    // @implements FS-092.7: Unpack a built archive into an installation path — run: create dest, unpack upload/ minus include/, place include/ (relocate + rewrite INCLUDE_DIR)
+    // @implements BS-092-06: Upgrade preserves the existing include location — detect upgrade, reuse current INCLUDE_DIR
+    // @implements EC-092-05: Destination cannot be created — die when mkdir of the install path fails
     function run($args, $options) {
         $this->destination = $args['install-path'];
         if (!is_dir($this->destination))

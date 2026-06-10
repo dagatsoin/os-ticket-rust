@@ -13,15 +13,19 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-032.14: FAQ Category Create / Edit Form — FAQ-category model + persistence
+// @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — category read model
 class Category {
     var $id;
     var $ht;
 
+    // @implements FS-032.14: FAQ Category Create / Edit Form — construct category by id
     function Category($id) {
         $this->id=0;
         $this->load($id);
     }
 
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — load category row + article count
     function load($id) {
 
         $sql=' SELECT cat.*,count(faq.faq_id) as faqs '
@@ -39,28 +43,42 @@ class Category {
         return true;
     }
 
+    // @implements FS-032.14: FAQ Category Create / Edit Form — reload after save
     function reload() {
         return $this->load($this->getId());
     }
 
     /* ------------------> Getter methods <--------------------- */
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — id accessor
     function getId() { return $this->id; }
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — name accessor
     function getName() { return $this->ht['name']; }
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — article count accessor
     function getNumFAQs() { return  $this->ht['faqs']; }
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — safe-HTML description accessor
     function getDescription() { return $this->ht['description']; }
+    // @implements FS-032.14: FAQ Category Create / Edit Form — internal notes accessor
     function getNotes() { return $this->ht['notes']; }
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — created-date accessor
     function getCreateDate() { return $this->ht['created']; }
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — last-updated accessor
     function getUpdateDate() { return $this->ht['updated']; }
 
+    // @implements BS-050.1: Public Visibility Requires Published Article AND Public Category — public flag accessor
     function isPublic() { return ($this->ht['ispublic']); }
+    // @implements FS-032.14: FAQ Category Create / Edit Form — raw record accessor (form prefill)
     function getHashtable() { return $this->ht; }
     
     /* ------------------> Setter methods <--------------------- */
+    // @implements FS-032.14: FAQ Category Create / Edit Form — name setter
     function setName($name) { $this->ht['name']=$name; }
+    // @implements FS-032.14: FAQ Category Create / Edit Form — notes setter
     function setNotes($notes) { $this->ht['notes']=$notes; }
+    // @implements FS-032.14: FAQ Category Create / Edit Form — description setter
     function setDescription($desc) { $this->ht['description']=$desc; }
 
     /* --------------> Database access methods <---------------- */
+    // @implements FS-032.14: FAQ Category Create / Edit Form — update existing category + reload
     function update($vars, &$errors) { 
 
         if(!$this->save($this->getId(), $vars, $errors))
@@ -73,6 +91,9 @@ class Category {
         return true;
     }
 
+    // @implements FS-032.16: FAQ Category Deletion Cascade — delete category + cascade-delete its FAQs
+    // @implements BS-032.16: Deleting a Category Deletes Its FAQs
+    // @implements BS-050.5: An Article Belongs to Exactly One Category; Deleting a Category Deletes Its Articles
     function delete() {
 
         $sql='DELETE FROM '.FAQ_CATEGORY_TABLE
@@ -89,10 +110,12 @@ class Category {
 
     /* ------------------> Static methods <--------------------- */
 
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — load category by id
     function lookup($id) {
         return ($id && is_numeric($id) && ($c = new Category($id)))?$c:null;
     }
 
+    // @implements BS-032.14: FAQ Category Name Is Trimmed, ≥3 Chars, and Unique — name→id lookup (uniqueness check)
     function findIdByName($name) {
         $sql='SELECT category_id FROM '.FAQ_CATEGORY_TABLE.' WHERE name='.db_input($name);
         list($id) = db_fetch_row(db_query($sql));
@@ -100,6 +123,7 @@ class Category {
         return $id;
     }
 
+    // @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — load category by name
     function findByName($name) {
         if(($id=self::findIdByName($name)))
             return new Category($id);
@@ -107,14 +131,18 @@ class Category {
         return false;
     }
 
+    // @implements FS-032.14: FAQ Category Create / Edit Form — validation-only save pass
     function validate($vars, &$errors) {
          return self::save(0, $vars, $errors,true);
     }
 
+    // @implements FS-032.14: FAQ Category Create / Edit Form — create new category
     function create($vars, &$errors) {
         return self::save(0, $vars, $errors);
     }
 
+    // @implements FS-032.14: FAQ Category Create / Edit Form — validate + insert/update category (name HTML-stripped, desc safe-HTML)
+    // @implements BS-032.14: FAQ Category Name Is Trimmed, ≥3 Chars, and Unique
     function save($id, $vars, &$errors, $validation=false) {
 
         //Cleanup.

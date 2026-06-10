@@ -24,6 +24,7 @@ $settingOptions=array(
                 'autoresp' => 'Autoresponder Settings',
                 'alerts' => 'Alerts and Notices Settings');
 //Handle a POST.
+// @implements FS-032.2: Settings Save Dispatch & Per-Tab Validation — updateSettings dispatch + "{tab} Updated Successfully"
 if($_POST && !$errors) {
     if($cfg && $cfg->updateSettings($_POST,$errors)) {
         $msg=Format::htmlchars($settingOptions[$_POST['t']]).' Updated Successfully';
@@ -32,6 +33,8 @@ if($_POST && !$errors) {
     }
 }
 
+// @implements FS-032.1: Settings Panel Entry & Tab Routing — resolve active tab (default 'system')
+// @implements BS-032.2: Invalid Save Re-Displays Submitted Values — repopulate from POST on error
 $target=($_REQUEST['t'] && $settingOptions[$_REQUEST['t']])?$_REQUEST['t']:'system';
 $config=($errors && $_POST)?Format::input($_POST):Format::htmlchars($cfg->getConfigInfo());
 

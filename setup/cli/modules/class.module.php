@@ -1,5 +1,6 @@
 <?php
 
+// @implements FS-092.4: Option parsing (argparse-style) — Option model: short/long forms, action, type coercion, default, metavar, nargs
 class Option {
 
     var $default = false;
@@ -32,6 +33,8 @@ class Option {
             && $this->action != 'store_false';
     }
 
+    // @implements FS-092.4: Option parsing (argparse-style) — handleValue: store/store_true/store_false/store_const/append + int coercion
+    // @implements EC-092-04: Value mis-consumption guard — leading-dash value is treated as the next option, not consumed
     function handleValue(&$destination, $args) {
         $nargs = 0;
         $value = ($this->hasArg()) ? array_shift($args) : null;
@@ -68,6 +71,7 @@ class Option {
         return $nargs;
     }
 
+    // @implements FS-092.5: Option help formatting, required-argument validation & error exit — aligned switch column + word-wrapped help
     function toString() {
         $short = explode(':', $this->short);
         $long = explode(':', $this->long);
@@ -89,6 +93,7 @@ class Option {
     }
 }
 
+// @implements FS-092.5: Option help formatting, required-argument validation & error exit — OutputStream: thin stdout/stderr write wrapper for CLI output
 class OutputStream {
     var $stream;
 
@@ -104,6 +109,10 @@ class OutputStream {
     }
 }
 
+// @implements FS-092.2: Self-registering action module model — base CLI module + static register/getInstance registry
+// @implements FS-092.3: Aggregated and per-module help rendering — per-module help
+// @implements FS-092.4: Option parsing (argparse-style) — option parsing
+// @implements FS-092.5: Option help formatting, required-argument validation & error exit — required-arg validation
 class Module {
 
     var $options = array();
@@ -134,6 +143,7 @@ class Module {
         $this->stderr = new OutputStream('php://stderr');
     }
 
+    // @implements FS-092.3: Aggregated and per-module help rendering — per-module help: prologue + Usage + Options + Arguments + epilog
     function showHelp() {
         if ($this->prologue)
             echo $this->prologue . "\n\n";
@@ -187,6 +197,8 @@ class Module {
         return $default;
     }
 
+    // @implements FS-092.4: Option parsing (argparse-style) — parseOptions: bind positional args by index, apply option defaults, autohelp
+    // @implements EC-092-03: Missing required argument — required-arg check raises optionError
     function parseOptions() {
         if (is_array($this->_options))
             return;
@@ -211,6 +223,8 @@ class Module {
         }
     }
 
+    // @implements FS-092.5: Option help formatting, required-argument validation & error exit — optionError: print "Error: ..." + help, then terminate
+    // @implements EC-092-03: Missing required argument — error message + help + die
     function optionError($error) {
         echo "Error: " . $error . "\n\n";
         $this->showHelp();
@@ -227,6 +241,8 @@ class Module {
     function run($args, $options) {
     }
 
+    // @implements FS-092.2: Self-registering action module model — register/getInstance over the global registry
+    // @implements BS-092-03: Module self-registration — self-registration into global registered_modules
     /* static */
     function register($action, $class) {
         global $registered_modules;
@@ -238,6 +254,7 @@ class Module {
         return $registered_modules[$action];
     }
 
+    // @implements FS-092.4: Option parsing (argparse-style) — parseArgs: --opt=value splitting, short/long matching, positional collection
     function parseArgs($argv) {
         $options = $args = array();
         $argv = array_slice($argv, 0);

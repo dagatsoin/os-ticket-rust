@@ -1,6 +1,8 @@
 <?php
+// @implements FS-042.11: Banlist — Banned Email Address Interface — in-partial admin gate for single ban-rule add/edit (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
+// @implements FS-042.11: Banlist — Banned Email Address Interface — add-vs-update mode select for a single ban entry
 $info=array();
 $qstr='';
 if($rule && $_REQUEST['a']!='add'){
@@ -19,6 +21,8 @@ if($rule && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-042.11: Banlist — Banned Email Address Interface — ban entry form (Ban Status radio, required Email Address value, notes; CSRF) */ ?>
+<?php /* @implements BS-042-14: Ban entry shape — every banlist entry is an email+equal+address rule on the reserved filter */ ?>
 <form action="banlist.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">

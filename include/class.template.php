@@ -15,6 +15,8 @@
 **********************************************************************/
 require_once INCLUDE_DIR.'class.yaml.php';
 
+// @implements FS-040.6: Template Set Manage View (Message List) — named template set + per-message resolution
+// @implements BS-040.7: Fixed Template Type Catalog — the 13-message-type catalog this set carries
 class EmailTemplateGroup {
 
     var $id;
@@ -143,6 +145,8 @@ class EmailTemplateGroup {
         return $this->all_names[$name];
     }
 
+    // @implements FS-040.10: Template Resolution Fallback — resolve one message: stored row else packaged fallback
+    // @implements BS-040.13: Packaged-Default Fallback for Missing Messages — initial-data fallback when row absent
     function getMsgTemplate($name) {
         global $ost;
 
@@ -156,6 +160,7 @@ class EmailTemplateGroup {
         return false;
     }
 
+    // @implements FS-040.6: Template Set Manage View (Message List) — load stored per-message templates keyed by code_name
     function getTemplates() {
         if (!$this->_tempates) {
             $this->_templates = array();
@@ -177,6 +182,7 @@ class EmailTemplateGroup {
     }
 
 
+    // @implements BS-040.7: Fixed Template Type Catalog — per-event template accessors (ticket/message/note/assign/transfer/overdue, etc.)
     function getNewTicketAlertMsgTemplate() {
         return $this->getMsgTemplate('ticket.alert');
     }
@@ -225,6 +231,8 @@ class EmailTemplateGroup {
         return $this->getMsgTemplate('ticket.overdue');
     }
 
+    // @implements FS-040.9: Template Set Bulk Actions (Enable / Disable / Delete) — update set
+    // @implements BS-040.10: Only Non-In-Use Sets May Be Disabled — in-use set cannot be disabled
     function update($vars,&$errors) {
 
         if(!$vars['isactive'] && $this->isInUse())
@@ -246,6 +254,8 @@ class EmailTemplateGroup {
         return (!$this->isInUse() && $this->setStatus(0));
     }
 
+    // @implements BS-040.11: Default / In-Use Sets May Not Be Deleted — delete blocked if in use/default
+    // @implements BS-040.12: Set Deletion Cascades to Messages and Clears Dept References — detach depts + drop member templates
     function delete(){
         global $cfg;
 
@@ -284,6 +294,8 @@ class EmailTemplateGroup {
         return ($id && is_numeric($id) && ($t= new EmailTemplateGroup($id)) && $t->getId()==$id)?$t:null;
     }
 
+    // @implements FS-040.8: Template Set Create (Clone-Based) — validate + insert/update set; new set clones rows from a base set
+    // @implements BS-040.9: New Sets Are Cloned From an Existing Set — clone source rows on create
     function save($id, $vars, &$errors) {
         global $ost;
 
@@ -339,6 +351,7 @@ class EmailTemplateGroup {
     }
 }
 
+// @implements FS-040.7: Per-Message Template Editing — a single message template (subject/body) within a set
 class EmailTemplate {
 
     var $id;
@@ -422,6 +435,7 @@ class EmailTemplate {
         return true;
     }
 
+    // @implements FS-040.7: Per-Message Template Editing — validate + insert/update one message (subject/body required)
     function save($id, $vars, &$errors) {
         if(!$vars['subj'])
             $errors['subj']='Message subject required';
@@ -466,6 +480,7 @@ class EmailTemplate {
         return self::lookup(self::create($vars, $errors));
     }
 
+    // @implements FS-040.10: Template Resolution Fallback — look up a stored template by set id + code_name
     function lookupByName($tpl_id, $name, $group=null) {
         $sql = 'SELECT id FROM '.EMAIL_TEMPLATE_TABLE
             .' WHERE tpl_id='.db_input($tpl_id)
@@ -485,6 +500,7 @@ class EmailTemplate {
      * file should be free flow text. The first line is the subject and the
      * rest of the file is the body.
      */
+    // @implements BS-040.13: Packaged-Default Fallback for Missing Messages — load fallback from packaged <lang>/templates/<name>.yaml
     function fromInitialData($name, $group=null) {
         $templ = new EmailTemplate(0, $group);
         $lang = ($group) ? $group->getLanguage() : 'en_US';

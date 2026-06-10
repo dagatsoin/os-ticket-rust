@@ -18,6 +18,7 @@
 
 include_once(INCLUDE_DIR.'class.email.php');
 
+// @implements FS-040.12: Outbound Mail Composition & From-Address Selection — Mailer outbound composer
 class Mailer {
 
     var $email;
@@ -29,6 +30,8 @@ class Mailer {
     var $smtp = array();
     var $eol="\n";
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — account/transport selection precedence
+    // @implements BS-040.21: Sender / Transport Selection Precedence
     function Mailer($email=null, $options=array()) {
         global $cfg;
 
@@ -65,6 +68,7 @@ class Mailer {
         $this->ht['from'] = $from;
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — From = "Name" <address> of sending account
     function getFromAddress() {
 
         if(!$this->ht['from'] && ($email=$this->getEmail()))
@@ -86,6 +90,9 @@ class Mailer {
         $this->attachments = array_merge($this->attachments, $attachments);
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — compose MIME, set headers, route SMTP/native
+    // @implements BS-040.22: Message-Class Headers Suppress Mail Loops
+    // @implements BS-040.28: Outbound Line-Ending Resolution
     function send($to, $subject, $message, $options=null) {
         global $ost;
 
@@ -240,6 +247,7 @@ class Mailer {
 
     }
 
+    // @implements FS-040.12: Outbound Mail Composition & From-Address Selection — log SMTP failure without emailing (loop-safe)
     function logError($error) {
         global $ost;
         //NOTE: Admin alert override - don't email when having email trouble!
@@ -250,6 +258,7 @@ class Mailer {
 
     //Emails using native php mail function - if DB connection doesn't exist.
     //Don't use this function if you can help it.
+    // @implements FS-040.13: Specialized Send Wrappers — low-level no-bounce notice send via native transport
     function sendmail($to, $subject, $message, $from) {
         $mailer = new Mailer(null, array('notice'=>true, 'nobounce'=>true));
         $mailer->setFromAddress($from);

@@ -1,3 +1,4 @@
+<?php /* @implements FS-031.3: Create / Edit a Staff Account — staff create/edit form: admin gate, add-vs-update mode + add-mode defaults (change_passwd/isactive/isvisible on, isadmin off), error-repopulation */ ?>
 <?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
@@ -102,6 +103,11 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
         </tr>
         <tr>
             <th colspan="2">
+<?php
+/* @implements FS-031.3: Create / Edit a Staff Account — Account Password section: passwd1/passwd2 (temp required on add, optional on edit), Forced Password Change checkbox; signature textarea follows */
+/* @implements FS-031.5: Staff Field Validation — temp-password required-on-add / optional-on-edit rule */
+/* @implements BS-031-013: Forced password change on first login */
+?>
                 <em><strong>Account Password</strong>: <?php echo $passwd_text; ?> &nbsp;<span class="error">&nbsp;<?php echo $errors['temppasswd']; ?></span></em>
             </th>
         </tr>
@@ -146,6 +152,10 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
         </tr>
         <tr>
             <th colspan="2">
+<?php
+/* @implements FS-031.3: Create / Edit a Staff Account — Account Status & Settings: Account Type (Admin/Staff isadmin), Account Status (Active/Locked), Assigned Group (required), Primary Department (required), Time Zone (required) + daylight, Limited Access, Directory Listing, Vacation Mode */
+/* @implements FS-031.5: Staff Field Validation — required group/department/timezone enforcement */
+?>
                 <em><strong>Account Status & Settings</strong>: Dept. and assigned group controls access permissions.</em>
             </th>
         </tr>
@@ -265,6 +275,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                     Staff on vacation mode. (<i>No ticket assignment or alerts</i>)
             </td>
         </tr>
+        <?php /* @implements FS-031.3: Create / Edit a Staff Account — Assigned Teams: checkbox per team (disabled teams flagged); Admin Notes textarea */ ?>
         <?php
          //List team assignments.
          $sql='SELECT team.team_id, team.name, isenabled FROM '.TEAM_TABLE.' team  ORDER BY team.name';

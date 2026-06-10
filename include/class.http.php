@@ -13,8 +13,10 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-003.22: HTTP response helpers — status lines, responses, redirects, downloads
 class Http {
     
+    // @implements FS-003.22: HTTP response helpers — map status code to verbose status-line text
     function header_code_verbose($code) {
         switch($code):
         case 200: return '200 OK';
@@ -30,6 +32,7 @@ class Http {
         endswitch;
     }
     
+    // @implements FS-003.22: HTTP response helpers — emit full HTTP response and terminate
     function response($code,$content,$contentType='text/html',$charset='UTF-8') {
 		
         header('HTTP/1.1 '.Http::header_code_verbose($code));
@@ -41,6 +44,7 @@ class Http {
         exit;
     }
 
+    // @implements FS-003.22: HTTP response helpers — Location redirect (legacy IIS<7 Refresh fallback)
     function redirect($url,$delay=0,$msg='') {
 
         $iis = strpos($_SERVER['SERVER_SOFTWARE'], 'IIS') !== false;
@@ -56,6 +60,7 @@ class Http {
         exit;
     }
 
+    // @implements FS-003.22: HTTP response helpers — file download headers + bytes (used by FS-090 export)
     function download($filename, $type, $data=null) {
         header('Pragma: public');
         header('Expires: 0');

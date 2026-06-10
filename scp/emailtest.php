@@ -19,6 +19,7 @@ include_once(INCLUDE_DIR.'class.csrf.php');
 $info=array();
 $info['subj']='osTicket test email';
 
+// @implements FS-040.12: Outbound Mail Composition & From-Address Selection — diagnostic test send from a chosen account
 if($_POST){
     $errors=array();
     $email=null;
@@ -47,6 +48,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 $nav->setTabActive('emails');
 require(STAFFINC_DIR.'header.inc.php');
 ?>
+<!-- @implements FS-040.12: Outbound Mail Composition & From-Address Selection — test-email form (FROM account, recipient, subject, message) -->
 <form action="emailtest.php" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">

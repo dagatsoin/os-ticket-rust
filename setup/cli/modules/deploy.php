@@ -2,6 +2,7 @@
 require_once dirname(__file__) . "/class.module.php";
 require_once dirname(__file__) . "/unpack.php";
 
+// @implements FS-092.6: Continuous deployment from a source repository — Deployment module (--dry-run/--setup/--include), preserves relocated include/
 class Deployment extends Unpacker {
     var $prologue = "Deploys osTicket into target install path";
 
@@ -24,6 +25,7 @@ class Deployment extends Unpacker {
         call_user_func_array(array('parent', '__construct'), func_get_args());
     }
 
+    // @implements FS-092.6: Continuous deployment from a source repository — locate repo root by walking up to main.inc.php
     function find_root_folder() {
         # Hop up to the root folder of this repo
         $start = dirname(__file__);
@@ -34,6 +36,9 @@ class Deployment extends Unpacker {
         return realpath($start);
     }
 
+    // @implements FS-092.6: Continuous deployment from a source repository — run: create dest, copy tree minus include/, then include/, rewrite INCLUDE_DIR on relocation
+    // @implements BS-092-06: Upgrade preserves the existing include location — detect upgrade via existing main.inc.php, reuse current INCLUDE_DIR
+    // @implements EC-092-05: Destination cannot be created — die when mkdir of the install path fails
     function run($args, $options) {
         $this->destination = $args['install-path'];
         if (!is_dir($this->destination))

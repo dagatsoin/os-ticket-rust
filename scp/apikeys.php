@@ -16,12 +16,15 @@
 require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.api.php');
 
+// @implements FS-043.2: API Key Administration Screens — key id lookup, "Unknown or invalid API key ID." on miss
 $api=null;
 if($_REQUEST['id'] && !($api=API::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid API key ID.';
 
+// @implements FS-043.2: API Key Administration Screens — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-043.1: API Key Entity & Auto-Generated Secret — edit key (status/flags/notes only; IP+secret immutable)
         case 'update':
             if(!$api){
                 $errors['err']='Unknown or invalid API key.';
@@ -31,6 +34,7 @@ if($_POST){
                 $errors['err']='Error updating API key. Try again!';
             }
             break;
+        // @implements FS-043.1: API Key Entity & Auto-Generated Secret — add key with required bound IP + auto-generated secret
         case 'add':
             if(($id=API::add($_POST,$errors))){
                 $msg='API key added successfully';
@@ -39,6 +43,7 @@ if($_POST){
                 $errors['err']='Unable to add an API key. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-043.2: API Key Administration Screens — bulk enable/disable/delete keys
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one API key';
@@ -93,6 +98,7 @@ if($_POST){
     }
 }
 
+// @implements FS-043.2: API Key Administration Screens — list vs. add/edit form routing
 $page='apikeys.inc.php';
 if($api || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='apikey.inc.php';

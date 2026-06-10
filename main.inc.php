@@ -15,6 +15,8 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+    // @implements BS-001: Direct-Access Guard On Include Files — refuses direct browser access to the master include with "kwaheri rafiki!"
+    // @implements BS-002: Runtime Security Hardening On Every Request — neutralizes legacy register_globals injection before loading config
     #Disable direct access.
     if(!strcasecmp(basename($_SERVER['SCRIPT_NAME']),basename(__FILE__))) die('kwaheri rafiki!');
 
@@ -26,6 +28,8 @@
                unset($$key);
     }
 
+    // @implements BS-002: Runtime Security Hardening On Every Request — disables remote url fopen/include, trans-sid, caching; sets safe error profile
+    // @implements KL-001: Bootstrap Forces Error Display On — display_errors/display_startup_errors forced on, contradicting the guidance comment
     #Disable url fopen && url include
     ini_set('allow_url_fopen', 0);
     ini_set('allow_url_include', 0);
@@ -47,6 +51,7 @@
     ini_set('display_errors', 1);
     ini_set('display_startup_errors', 1);
 
+    // @implements BS-003: Timezone Defaulting — auto-detects the timezone, falling back to America/New_York when the runtime has none configured
     //Default timezone
     if (!ini_get('date.timezone')) {
         if(function_exists('date_default_timezone_set')) {
@@ -59,6 +64,8 @@
         }
     }
 
+    // @implements FS-001.2: Environment Constants & Table-Name Constants — derives ROOT_DIR/INCLUDE_DIR/PEAR_DIR/etc. and THIS_VERSION
+    // @implements FS-001.3: Root-Path (URL Base) Resolution — resolves ROOT_PATH from the request environment via osTicket::get_root_path
     #Set Dir constants
     define('ROOT_DIR',str_replace('\\', '/', realpath(dirname(__FILE__))).'/'); #Get real path for root dir ---linux and windows
     define('INCLUDE_DIR',ROOT_DIR.'include/'); //Change this if include is moved outside the web path.
@@ -82,6 +89,9 @@
     if (!defined('ROOT_PATH') && ($rp = osTicket::get_root_path(dirname(__file__))))
         define('ROOT_PATH', rtrim($rp, '/').'/');
 
+    // @implements FS-001.4: Configuration-File Discovery & Bootstrap of Static Settings — searches legacy/current config paths, records CONFIG_FILE, synthesizes SECRET_SALT
+    // @implements BS-006: Fail-Closed On Bootstrap Failure — 500 "Error loading settings" when no config and no installer; unresolved ROOT_PATH 500
+    // @implements BS-060-02: Runtime config self-redirects to installer until installed — redirects to setup/ when no config file exists but the installer is present
     #load config info
     $configfile='';
     if(file_exists(ROOT_DIR.'ostconfig.php')) //Old installs prior to v 1.6 RC5
@@ -119,6 +129,8 @@
     ini_set('include_path', './'.PATH_SEPARATOR.INCLUDE_DIR.PATH_SEPARATOR.PEAR_DIR);
 
 
+    // @implements FS-001.1: Master Bootstrap Include — loads the shared helper classes and the DB driver in fixed bootstrap order
+    // @implements FS-001.2: Environment Constants & Table-Name Constants — defines SESSION_SECRET/SESSION_TTL, file-upload and ticket-id constants
     #include required files
     require(INCLUDE_DIR.'class.misc.php');
     require(INCLUDE_DIR.'class.ostsession.php');
@@ -153,6 +165,9 @@
 
     define('EXT_TICKET_ID_LEN',6); //Ticket create. when you start getting collisions. Applies only on random ticket ids.
 
+    // @implements FS-001.2: Environment Constants & Table-Name Constants — defines every *_TABLE constant as TABLE_PREFIX + bare table name
+    // @implements FS-091.15: Installed Table Inventory — the canonical system-wide persistence table names addressed symbolically
+    // @implements KL-006: Legacy email_banlist Table Constant Retained But Unused — BANLIST_TABLE defined but unused as of v1.7
     #Tables being used sytem wide
     define('CONFIG_TABLE',TABLE_PREFIX.'config');
     define('SYSLOG_TABLE',TABLE_PREFIX.'syslog');
@@ -200,12 +215,16 @@
     define('API_KEY_TABLE',TABLE_PREFIX.'api_key');
     define('TIMEZONE_TABLE',TABLE_PREFIX.'timezone');
 
+    // @implements KL-005: X-Forwarded-For Is Trusted Unconditionally — overwrites REMOTE_ADDR with the left-most forwarded address without proxy verification
     #Global override
     if (isset($_SERVER['HTTP_X_FORWARDED_FOR']))
         // Take the left-most item for X-Forwarded-For
         $_SERVER['REMOTE_ADDR'] = array_pop(
             explode(',', trim($_SERVER['HTTP_X_FORWARDED_FOR'])));
 
+    // @implements FS-001.5: System & Configuration Singleton Startup — db_connect (with optional SSL), osTicket::start, and $cfg materialization
+    // @implements FS-001.6: Fatal-Error Handling During Bootstrap — on DB/singleton failure emails admin "osTicket Fatal Error" and 500s the requester
+    // @implements BS-006: Fail-Closed On Bootstrap Failure — generic 500 to the visitor, internal reason only in the operator email
     #Connect to the DB && get configuration from database
     $ferror=null;
     $options = array();
@@ -239,6 +258,7 @@
     #pagenation default - user can override it!
     define('DEFAULT_PAGE_LIMIT', $cfg->getPageSize()?$cfg->getPageSize():25);
 
+    // @implements BS-004: Request-Data Normalization (Magic-Quotes Cleanup) — strips runtime-added slashes from POST/GET/REQUEST on legacy hosts
     #Cleanup magic quotes crap.
     if(function_exists('get_magic_quotes_gpc') && get_magic_quotes_gpc()) {
         $_POST=Format::strip_slashes($_POST);

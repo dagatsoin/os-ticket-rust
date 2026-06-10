@@ -16,16 +16,20 @@
 require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.filter.php');
 require_once(INCLUDE_DIR.'class.canned.php');
+// @implements FS-042.2: Create / Edit Filter — filter id lookup, "Unknown or invalid filter." on miss
 $filter=null;
 if($_REQUEST['id'] && !($filter=Filter::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid filter.';
 
 /* NOTE: Banlist has its own interface*/
+// @implements EC-042-1: Reserved SYSTEM BAN LIST redirected to dedicated banlist interface
 if($filter && $filter->isSystemBanlist())
     header('Location: banlist.php');
 
+// @implements FS-042.2: Create / Edit Filter — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-042.2: Create / Edit Filter — update existing filter
         case 'update':
             if(!$filter){
                 $errors['err']='Unknown or invalid filter.';
@@ -35,6 +39,7 @@ if($_POST){
                 $errors['err']='Error updating filter. Try again!';
             }
             break;
+        // @implements FS-042.2: Create / Edit Filter — create new filter
         case 'add':
             if((Filter::create($_POST,$errors))){
                 $msg='Filter added successfully';
@@ -43,6 +48,7 @@ if($_POST){
                 $errors['err']='Unable to add filter. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-042.10: Mass Filter Operations — mass enable/disable/delete (banlist excluded from delete)
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one filter to process.';
@@ -98,6 +104,8 @@ if($_POST){
     }
 }
 
+// @implements FS-042.1: Filter Catalogue & Listing — list partial routing
+// @implements FS-042.2: Create / Edit Filter — editor partial routing
 $page='filters.inc.php';
 if($filter || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='filter.inc.php';

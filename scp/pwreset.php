@@ -28,12 +28,15 @@ require_once(INCLUDE_DIR.'class.staff.php');
 require_once(INCLUDE_DIR.'class.csrf.php');
 
 $tpl = 'pwreset.php';
+// @implements FS-002.3: Staff password reset — multi-step reset flow dispatch
+// @implements FS-002.7: CSRF protection on state-changing requests — verify token on reset POST
 if($_POST) {
     if (!$ost->checkCSRFToken()) {
         Http::response(400, 'Valid CSRF Token Required');
         exit;
     }
     switch ($_POST['do']) {
+        // @implements FS-002.4: Reset-email token issuance and storage — send the reset email for a resolved user
         case 'sendmail':
             if (($staff=Staff::lookup($_POST['userid']))) {
                 if (!$staff->sendResetEmail()) {
@@ -44,6 +47,7 @@ if($_POST) {
                 $msg = 'Unable to verify username '
                     .Format::htmlchars($_POST['userid']);
             break;
+        // @implements FS-002.3: Staff password reset — validate reset token, force change, and log the user in
         case 'newpasswd':
             // TODO: Compare passwords
             $tpl = 'pwreset.login.php';
@@ -70,6 +74,7 @@ if($_POST) {
             break;
     }
 }
+// @implements FS-002.3: Staff password reset — GET with reset token routes to the re-enter-username form
 elseif ($_GET['token']) {
     $msg = 'Re-enter your username or email';
     $_config = new Config('pwreset');

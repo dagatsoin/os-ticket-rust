@@ -17,6 +17,10 @@ require('client.inc.php');
 define('SOURCE','Web'); //Ticket source.
 $ticket = null;
 $errors=array();
+// @implements FS-011.1: New-Ticket Request Handler — processes the web new-ticket POST, forcing deptId/emailId to 0 per BS-011.1
+// @implements FS-011.5: CAPTCHA Challenge (Anonymous Submitters) — verifies the session captcha hash for anonymous submitters
+// @implements FS-011.7: Attachment Submission — formats $_FILES attachments when online attachments are allowed
+// @implements FS-011.9: Ticket Creation, Routing, and Reference Assignment — Ticket::create on validated web-form input
 if($_POST):
     $vars = $_POST;
     $vars['deptId']=$vars['emailId']=0; //Just Making sure we don't accept crap...only topicId is expected.
@@ -50,6 +54,9 @@ if($_POST):
 endif;
 
 //page
+// @implements FS-011.10: Success / Thank-You Response — renders the topic/thank-you page with the ticket number masked as XXXXXX
+// @implements BS-011.6: Ticket Number Is Never Displayed On-Screen at Creation — masks %{ticket.number}/extId vars before display
+// @implements FS-090.4: Client Portal Navigation Links — sets the 'new' (Open New Ticket) nav tab active
 $nav->setActiveNav('new');
 require(CLIENTINC_DIR.'header.inc.php');
 if($ticket

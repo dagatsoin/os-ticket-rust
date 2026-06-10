@@ -16,6 +16,7 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-040.11: Variable Substitution Grammar — %{obj.path} substitution engine for templates/canned text
 class VariableReplacer {
 
     var $start_delim;
@@ -47,6 +48,7 @@ class VariableReplacer {
         return @$this->objects[$tag];
     }
 
+    // @implements FS-040.11: Variable Substitution Grammar — register objects/scalars resolvable by tag name
     function assign($var, $val='') {
 
         if($val && is_object($val)) {
@@ -59,6 +61,8 @@ class VariableReplacer {
         }
     }
 
+    // @implements BS-040.14: Tokens Are Dot-Path Traversals — resolve dotted var path against an object
+    // @implements BS-040.15: Object Segment Resolution via Accessor Convention — get<Part>()/asVar()/getVar() chain
     function getVar($obj, $var) {
 
         if(!$obj) return "";
@@ -90,6 +94,7 @@ class VariableReplacer {
         return $this->getVar($rv, $part);
     }
 
+    // @implements BS-040.18: Substitution Applies Across String or Array Inputs — replace %{...} tags recursively
     function replaceVars($input) {
 
         if($input && is_array($input))
@@ -118,6 +123,8 @@ class VariableReplacer {
         return false;
     }
 
+    // @implements FS-040.11: Variable Substitution Grammar — extract %{...} tags and resolve each
+    // @implements BS-040.17: Unknown Tokens Are Preserved, Not Blanked — unresolved tags left intact
     function _parse($text) {
 
         $input = $text;

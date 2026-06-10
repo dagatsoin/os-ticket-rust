@@ -1,10 +1,12 @@
 <?php
+// @implements FS-031.10: Own Profile View & Edit — staff-session gate + loaded-subject self-service profile (else die 'Access Denied')
 if(!defined('OSTSTAFFINC') || !$staff || !$thisstaff) die('Access Denied');
 
 $info=$staff->getInfo();
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 $info['id']=$staff->getId();
 ?>
+<?php /* @implements FS-031.10: Own Profile View & Edit — contact info fields (name/email/phone/mobile; username read-only); CSRF */ ?>
 <form action="profile.php" method="post" id="save" autocomplete="off">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="update">
@@ -74,6 +76,8 @@ $info['id']=$staff->getId();
                 &nbsp;<span class="error">&nbsp;<?php echo $errors['mobile']; ?></span>
             </td>
         </tr>
+        <?php /* @implements FS-031.10: Own Profile View & Edit — Preferences section (timezone + DST, max page size, auto-refresh rate, default signature, default paper size, show-assigned admin/manager-only) */ ?>
+        <?php /* @implements BS-031-012: Per-Staff Display Preferences — max page size / auto-refresh / paper size editable only on own profile */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Preferences</strong>: Profile preferences and settings.</em>
@@ -185,6 +189,8 @@ $info['id']=$staff->getId();
             </td>
         </tr>
         <?php } ?>
+        <?php /* @implements FS-031.13: Own-Profile Password Change Section — current + new + confirm; current-password skipped on reset-token path */ ?>
+        <?php /* @implements BS-031-013: Password Rules — >=6 chars, must match, reset-token substitutes for current password */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Password</strong>: To reset your password, provide your current password and a new password below.&nbsp;<span class="error">&nbsp;<?php echo $errors['passwd']; ?></span></em>

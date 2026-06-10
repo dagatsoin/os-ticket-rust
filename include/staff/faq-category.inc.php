@@ -1,4 +1,5 @@
 <?php
+// @implements FS-050.15: Staff Category Detail (`faq-category.inc.php`) — staff access gate; single FAQ-category view: header, description, FAQ list under category
 if(!defined('OSTSTAFFINC') || !$category || !$thisstaff) die('Access Denied');
 
 ?>
@@ -17,6 +18,7 @@ if(!defined('OSTSTAFFINC') || !$category || !$thisstaff) die('Access Denied');
 <?php echo Format::safe_html($category->getDescription()); ?>
 </div>
 <?php
+// @implements FS-050.8: Staff FAQ Management Permission Gate — manage-bar (edit/delete category, add FAQ) only for staff with canManageFAQ
 if($thisstaff->canManageFAQ()) {
     echo sprintf('<div class="cat-manage-bar"><a href="categories.php?id=%d" class="Icon editCategory">Edit Category</a>
              <a href="categories.php" class="Icon deleteCategory">Delete Category</a>

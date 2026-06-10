@@ -15,6 +15,8 @@
 **********************************************************************/
 require('admin.inc.php');
 include_once(INCLUDE_DIR.'class.template.php');
+// @implements FS-040.5: Email Template Set Listing — template group lookup, "Unknown or invalid template group ID." on miss
+// @implements FS-040.7: Per-Message Template Editing — individual template lookup, "Unknown or invalid template ID." on miss
 $template=null;
 if($_REQUEST['tpl_id'] &&
         !($template=EmailTemplateGroup::lookup($_REQUEST['tpl_id'])))
@@ -23,8 +25,10 @@ elseif($_REQUEST['id'] &&
         !($template=EmailTemplate::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid template ID.';
 
+// @implements FS-040.7: Per-Message Template Editing — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-040.7: Per-Message Template Editing — update an existing message template
         case 'updatetpl':
             if(!$template){
                 $errors['err']='Unknown or invalid template';
@@ -35,6 +39,7 @@ if($_POST){
                 $errors['err']='Error updating message template. Try again!';
             }
             break;
+        // @implements FS-040.7: Per-Message Template Editing — implement (add) a not-yet-customized message template
         case 'implement':
             if(!$template){
                 $errors['err']='Unknown or invalid template';
@@ -45,6 +50,7 @@ if($_POST){
                 $errors['err']='Error updating message template. Try again!';
             }
             break;
+        // @implements FS-040.5: Email Template Set Listing — update template group properties
         case 'update':
             if(!$template){
                 $errors['err']='Unknown or invalid template';
@@ -54,6 +60,7 @@ if($_POST){
                 $errors['err']='Error updating template. Try again!';
             }
             break;
+        // @implements FS-040.8: Template Set Create (Clone-Based) — add a new template set cloned from an existing one
         case 'add':
             if(($new=EmailTemplateGroup::add($_POST,$errors))){
                 $template=$new;
@@ -63,6 +70,7 @@ if($_POST){
                 $errors['err']='Unable to add template. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-040.9: Template Set Bulk Actions (Enable / Disable / Delete) — in-use sets skipped on disable/delete
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err']='You must select at least one template to process.';
@@ -119,6 +127,8 @@ if($_POST){
     }
 }
 
+// @implements FS-040.5: Email Template Set Listing — list partial routing
+// @implements FS-040.6: Template Set Manage View (Message List) — manage/implement view routing
 $page='templates.inc.php';
 if($template && !strcasecmp($_REQUEST['a'],'manage')){
     $page='tpl.inc.php';

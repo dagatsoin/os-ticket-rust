@@ -1,5 +1,8 @@
 <?php
+// @implements FS-043.2: API Key Administration Screens — add/edit view second-layer admin gate (OSTADMININC + $thisstaff->isAdmin else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
+// @implements FS-043.2: API Key Administration Screens — add-vs-edit mode select
+// @implements FS-043.1: API Key Entity & Auto-Generated Secret — edit shows read-only IP/key (immutable secret)
 $info=array();
 $qstr='';
 if($api && $_REQUEST['a']!='add'){
@@ -17,6 +20,7 @@ if($api && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-043.2: API Key Administration Screens — add/edit form (Status radio, IP required on add, service checkboxes, notes; CSRF-protected) */ ?>
 <form action="apikeys.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">
@@ -43,6 +47,8 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 &nbsp;<span class="error">*&nbsp;</span>
             </td>
         </tr>
+        <?php /* @implements FS-043.1: API Key Entity & Auto-Generated Secret — edit mode shows IP Address + API Key read-only (immutable secret) */ ?>
+        <?php /* @implements BS-431: API Key Secret Is System-Generated and Immutable — no edit path for key/IP */ ?>
         <?php if($api){ ?>
         <tr>
             <td width="150">
@@ -69,6 +75,8 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             </td>
         </tr>
         <?php } ?>
+        <?php /* @implements FS-043.1: API Key Entity & Auto-Generated Secret — per-key permission flags (can_create_tickets + can_exec_cron) */ ?>
+        <?php /* @implements BS-430: API Keys Are IP-Bound, Single-Permission-Gated Secrets — endpoint-specific permission flag */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Services:</strong>: Check applicable API services enabled for the key.</em>

@@ -14,6 +14,9 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-031.8: Create / Edit a Group — permission group entity
+// @implements BS-031-020: Group Permission Flag Set (Canonical)
+// @implements BS-031-004: Group Membership Drives Permissions
 class Group {
 
     var $id;
@@ -22,12 +25,14 @@ class Group {
     var $members;
     var $departments;
 
+    // @implements FS-031.8: Create / Edit a Group — construct/load a group by id
     function Group($id){
 
         $this->id=0;
         return $this->load($id);
     }
 
+    // @implements BS-031-034: Group List Counts and Linkage — hydrate group + member count
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -73,6 +78,7 @@ class Group {
     }
 
 
+    // @implements BS-031-024: Group-Disabled Exemption for Admins — group enabled/disabled state
     function isEnabled(){
         return ($this->ht['isactive']);
     }
@@ -82,6 +88,7 @@ class Group {
     }
  
     //Get members of the group.
+    // @implements BS-031-034: Group List Counts and Linkage — resolve group member staff
     function getMembers() {
 
         if(!$this->members && $this->getNumUsers()) {
@@ -99,6 +106,7 @@ class Group {
     }
 
     //Get departments the group is allowed to access.
+    // @implements BS-031-021: Group↔Department Access Matrix — resolve accessible department ids (enforced by FS-002)
     function getDepartments() {
 
         if(!$this->departments) {
@@ -114,6 +122,7 @@ class Group {
     }
 
         
+    // @implements BS-031-021: Group↔Department Access Matrix — sync group↔department access (add checked, drop rest)
     function updateDeptAccess($depts) {
 
 
@@ -135,6 +144,7 @@ class Group {
         return true;
     }
 
+    // @implements FS-031.8: Create / Edit a Group — update group + re-sync department access
     function update($vars,&$errors) {
 
         if(!Group::save($this->getId(),$vars,$errors))
@@ -146,6 +156,7 @@ class Group {
         return true;
     }
 
+    // @implements BS-031-022: Group Deletion Requires Zero Members — refuse delete while members exist
     function delete() {
 
         //Can't delete with members
@@ -163,6 +174,7 @@ class Group {
     }
 
     /*** Static functions ***/
+    // @implements BS-031-019: Group Identity & Minimum Name Length — resolve group id by name (uniqueness check)
     function getIdByName($name){
         $sql='SELECT group_id FROM '.GROUP_TABLE.' WHERE group_name='.db_input(trim($name));
         if(($res=db_query($sql)) && db_num_rows($res))
@@ -171,10 +183,12 @@ class Group {
         return $id;
     }
 
+    // @implements FS-031.8: Create / Edit a Group — lookup helper
     function lookup($id){
         return ($id && is_numeric($id) && ($g= new Group($id)) && $g->getId()==$id)?$g:null;
     }
 
+    // @implements FS-031.8: Create / Edit a Group — create group + initial department access
     function create($vars, &$errors) { 
         if(($id=self::save(0,$vars,$errors)) && ($group=self::lookup($id)))
             $group->updateDeptAccess($vars['depts']);
@@ -182,6 +196,9 @@ class Group {
         return $id;
     }
 
+    // @implements FS-031.8: Create / Edit a Group — validate + persist group row
+    // @implements BS-031-019: Group Identity & Minimum Name Length — name required, >=3 chars, unique
+    // @implements BS-031-020: Group Permission Flag Set (Canonical) — persist all permission flags
     function save($id,$vars,&$errors) {
 
         if($id && $vars['id']!=$id)

@@ -1,3 +1,4 @@
+<?php /* @implements FS-050.4: Public Landing Page — Category Listing & Search Form (`knowledgebase.inc.php`) — public KB landing page: search form (q + category cid + help-topic topicId filters) over public published FAQs */ ?>
 <?php
 if(!defined('OSTCLIENTINC')) die('Access Denied');
 
@@ -54,6 +55,10 @@ if(!defined('OSTCLIENTINC')) die('Access Denied');
 </form>
 <hr>
 <div>
+<?php
+/* @implements FS-050.5: Public FAQ Search — search mode (q/cid/topicId present): numbered results over published+public FAQs */
+/* @implements FS-050.4: Public Landing Page — Category Listing & Search Form (`knowledgebase.inc.php`) — listing mode: public categories HAVING faqs>0 */
+?>
 <?php
 if($_REQUEST['q'] || $_REQUEST['cid'] || $_REQUEST['topicId']) { //Search.
     $sql='SELECT faq.faq_id, question '

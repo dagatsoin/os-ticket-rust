@@ -1,4 +1,10 @@
 <?php
+/* @implements FS-021.23a: Ticket-View Banners, Action Visibility & Reload Affordance — staff ticket view: re-check checkStaffAccess (defense in depth), compute lock/ban/assigned/overdue banners */
+/* @implements FS-021.2: Staff Access Check (`checkStaffAccess`) — defense-in-depth access re-check at the view */
+/* @implements FS-021.18: Collaborative Edit Locking (`TicketLock`, auto-lock, AJAX renew/release) — auto-acquire/renew lock on view */
+/* @implements BS-021.3: Edit-lock acquisition on ticket view */
+?>
+<?php
 //Note that ticket obj is initiated in tickets.php.
 if(!defined('OSTSCPINC') || !$thisstaff || !is_object($ticket) || !$ticket->getId()) die('Invalid path');
 
@@ -37,6 +43,7 @@ if($ticket->isOverdue())
     $warn.='&nbsp;&nbsp;<span class="Icon overdueTicket">Marked overdue!</span>';
 
 ?>
+<?php /* @implements FS-021.23a: Ticket-View Banners, Action Visibility & Reload Affordance — action bar: More menu (canBanEmails OR dept manager) w/ Release/Mark-Overdue/Answered/Ban-Unban; Delete/Close-Reopen/Edit/Claim/Print buttons gated by permission + open/closed/assigned state */ ?>
 <table width="940" cellpadding="2" cellspacing="0" border="0">
     <tr>
         <td width="50%" class="has_bottom_border">
@@ -127,6 +134,7 @@ if($ticket->isOverdue())
         </td>
     </tr>
 </table>
+<?php /* @implements FS-021.23a: Ticket-View Banners, Action Visibility & Reload Affordance — ticket info tables: status/priority/dept/create date + name/email (w/ related-ticket counts dropdown)/phone/source+IP */ ?>
 <table class="ticket_info" cellspacing="0" cellpadding="0" width="940" border="0">
     <tr>
         <td width="50">
@@ -332,6 +340,10 @@ if(!$cfg->showNotesInline()) { ?>
 </div>
 <?php
 } ?>
+<?php
+/* @implements FS-021.22: Ticket Thread Model (`Thread` / `ThreadEntry` / `Message` / `Response` / `Note`) — thread tabs + render: messages(M)/responses(R) always, notes(N) inline or separate tab per showNotesInline; thread-count = msgs+responses; attachment links per entry */
+/* @implements FS-021.23a: Ticket-View Banners, Action Visibility & Reload Affordance — notes-inline vs separate-tab display toggle */
+?>
 <div id="ticket_thread">
     <?php
     $threadTypes=array('M'=>'message','R'=>'response', 'N'=>'note');
@@ -378,6 +390,12 @@ if(!$cfg->showNotesInline()) { ?>
     <div id="msg_warning"><?php echo $warn; ?></div>
 <?php } ?>
 
+<?php
+/* @implements FS-021.3: Post Reply to Requester (`reply` → `postReply`) — Post Reply tab gated by canPostReply */
+/* @implements FS-021.4: Post Internal Note (`postnote` → `postNote`) — Post Internal Note tab */
+/* @implements FS-021.7: Assign / Reassign Ticket (`assign` → `assign`) — Assign/Reassign tab gated by canAssignTickets */
+/* @implements FS-021.10: Transfer Between Departments (`transfer` → `transfer`) — Dept. Transfer tab gated by canTransferTickets */
+?>
 <div id="response_options">
     <ul>
         <?php
@@ -399,6 +417,11 @@ if(!$cfg->showNotesInline()) { ?>
     </ul>
     <?php
     if($thisstaff->canPostReply()) { ?>
+    <?php
+    /* @implements FS-021.3: Post Reply to Requester (`reply` → `postReply`) — reply form (a=reply -> postReply): TO + Email Reply (pre-checked), canned-response prefill + Append, response body, close/reopen-on-reply status */
+    /* @implements FS-021.6: Reply Signature Selection — signature selector on the reply form */
+    /* @implements BS-021.18: Reply email-to-requester default-checked behavior */
+    ?>
     <form id="reply" action="tickets.php?id=<?php echo $ticket->getId(); ?>#reply" name="reply" method="post" enctype="multipart/form-data">
         <?php csrf_token(); ?>
         <input type="hidden" name="id" value="<?php echo $ticket->getId(); ?>">
@@ -523,6 +546,12 @@ if(!$cfg->showNotesInline()) { ?>
     </form>
     <?php
     } ?>
+    <?php
+    /* @implements FS-021.4: Post Internal Note (`postnote` → `postNote`) — note form (a=postnote -> postNote): required note body + optional title, attachments */
+    /* @implements FS-021.9: Release / Unassign Ticket (`process/release` → `release`/`unassign`) — manager-only unassigned state option */
+    /* @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — manager-only overdue/notdue state options */
+    /* @implements BS-021.13: Note state-change dropdown option set */
+    ?>
     <form id="note" action="tickets.php?id=<?php echo $ticket->getId(); ?>#note" name="note" method="post" enctype="multipart/form-data">
         <?php csrf_token(); ?>
         <input type="hidden" name="id" value="<?php echo $ticket->getId(); ?>">
@@ -629,6 +658,10 @@ if(!$cfg->showNotesInline()) { ?>
    </form>
     <?php
     if($thisstaff->canTransferTickets()) { ?>
+    <?php
+    /* @implements FS-021.10: Transfer Between Departments (`transfer` → `transfer`) — transfer form (a=transfer -> transfer): canTransferTickets; target dept select (excludes current), required >=5-char comments */
+    /* @implements BS-021.8: Transfer/assign comments minimum length (>=5 chars) */
+    ?>
     <form id="transfer" action="tickets.php?id=<?php echo $ticket->getId(); ?>#transfer" name="transfer" method="post" enctype="multipart/form-data">
         <?php csrf_token(); ?>
         <input type="hidden" name="ticket_id" value="<?php echo $ticket->getId(); ?>">
@@ -687,6 +720,11 @@ if(!$cfg->showNotesInline()) { ?>
     } ?>
     <?php
     if($thisstaff->canAssignTickets()) { ?>
+    <?php
+    /* @implements FS-021.7: Assign / Reassign Ticket (`assign` → `assign`) — assign/reassign form (a=assign -> assign): canAssignTickets; assignee select (staff s<id>/team t<id>, excludes current), required >=5-char comments */
+    /* @implements FS-021.8: Claim Ticket (`process/claim` and reply-form claim) — Claim self-option (claim optional) on the assign form */
+    /* @implements BS-021.8: Transfer/assign comments minimum length (>=5 chars) */
+    ?>
     <form id="assign" action="tickets.php?id=<?php echo $ticket->getId(); ?>#assign" name="assign" method="post" enctype="multipart/form-data">
         <?php csrf_token(); ?>
         <input type="hidden" name="id" value="<?php echo $ticket->getId(); ?>">
@@ -773,6 +811,7 @@ if(!$cfg->showNotesInline()) { ?>
     <?php
     } ?>
 </div>
+<?php /* @implements FS-021.17: Print Ticket to PDF (`a=print` → `pdfExport` / `Ticket2PDF`) — print-options dialog (a=print): toggle internal notes + paper size (Letter/Legal/A4/A3, session->staff-default fallback) */ ?>
 <div style="display:none;" class="dialog" id="print-options">
     <h3>Ticket Print Options</h3>
     <a class="close" href="">&times;</a>
@@ -812,6 +851,10 @@ if(!$cfg->showNotesInline()) { ?>
     </form>
     <div class="clear"></div>
 </div>
+<?php
+/* @implements FS-021.11: Close Ticket (`process/close` → `close`) — close confirmation dialog (a=process do=close) with optional reason note */
+/* @implements FS-021.12: Reopen Ticket (`process/reopen` → `reopen`) — reopen confirmation dialog (a=process do=reopen) with optional reason note */
+?>
 <div style="display:none;" class="dialog" id="ticket-status">
     <h3><?php echo sprintf('%s Ticket #%s', ($ticket->isClosed()?'Reopen':'Close'), $ticket->getNumber()); ?></h3>
     <a class="close" href="">&times;</a>
@@ -839,6 +882,13 @@ if(!$cfg->showNotesInline()) { ?>
     </form>
     <div class="clear"></div>
 </div>
+<?php
+/* @implements FS-021.8: Claim Ticket (`process/claim` and reply-form claim) — process-action confirm: claim */
+/* @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — process-action confirm: overdue / answered / unanswered */
+/* @implements FS-021.14: Ban / Unban Requester E-mail (`process/banemail` / `unbanemail`) — process-action confirm: banemail / unbanemail */
+/* @implements FS-021.19: Delete Ticket (`process/delete` → `delete`) — process-action confirm: delete (and release) */
+/* @implements BS-021.16: Process-action confirmation gating */
+?>
 <div style="display:none;" class="dialog" id="confirm-action">
     <h3>Please Confirm</h3>
     <a class="close" href="">&times;</a>
@@ -887,6 +937,7 @@ if(!$cfg->showNotesInline()) { ?>
     </form>
     <div class="clear"></div>
 </div>
+<?php /* @implements FS-021.18: Collaborative Edit Locking (`TicketLock`, auto-lock, AJAX renew/release) — auto-lock seed: emits autoLock.setLock(id,time,'acquire') so browser begins renew polling */ ?>
 <script type="text/javascript" src="js/ticket.js"></script>
 <script type="text/javascript">
 <?php

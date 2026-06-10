@@ -19,9 +19,12 @@ if(!defined('INCLUDE_DIR')) die('Fatal Error. Kwaheri!');
 require_once(INCLUDE_DIR.'class.staff.php');
 require_once(INCLUDE_DIR.'class.csrf.php');
 
+// @implements FS-002.8: Post-login redirect to original destination — recover the stored auth destination + message
 $dest = $_SESSION['_staff']['auth']['dest'];
 $msg = $_SESSION['_staff']['auth']['msg'];
 $msg = $msg?$msg:'Authentication Required';
+// @implements FS-002.1: Staff login — credential check + post-login redirect
+// @implements FS-002.7: CSRF protection on state-changing requests — verify + rotate the CSRF token on login POST
 if($_POST) {
     // Check the CSRF token, and ensure that future requests will have to
     // use a different CSRF token. This will help ward off both parallel and

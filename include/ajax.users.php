@@ -19,9 +19,11 @@ if(!defined('INCLUDE_DIR')) die('403');
 
 include_once(INCLUDE_DIR.'class.ticket.php');
 
+// @implements FS-020.8: Advanced Search — requester autocomplete lookup feeding ticket search criteria
 class UsersAjaxAPI extends AjaxController {
    
     /* Assumes search by emal for now */
+    // @implements FS-020.8: Advanced Search — distinct email/name autocomplete from submitted tickets (LIKE %q%, limit-capped)
     function search() {
 
         if(!isset($_REQUEST['q'])) {

@@ -1,7 +1,10 @@
 <?php
+// @implements FS-030.1: Admin access gate & navigation context — admin-only access gate
+// @implements FS-030.4: Department add/edit form — add/edit a department
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 $info=array();
 $qstr='';
+// @implements FS-030.4: Department add/edit form — add-vs-update mode select; new-dept defaults (public, auto-responses on)
 if($dept && $_REQUEST['a']!='add') {
     //Editing Department.
     $title='Update Department';
@@ -23,6 +26,7 @@ if($dept && $_REQUEST['a']!='add') {
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-030.4: Department add/edit form — department form: Name, Type (public/private), Email, Template, SLA, Manager, group membership; CSRF */ ?>
 <form action="departments.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">
@@ -150,6 +154,10 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 Extend membership to groups with access. <i>(Alerts and  notices will include groups)</i>
             </td>
         </tr>
+        <?php
+        /* @implements FS-030.4: Department add/edit form — per-dept auto-response overrides (disable new-ticket/new-message autoresp) */
+        /* @implements FS-040.12: Outbound Mail Composition & From-Address Selection — per-dept autoresp outgoing email account */
+        ?>
         <tr>
             <th colspan="2">
                 <em><strong>Auto Response Settings</strong>: Override global auto-response settings for tickets routed to the Dept.</em>
@@ -199,6 +207,10 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 &nbsp;<span class="error">&nbsp;<?php echo $errors['autoresp_email_id']; ?></span>
             </td>
         </tr>
+        <?php
+        /* @implements FS-030.4: Department add/edit form — department access control: per-group access checkboxes (group↔dept access rows) + dept signature */
+        /* @implements FS-031.8: Create / Edit a Group — group↔dept access rows (department side of the group access model) */
+        ?>
         <tr>
             <th colspan="2">
                 <em><strong>Department Access</strong>: Check all groups allowed to access this department.</em>

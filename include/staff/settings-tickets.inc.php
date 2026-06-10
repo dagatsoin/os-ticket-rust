@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-032.4: Ticket Settings & Options Tab Fields — ticket defaults/behavior: random_ticket_ids, default_sla_id (SLA::getSLAs), default_priority_id, max_open_tickets, autolock_minutes, priority/related/notes/captcha/reopen/assigned/answered/activity/masking toggles */
+/* @implements FS-032.1: Settings Panel Entry & Tab Routing — in-partial admin re-check */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin() || !$config) die('Access Denied');
 if(!($maxfileuploads=ini_get('max_file_uploads')))
     $maxfileuploads=DEFAULT_MAX_FILE_UPLOADS;
@@ -152,6 +156,12 @@ if(!($maxfileuploads=ini_get('max_file_uploads')))
                 Hide staff's name on responses.
             </td>
         </tr>
+        <?php
+        /* @implements FS-032.4: Ticket Settings & Options Tab Fields — Attachments section: allow_attachments master switch, allow_email/online_attachments(+onlogin), max_user/staff_file_uploads (bounded by platform max_file_uploads), max_file_size, email_attachments, allowed_filetypes */
+        /* @implements BS-032.6: Attachment configuration field set */
+        /* @implements EC-032.3: Per-role upload count bounded by platform max_file_uploads */
+        /* @implements EC-032.4: Attachment size/type configuration edge handling */
+        ?>
         <tr>
             <th colspan="2">
                 <em><b>Attachments</b>:  Size and max. uploads setting mainly apply to web tickets.</em>

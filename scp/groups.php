@@ -14,12 +14,15 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 require('admin.inc.php');
+// @implements FS-031.7: Group List, Sort & Mass Actions — group id lookup, "Unknown or invalid group ID." on miss
 $group=null;
 if($_REQUEST['id'] && !($group=Group::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid group ID.';
 
+// @implements FS-031.8: Create / Edit a Group — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-031.8: Create / Edit a Group — update existing group
         case 'update':
             if(!$group){
                 $errors['err']='Unknown or invalid group.';
@@ -29,6 +32,7 @@ if($_POST){
                 $errors['err']='Unable to update group. Correct any error(s) below and try again!';
             }
             break;
+        // @implements FS-031.8: Create / Edit a Group — create new group
         case 'create':
             if(($id=Group::create($_POST,$errors))){
                 $msg=Format::htmlchars($_POST['name']).' added successfully';
@@ -37,6 +41,8 @@ if($_POST){
                 $errors['err']='Unable to add group. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-031.7: Group List, Sort & Mass Actions — mass enable/disable/delete
+        // @implements BS-031-023: Self-Group Protection (Group Mass Actions) — refuse acting admin's own group
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one group.';
@@ -94,6 +100,8 @@ if($_POST){
     }
 }
 
+// @implements FS-031.7: Group List, Sort & Mass Actions — list partial routing
+// @implements FS-031.8: Create / Edit a Group — form partial routing
 $page='groups.inc.php';
 if($group || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='group.inc.php';

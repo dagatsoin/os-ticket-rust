@@ -46,6 +46,7 @@ require_once(INCLUDE_DIR.'class.csrf.php');
 */
 
 
+// @implements FS-002.11: Per-request session validation (the authenticated gate) — staffLoginPage redirect helper + return-dest capture
 if(!function_exists('staffLoginPage')) { //Ajax interface can pre-declare the function to  trap expired sessions.
     function staffLoginPage($msg) {
         global $ost, $cfg;
@@ -57,6 +58,8 @@ if(!function_exists('staffLoginPage')) { //Ajax interface can pre-declare the fu
     }
 }
 
+// @implements FS-001.9: Staff-Realm Gate — establish the staff session for the request
+// @implements FS-002.11: Per-request session validation (the authenticated gate) — reject invalid/expired sessions to login
 $thisstaff = new StaffSession($_SESSION['_staff']['userID']); //Set staff object.
 //1) is the user Logged in for real && is staff.
 if(!$thisstaff->getId() || !$thisstaff->isValid()){
@@ -73,6 +76,7 @@ if(!$thisstaff->getId() || !$thisstaff->isValid()){
     exit;
 }
 //2) if not super admin..check system status and group status
+// @implements FS-002.16: Account availability and the admin-vs-staff distinction — block locked/disabled-group/offline non-admins
 if(!$thisstaff->isAdmin()) {
     //Check for disabled staff or group!
     if(!$thisstaff->isactive() || !$thisstaff->isGroupActive()) {
@@ -92,6 +96,7 @@ $thisstaff->refreshSession();
 
 /******* CSRF Protectin *************/
 // Enforce CSRF protection for POSTS
+// @implements FS-002.7: CSRF protection on state-changing requests — reject POSTs without a valid token (HTTP 400)
 if ($_POST  && !$ost->checkCSRFToken()) {
     Http::response(400, 'Valid CSRF Token Required');
     exit;
@@ -114,6 +119,7 @@ $tabs=array();
 $submenu=array();
 $exempt = in_array(basename($_SERVER['SCRIPT_NAME']), array('logout.php', 'ajax.php', 'logs.php', 'upgrade.php'));
 
+// @implements FS-061.2: An upgrade-pending installation is forced into the wizard — divert non-exempt staff pages to upgrade.php
 if($ost->isUpgradePending() && !$exempt) {
     $errors['err']=$sysnotice='System upgrade is pending <a href="upgrade.php">Upgrade Now</a>';
     require('upgrade.php');
@@ -123,8 +129,10 @@ if($ost->isUpgradePending() && !$exempt) {
     $sysnotice.=' <a href="settings.php">Enable</a>.';
 }
 
+// @implements FS-090.2: Staff Sub-Menus (Permission-Conditional) — build the staff navigation model
 $nav = new StaffNav($thisstaff);
 //Check for forced password change.
+// @implements FS-002.12: Periodic forced password change (password aging) — divert to profile.php when a change is forced
 if($thisstaff->forcePasswdChange() && !$exempt) {
     # XXX: Call staffLoginPage() for AJAX and API requests _not_ to honor
     #      the request

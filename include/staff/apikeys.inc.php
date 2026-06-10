@@ -1,6 +1,8 @@
 <?php
+// @implements FS-043.2: API Key Administration Screens — list-view second-layer admin gate (OSTADMININC + isAdmin else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
+// @implements FS-043.2: API Key Administration Screens — list sort/order resolution (key/status/ip/date/updated, default key DESC) + PAGE_LIMIT pagination
 $qstr='';
 $sql='SELECT * FROM '.API_KEY_TABLE.' WHERE 1';
 $sortOptions=array('key'=>'apikey','status'=>'isactive','ip'=>'ipaddr','date'=>'created','created'=>'created','updated'=>'updated');
@@ -45,6 +47,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
  <b><a href="apikeys.php?a=add" class="Icon newapi">Add New API Key</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-043.2: API Key Administration Screens — keys list table (key/IP/status/created/updated, sortable links) + mass_process form (CSRF) */ ?>
 <form action="apikeys.php" method="POST" name="keys">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -103,6 +106,7 @@ else
 if($res && $num): //Show options..
     echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;</div>';
 ?>
+<?php /* @implements FS-043.2: API Key Administration Screens — bulk actions Enable / Disable / Delete selected keys */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="enable" value="Enable" >
     <input class="button" type="submit" name="disable" value="Disable">
@@ -112,6 +116,7 @@ if($res && $num): //Show options..
 endif;
 ?>
 </form>
+<?php /* @implements FS-043.2: API Key Administration Screens — enable/disable/delete confirm dialog; delete warns keys CANNOT be recovered */ ?>
 <div style="display:none;" class="dialog" id="confirm-action">
     <h3>Please Confirm</h3>
     <a class="close" href="">&times;</a>

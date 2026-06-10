@@ -13,6 +13,7 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-090.15: Pagination — Window & Bounds Computation — PageNate component
 class PageNate {
     
     var $start;
@@ -22,6 +23,9 @@ class PageNate {
     var $pages;
     
 
+    // @implements FS-090.15: Pagination — Window & Bounds Computation — start/limit/pages from total+page
+    // @implements FS-090.29: Pagination — Secondary Start-Offset Modulo Correction
+    // @implements BS-090.8: Out-of-Range Page Requests Snap to the First Window
     function PageNate($total,$page,$limit=20,$url='') {
         $this->total = intval($total);
         $this->limit = max($limit, 1 );
@@ -37,6 +41,7 @@ class PageNate {
         }
         $this->setURL($url);
     }
+    // @implements FS-090.18: Pagination — URL Construction & Query Vars — build paging base URL
     function setURL($url='',$vars=''){
         if($url){
             if(strpos($url,'?')===false)
@@ -64,6 +69,7 @@ class PageNate {
         return ceil(($this->start+1)/$this->limit);
     }
     
+    // @implements FS-090.16: Pagination — "Showing X – Y of N" — range label render
     function showing() {
         $html = '';
         $from= $this->start+1;
@@ -81,6 +87,8 @@ class PageNate {
         return $html;
     }
     
+    // @implements FS-090.17: Pagination — Page Links & Sliding Window — page-link render with sliding span
+    // @implements FS-090.32: Pagination — Page-Link Window Edge Compensation
     function getPageLinks() {
         $html                 = '';
         $file                =$this->url;

@@ -1,4 +1,6 @@
 <?php
+// @implements FS-050.8: Staff FAQ Management Permission Gate — form self-guard requires canManageFAQ() (else die 'Access Denied')
+// @implements FS-050.16: Staff FAQ Create/Edit Form — add/edit a FAQ article
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->canManageFAQ()) die('Access Denied');
 $info=array();
 $qstr='';
@@ -22,6 +24,7 @@ if($faq){
 //TODO: Add attachment support.
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-050.16: Staff FAQ Create/Edit Form — Question, Category, Listing Type (ispublished), Answer (rich text), attachments, help-topic associations, notes; CSRF + multipart */ ?>
 <form action="faq.php?<?php echo $qstr; ?>" method="post" id="save" enctype="multipart/form-data">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">
@@ -90,6 +93,8 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             <td colspan=2>
                 <div><b>Attachments</b> (optional) <font class="error">&nbsp;<?php echo $errors['files']; ?></font></div>
                 <?php
+                // @implements FS-050.9: FAQ Article Attachments — existing attachments w/ keep-checkbox (uncheck=delete on submit)
+                // @implements FS-022.10: Authorized Attachment Download & Inline Display — download links use session-bound file hash
                 if($faq && ($files=$faq->getAttachments())) {
                     echo '<div class="faq_attachments"><span class="faded">Uncheck to delete the attachment on submit</span><br>';
                     foreach($files as $file) {

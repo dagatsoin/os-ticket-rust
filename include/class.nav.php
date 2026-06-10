@@ -14,6 +14,8 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-090.1: Staff Control-Panel Top Tabs — StaffNav tab/sub-menu model
+// @implements FS-090.2: Staff Sub-Menus (Permission-Conditional)
 class StaffNav {
     var $tabs=array();
     var $submenus=array();
@@ -43,6 +45,7 @@ class StaffNav {
         return (!$this->isAdminPanel());
     }
 
+    // @implements FS-090.5: Active-State Model — Tabs — mark a single active tab
     function setTabActive($tab, $menu=''){
 
         if($this->tabs[$tab]){
@@ -67,6 +70,7 @@ class StaffNav {
         return $this->activetab;
     }
 
+    // @implements FS-090.6: Active-State Model — Sub-Menus — mark active sub-menu by index or href
     function setActiveSubMenu($mid, $tab='') {
         if(is_numeric($mid))
             $this->activeMenu = $mid;
@@ -84,6 +88,7 @@ class StaffNav {
         return $this->activeMenu;
     }
 
+    // @implements FS-090.2: Staff Sub-Menus (Permission-Conditional) — append a sub-menu item to the active tab
     function addSubMenu($item,$active=false){
 
         $this->submenus[$this->getPanel().'.'.$this->activetab][]=$item;
@@ -92,6 +97,7 @@ class StaffNav {
     }
 
 
+    // @implements FS-090.1: Staff Control-Panel Top Tabs — Dashboard / Tickets / Knowledgebase tabs
     function getTabs(){
 
         if(!$this->tabs) {
@@ -104,6 +110,7 @@ class StaffNav {
         return $this->tabs;
     }
 
+    // @implements FS-090.2: Staff Sub-Menus (Permission-Conditional) — build per-tab sub-menus by staff permission
     function getSubMenus(){ //Private.
 
         $staff = $this->staff;
@@ -160,12 +167,15 @@ class StaffNav {
 
 }
 
+// @implements FS-090.3: Admin Control-Panel Tabs & Sub-Menus — AdminNav specialization
 class AdminNav extends StaffNav{
 
+    // @implements FS-090.3: Admin Control-Panel Tabs & Sub-Menus — construct admin-panel nav
     function AdminNav($staff){
         parent::StaffNav($staff, 'admin');
     }
 
+    // @implements FS-090.3: Admin Control-Panel Tabs & Sub-Menus — Dashboard/Settings/Manage/Emails/Staff tabs
     function getTabs(){
 
 
@@ -183,6 +193,7 @@ class AdminNav extends StaffNav{
         return $this->tabs;
     }
 
+    // @implements FS-090.3: Admin Control-Panel Tabs & Sub-Menus — build admin sub-menus per tab
     function getSubMenus(){
 
         $submenus=array();
@@ -231,6 +242,7 @@ class AdminNav extends StaffNav{
     }
 }
 
+// @implements FS-090.4: Client Portal Navigation Links — UserNav client-portal nav model
 class UserNav {
 
     var $navs=array();
@@ -246,6 +258,7 @@ class UserNav {
             $this->setActiveNav($active);
     }
 
+    // @implements FS-090.4: Client Portal Navigation Links — mark active client-portal nav link
     function setActiveNav($nav){
 
         if($nav && $this->navs[$nav]){
@@ -261,6 +274,8 @@ class UserNav {
         return false;
     }
 
+    // @implements FS-090.4: Client Portal Navigation Links — build home/kb/new/tickets/status links
+    // @implements FS-050.1: Knowledge-Base Enable/Disable Toggle — KB link shown only when KB enabled
     function getNavLinks(){
         global $cfg;
 

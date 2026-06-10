@@ -20,6 +20,8 @@ require_once(INCLUDE_DIR.'class.dept.php');
 require_once(INCLUDE_DIR.'class.email.php');
 require_once(INCLUDE_DIR.'class.filter.php');
 
+// @implements FS-041.3: Polled Mailbox Fetch (IMAP/POP3) — MailFetcher IMAP/POP3 poller
+// @implements FS-041.4: Per-Message Processing & Disposition Within a Poll
 class MailFetcher {
 
     var $ht;
@@ -29,6 +31,8 @@ class MailFetcher {
 
     var $charset = 'UTF-8';
 
+    // @implements FS-041.3: Polled Mailbox Fetch (IMAP/POP3) — build server string + per-poll fetch cap from account
+    // @implements BS-041.4: Per-Poll Fetch Limit
     function MailFetcher($email, $charset='UTF-8') {
 
 
@@ -112,6 +116,8 @@ class MailFetcher {
 
     /* Core */
 
+    // @implements FS-041.3: Polled Mailbox Fetch (IMAP/POP3) — reuse live mailbox connection or reopen
+    // @implements BS-041.19: Connection Reuse, Login Hardening & Operation Timeout
     function connect() {
         return ($this->mbox && $this->ping())?$this->mbox:$this->open();
     }
@@ -121,6 +127,8 @@ class MailFetcher {
     }
 
     /* Default folder is inbox - TODO: provide user an option to fetch from diff folder/label */
+    // @implements FS-041.3: Polled Mailbox Fetch (IMAP/POP3) — open mailbox, disabling weak authenticators
+    // @implements BS-041.19: Connection Reuse, Login Hardening & Operation Timeout
     function open($box='INBOX') {
 
         if ($this->mbox)
@@ -149,6 +157,7 @@ class MailFetcher {
     }
 
     //Get mail boxes.
+    // @implements FS-041.4: Per-Message Processing & Disposition Within a Poll — enumerate folders (archive target support)
     function getMailboxes() {
 
         if(!($folders=imap_list($this->mbox, $this->srvstr, "*")) || !is_array($folders))
@@ -162,6 +171,7 @@ class MailFetcher {
     }
 
     //Create a folder.
+    // @implements FS-041.4: Per-Message Processing & Disposition Within a Poll — create archive folder
     function createMailbox($folder) {
 
         if(!$folder) return false;
@@ -171,6 +181,7 @@ class MailFetcher {
     }
 
     /* check if a folder exists - create one if requested */
+    // @implements FS-041.4: Per-Message Processing & Disposition Within a Poll — ensure archive folder exists
     function checkMailbox($folder, $create=false) {
 
         if(($mailboxes=$this->getMailboxes()) && in_array(trim($folder), $mailboxes))
@@ -180,6 +191,7 @@ class MailFetcher {
     }
 
 
+    // @implements FS-041.5: MIME Parsing & Normalization — decode transfer-encoded body part
     function decode($text, $encoding) {
 
         switch($encoding) {
@@ -207,6 +219,7 @@ class MailFetcher {
         return Charset::transcode($text, $charset, $encoding);
     }
 
+    // @implements FS-041.3: Polled Mailbox Fetch (IMAP/POP3) — UTF7-IMAP encode mailbox name (RFC 2060)
     function mailbox_encode($mailbox) {
         if (!$mailbox)
             return null;
@@ -233,6 +246,7 @@ class MailFetcher {
      * Returns:
      * Header value, transocded to UTF-8
      */
+    // @implements FS-041.5: MIME Parsing & Normalization — RFC-2047 header decode + transcode to UTF-8
     function mime_decode($text, $encoding='utf-8') {
         // Handle poorly or completely un-encoded header values (
         if (function_exists('mb_detect_encoding'))
@@ -253,6 +267,7 @@ class MailFetcher {
         return imap_last_error();
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — derive primary/secondary MIME type from IMAP struct
     function getMimeType($struct) {
         $mimeType = array('TEXT', 'MULTIPART', 'MESSAGE', 'APPLICATION', 'AUDIO', 'IMAGE', 'VIDEO', 'OTHER');
         if(!$struct || !$struct->subtype)
@@ -261,6 +276,8 @@ class MailFetcher {
         return $mimeType[(int) $struct->type].'/'.$struct->subtype;
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — extract from/to/subject/mid + target email id from headers
+    // @implements BS-041.17: Multi-Valued Message-Id Resolution
     function getHeaderInfo($mid) {
 
         if(!($headerinfo=imap_headerinfo($this->mbox, $mid)) || !$headerinfo->from)
@@ -315,6 +332,7 @@ class MailFetcher {
     }
 
     //search for specific mime type parts....encoding is the desired encoding.
+    // @implements FS-041.5: MIME Parsing & Normalization — recursive fetch of a typed body part with transcode
     function getPart($mid, $mimeType, $encoding=false, $struct=null, $partNumber=false) {
 
         if(!$struct && $mid)
@@ -373,6 +391,7 @@ class MailFetcher {
      *   name
      *   name*
      */
+    // @implements FS-041.5.2: Attachment Extraction — resolve attachment filename (filename/name, RFC 5987)
     function findFilename($attributes) {
         foreach (array('filename', 'name') as $pref) {
             foreach ($attributes as $a) {
@@ -393,6 +412,8 @@ class MailFetcher {
      NOTE: We're not actually fetching the body of the attachment  - we'll do it on demand to save some memory.
 
      */
+    // @implements FS-041.5.2: Attachment Extraction — recursive attachment discovery (lazy body fetch)
+    // @implements BS-041.11: Attachment Acceptance Limits
     function getAttachments($part, $index=0) {
 
         if($part && !$part->parts) {
@@ -449,10 +470,12 @@ class MailFetcher {
     }
 
 
+    // @implements BS-041.10: Email Priority Mapping — derive priority id from message headers
     function getPriority($mid) {
         return Mail_Parse::parsePriority($this->getHeader($mid));
     }
 
+    // @implements FS-041.5: MIME Parsing & Normalization — extract plain-text body (HTML fallback, sanitized)
     function getBody($mid) {
 
         $body ='';
@@ -471,6 +494,10 @@ class MailFetcher {
     }
 
     //email to ticket
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — thread-match then append or create ticket
+    // @implements FS-041.7: Loop, Bounce & Auto-Response Protection — banlist + bounce guards
+    // @implements BS-041.7: Thread-Match Precedence
+    // @implements BS-041.13: Bounce Detection & Handling
     function createTicket($mid) {
         global $ost;
 
@@ -560,6 +587,9 @@ class MailFetcher {
     }
 
 
+    // @implements FS-041.4: Per-Message Processing & Disposition Within a Poll — iterate messages, flag/archive/delete
+    // @implements BS-041.4: Per-Poll Fetch Limit
+    // @implements BS-041.14: Post-Fetch Disposition Order
     function fetchEmails() {
 
 
@@ -612,6 +642,11 @@ class MailFetcher {
 
        Static function called to initiate email polling
      */
+    // @implements FS-041.3: Polled Mailbox Fetch (IMAP/POP3) — poll all eligible accounts, back-off on errors, time-box
+    // @implements FS-043.8: Mail-Fetch as Cron Job #1 — entry point invoked by the cron cycle
+    // @implements BS-041.5: Polling Eligibility & Frequency
+    // @implements BS-041.6: Connection Error Back-Off
+    // @implements BS-041.15: Runaway-Error Circuit Breaker & Time-Box
     function run() {
         global $ost;
 

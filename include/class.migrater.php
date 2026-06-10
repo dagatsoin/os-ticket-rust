@@ -27,6 +27,7 @@
 
 */
 
+// @implements FS-061.3: Hash-chained patch resolution within a stream — DatabaseMigrater patch engine
 class DatabaseMigrater {
 
     var $start;
@@ -41,6 +42,9 @@ class DatabaseMigrater {
 
     }
 
+    // @implements FS-061.3: Hash-chained patch resolution within a stream — walk 8-hex signature chain
+    // @implements BS-061-04: Patches chain by 8-hex-character signatures
+    // @implements BS-061-06: A linear chain only — forks abort
     function getPatches($stop=null) {
 
         $start= $this->start;
@@ -82,6 +86,9 @@ class DatabaseMigrater {
      * upgrade the database.
 	 */
 	/* static */
+    // @implements FS-061.2: Stream discovery from streams configuration — read streams.cfg + per-stream sig
+    // @implements FS-061.8: Multi-stream coordination
+    // @implements BS-061-15: Streams default to `core`
     function getUpgradeStreams($basedir) {
 		static $streams = array();
         if ($streams) return $streams;
@@ -102,6 +109,8 @@ class DatabaseMigrater {
     }
 }
 
+// @implements FS-061.5: Resumable procedural migration tasks — MigrationTask abstract base
+// @implements BS-061-09: Tasks run in resumable batches and never restart from scratch
 class MigrationTask {
     var $description = "[Unnamed task]";
     var $status = "finished";
@@ -126,6 +135,7 @@ class MigrationTask {
      * max_time - (int) number of seconds the task should be allowed to run
      */
     /* abstract */
+    // @implements FS-061.5: Resumable procedural migration tasks — run() time-boxed work unit (abstract)
     function run($max_time) { }
 
     /**
@@ -135,6 +145,7 @@ class MigrationTask {
      * false otherwise
      */
     /* abstract */
+    // @implements FS-061.5: Resumable procedural migration tasks — isFinished() drives re-invocation (abstract)
     function isFinished() { return true; }
 
     /**
@@ -143,6 +154,7 @@ class MigrationTask {
      * Called if isFinished() returns false. The data returned is passed to
      * the ::wakeup() method before the ::run() method is called again
      */
+    // @implements FS-061.15: Persistence of upgrade run state across requests — sleep() captures resumable state
     function sleep() { return null; }
 
     /**
@@ -151,6 +163,7 @@ class MigrationTask {
      * Called before the ::run() method if the migration task was saved in
      * the session and run in multiple requests
      */
+    // @implements FS-061.15: Persistence of upgrade run state across requests — wakeup() restores resumable state
     function wakeup($data) { }
 
     function getDescription() {

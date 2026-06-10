@@ -15,17 +15,21 @@
 **********************************************************************/
 include_once(INCLUDE_DIR.'class.file.php');
 
+// @implements FS-022.3: Edit / Update Canned Response — canned response model + persistence
+// @implements FS-022.2: Create Canned Response
 class Canned {
     var $id;
     var $ht;
 
     var $attachments;
     
+    // @implements FS-022.3: Edit / Update Canned Response — construct response by id
     function Canned($id){
         $this->id=0;
         $this->load($id);
     }
 
+    // @implements FS-022.1: Canned Response Library (List View) — load row + attachment/filter counts
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -50,54 +54,67 @@ class Canned {
         return true;
     }
   
+    // @implements FS-022.3: Edit / Update Canned Response — reload after save
     function reload() {
         return $this->load();
     }
     
+    // @implements FS-022.1: Canned Response Library (List View) — id accessor
     function getId(){
         return $this->id;
     }
 
+    // @implements BS-022.2: Only Enabled Responses Are Offered for Use — enabled flag accessor
     function isEnabled() {
          return ($this->ht['isenabled']);
     }
 
+    // @implements BS-022.2: Only Enabled Responses Are Offered for Use — active alias
     function isActive(){
         return $this->isEnabled();
     }
 
+    // @implements BS-022.6: A Filter-Referenced Canned Response Cannot Be Deleted — referencing-filter count
     function getNumFilters() {
         return $this->ht['filters'];
     }
     
+    // @implements FS-022.1: Canned Response Library (List View) — title accessor
     function getTitle() {
         return $this->ht['title'];
     }
 
+    // @implements FS-022.14: Canned Response Consumption (Reference) — response body accessor
     function getResponse() {
         return $this->ht['response'];
     }
 
+    // @implements FS-022.14: Canned Response Consumption (Reference) — reply-body alias
     function getReply() {
         return $this->getResponse();
     }
 
+    // @implements FS-022.3: Edit / Update Canned Response — internal notes accessor
     function getNotes() {
         return $this->ht['notes'];
     }
     
+    // @implements BS-022.1: Department Scope Determines Availability — owning department id accessor
     function getDeptId(){
         return $this->ht['dept_id'];
     }
 
+    // @implements FS-022.3: Edit / Update Canned Response — raw record accessor (form prefill)
     function getHashtable() {
         return $this->ht;
     }
 
+    // @implements FS-022.3: Edit / Update Canned Response — info alias (form prefill)
     function getInfo() {
         return $this->getHashtable();
     }
 
+    // @implements BS-022.6: A Filter-Referenced Canned Response Cannot Be Deleted — list referencing filter names
     function getFilters() {
         if (!$this->_filters) {
             $this->_filters = array();
@@ -111,6 +128,7 @@ class Canned {
         return $this->_filters;
     }
 
+    // @implements FS-022.3: Edit / Update Canned Response — update existing response + reload
     function update($vars, &$errors) {
 
         if(!$this->save($this->getId(),$vars,$errors))
@@ -121,10 +139,14 @@ class Canned {
         return true;
     }
    
+    // @implements FS-022.8: Canned Response Attachment Count Cap — current attachment count
+    // @implements BS-022.4: Ten-Attachment Cap per Canned Response
     function getNumAttachments() {
         return $this->ht['attachments'];
     }
    
+    // @implements FS-022.4: Bind Attachments to a Canned Response — list bound files with session-bound download key
+    // @implements BS-022.8: Download Access Requires a Fresh Session-Bound Hash
     function getAttachments() {
 
         if(!$this->attachments && $this->getNumAttachments()) {
@@ -148,6 +170,7 @@ class Canned {
     /*
     @files is an array - hash table of multiple attachments.
     */
+    // @implements FS-022.4: Bind Attachments to a Canned Response — upload/bind files (content-addressed dedupe)
     function uploadAttachments($files) {
 
         $i=0;
@@ -164,6 +187,8 @@ class Canned {
         return $i;
     }
 
+    // @implements FS-022.5: Remove Attachment(s) from a Canned Response — unbind one file + reclaim orphan bytes
+    // @implements BS-022.10: Shared Files Are Reference-Counted; Bytes Purged Only When Orphaned
     function deleteAttachment($file_id) {
         $deleted = 0;
         $sql='DELETE FROM '.CANNED_ATTACHMENT_TABLE
@@ -175,6 +200,8 @@ class Canned {
         return ($deleted > 0);
     }
 
+    // @implements FS-022.5: Remove Attachment(s) from a Canned Response — unbind all files + reclaim orphan bytes
+    // @implements BS-022.5: Deletion Cascades to Attachment Bindings
     function deleteAttachments(){
 
         $deleted=0;
@@ -187,6 +214,9 @@ class Canned {
         return $deleted;
     }
 
+    // @implements FS-022.6: Mass-Process Canned Responses (Enable / Disable / Delete) — delete (refused when filter-referenced)
+    // @implements BS-022.5: Deletion Cascades to Attachment Bindings
+    // @implements BS-022.6: A Filter-Referenced Canned Response Cannot Be Deleted
     function delete(){
         if ($this->getNumFilters() > 0) return false;
 
@@ -199,14 +229,17 @@ class Canned {
     }
 
     /*** Static functions ***/
+    // @implements FS-022.1: Canned Response Library (List View) — load response by id
     function lookup($id){
         return ($id && is_numeric($id) && ($c= new Canned($id)) && $c->getId()==$id)?$c:null;
     }
 
+    // @implements FS-022.2: Create Canned Response — create new response
     function create($vars,&$errors) { 
         return self::save(0,$vars,$errors);
     }
 
+    // @implements BS-022.3: Title Uniqueness and Minimum Length — title→id lookup (uniqueness check)
     function getIdByTitle($title) {
         $sql='SELECT canned_id FROM '.CANNED_TABLE.' WHERE title='.db_input($title);
         if(($res=db_query($sql)) && db_num_rows($res))
@@ -215,6 +248,8 @@ class Canned {
         return $id;
     }
 
+    // @implements BS-022.1: Department Scope Determines Availability — enabled responses for a department (+ global)
+    // @implements BS-022.2: Only Enabled Responses Are Offered for Use
     function getCannedResponses($deptId=0, $explicit=false) {
 
         $sql='SELECT canned_id, title FROM '.CANNED_TABLE
@@ -236,10 +271,14 @@ class Canned {
         return $responses;
     }
 
+    // @implements BS-022.1: Department Scope Determines Availability — responses-by-department alias
     function responsesByDeptId($deptId, $explicit=false) {
         return self::getCannedResponses($deptId, $explicit);
     }
 
+    // @implements FS-022.7: Canned Response Field Validation — validate + insert/update response (tags stripped)
+    // @implements BS-022.3: Title Uniqueness and Minimum Length
+    // @implements BS-022.7: Canned Content Is Stored Plain-Text (Tags Stripped)
     function save($id,$vars,&$errors) {
 
         //We're stripping html tags - until support is added to tickets.

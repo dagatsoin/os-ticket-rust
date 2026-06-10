@@ -1,4 +1,6 @@
 <?php if(!defined('SETUPINC')) die('Kwaheri!');
+// @implements FS-060.8: Completion screen & post-install hardening (step `done`) — congrats, helpdesk/SCP links
+// @implements BS-060-16: Operator is instructed to remove config write access — chmod 0644 hardening instruction
 $url=URL;
 
 ?>    

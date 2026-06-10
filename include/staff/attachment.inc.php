@@ -1,6 +1,9 @@
 <?php
+// @implements FS-032.1: Settings Panel Entry & Tab Routing — out-of-band Attachments tab: admin-only access gate for the standalone partial
+// @implements FS-022.13: Upload Validation (Type & Size) — Attachments tab configures the type/size limits enforced on upload
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 //Get the config info.
+// @implements FS-032.1: Settings Panel Entry & Tab Routing — out-of-band Attachments tab: load config (or re-populate from POST on validation error)
 $config=($errors && $_POST)?Format::input($_POST):$cfg->getConfigInfo();
 ?>
 <table width="100%" border="0" cellspacing=0 cellpadding=0>
@@ -16,6 +19,10 @@ $config=($errors && $_POST)?Format::input($_POST):$cfg->getConfigInfo();
             <td colspan=2">
                 Before enabling attachments make sure you understand the security settings and issues related to file uploads.</td>
           </tr>
+          <?php
+          /* @implements FS-032.1: Settings Panel Entry & Tab Routing — out-of-band Attachments tab config keys: allow_attachments, allow_email_attachments, allow_online_attachments(+onlogin), email_attachments, max_file_size, upload_dir, allowed_filetypes */
+          /* @implements FS-022.13: Upload Validation (Type & Size) — allowed_filetypes + max_file_size drive upload type/size validation */
+          ?>
           <tr>
             <th width="165">Allow Attachments:</th>
             <td>

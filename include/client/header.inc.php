@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-010.10: Client Page Shell — Header, Footer & Navigation — client page shell header: page title from config else fallback, UTF-8, stylesheets + portal JS, logo->home */
+/* @implements FS-090.11: Client Page Chrome — Head & Identity Banner — head assets + identity banner for the client portal */
+?>
+<?php
 $title=($cfg && is_object($cfg) && $cfg->getTitle())?$cfg->getTitle():'osTicket :: Support Ticket System';
 header("Content-Type: text/html; charset=UTF-8\r\n");
 ?>
@@ -24,6 +28,10 @@ header("Content-Type: text/html; charset=UTF-8\r\n");
             title="Support Center"><img src="<?php echo ROOT_PATH; ?>logo.php" border=0 alt="<?php
                 echo $ost->getConfig()->getTitle(); ?>"
                 style="height: 5em"></a>
+            <?php
+            /* @implements FS-090.11: Client Page Chrome — Head & Identity Banner — identity strip: logged-in client name + My Tickets(N) (when related tickets enabled) + Log Out w/ link-token; else Guest User + Log In (only when $nav set) */
+            /* @implements FS-010.10: Client Page Shell — Header, Footer & Navigation — client identity affordance in the shell */
+            ?>
             <p>
              <?php
              if($thisclient && is_object($thisclient) && $thisclient->isValid()) {
@@ -42,6 +50,11 @@ header("Content-Type: text/html; charset=UTF-8\r\n");
              } ?>
             </p>
         </div>
+        <?php
+        /* @implements FS-090.4: Client Portal Navigation Links — nav bar from UserNav::getNavLinks() only when $nav set, else <hr> */
+        /* @implements FS-090.12: System Message Bars (Global) — message banner error/notice/warning precedence */
+        /* @implements FS-010.10: Client Page Shell — Header, Footer & Navigation — nav + message bars within the client shell */
+        ?>
         <?php
         if($nav){ ?>
         <ul id="nav">

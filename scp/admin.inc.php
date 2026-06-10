@@ -15,6 +15,8 @@
 **********************************************************************/
 require('staff.inc.php');
 //Make sure config is loaded and the staff is set and of admin type
+// @implements FS-001.10: Admin-Realm Gate — require an admin-flagged staff; redirect to index otherwise
+// @implements FS-002.16: Account availability and the admin-vs-staff distinction — isAdmin() gate
 if(!$ost or !$thisstaff or !$thisstaff->isAdmin()){
     header('Location: index.php');
     require('index.php'); // just in case!
@@ -25,6 +27,8 @@ define('OSTADMININC',TRUE); //checked by admin include files
 define('ADMINPAGE',TRUE);   //Used by the header to swap menus.
 
 //Some security related warnings - bitch until fixed!!! :)
+// @implements FS-061.2: An upgrade-pending installation is forced into the wizard — redirect to upgrade.php when pending
+// @implements FS-001.10: Admin-Realm Gate — clause (d) config-permission/security sysnotice battery (settings.php rename, setup/ delete, chmod 644 write-bit test, register_globals); see EC-010/EC-011/KL-010
 $sysnotice= '';
 if($ost->isUpgradePending()) {
     $errors['err']=$sysnotice='System upgrade is pending <a href="upgrade.php">Upgrade Now</a>';
@@ -62,6 +66,7 @@ if($ost->isUpgradePending()) {
 $ost->setWarning($sysnotice);
 
 //Admin navigation - overwrites what was set in staff.inc.php
+// @implements FS-090.3: Admin Control-Panel Tabs & Sub-Menus — build the admin navigation model
 $nav = new AdminNav($thisstaff);
 
 //Page title.

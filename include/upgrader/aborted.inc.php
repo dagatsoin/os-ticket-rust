@@ -1,4 +1,7 @@
 <?php
+// @implements FS-061.12: Abort, error capture & alerting — aborted screen renders captured errors + recovery guidance
+// @implements FS-061.9: Upgrade wizard UX & access gating — aborted screen selection
+// @implements BS-061-03: Only an authenticated admin may run the upgrade — Access Denied unless SCP-context admin
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 ?>    
 <div id="upgrader">

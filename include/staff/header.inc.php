@@ -1,4 +1,5 @@
 <?php
+// @implements FS-090.10: Staff Page Chrome — Head & Identity Banner — document head (text/html charset, dynamic title, asset bundle, extra-headers injection point)
 header("Content-Type: text/html; charset=UTF-8");
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
@@ -34,6 +35,7 @@ header("Content-Type: text/html; charset=UTF-8");
 <body>
 <div id="container">
     <?php
+    /* @implements FS-090.12: System Message Bars (Global) — single global bar in error->warning->notice precedence from $ost */
     if($ost->getError())
         echo sprintf('<div id="error_bar">%s</div>', $ost->getError());
     elseif($ost->getWarning())
@@ -41,6 +43,7 @@ header("Content-Type: text/html; charset=UTF-8");
     elseif($ost->getNotice())
         echo sprintf('<div id="notice_bar">%s</div>', $ost->getNotice());
     ?>
+    <?php /* @implements FS-090.10: Staff Page Chrome — Head & Identity Banner — identity banner (welcome, admin/staff panel toggle by isAdmin, My Preferences, Log Out with link token) */ ?>
     <div id="header">
         <a href="index.php" id="logo">osTicket - Customer Support System</a>
         <p id="info">Welcome, <strong><?php echo $thisstaff->getFirstName(); ?></strong>
@@ -54,6 +57,7 @@ header("Content-Type: text/html; charset=UTF-8");
             | <a href="logout.php?auth=<?php echo $ost->getLinkToken(); ?>">Log Out</a>
         </p>
     </div>
+    <?php /* @implements FS-090.8: Top-Nav Render with Hover Sub-Menu — primary tabs + hover dropdown submenus assembled from $nav */ ?>
     <ul id="nav">
         <?php
         if(($tabs=$nav->getTabs()) && is_array($tabs)){
@@ -71,6 +75,8 @@ header("Content-Type: text/html; charset=UTF-8");
             }
         } ?>
     </ul>
+    <?php /* @implements FS-090.9: Sub-Nav Bar Render & `droponly` Suppression — secondary sub-menu render skipping droponly items */ ?>
+    <?php /* @implements FS-090.7: Sub-Menu Auto-Highlight by Current Script — active-item resolution by script name / urls */ ?>
     <ul id="sub_nav">
         <?php
         if(($subnav=$nav->getSubMenu()) && is_array($subnav)){
@@ -94,6 +100,7 @@ header("Content-Type: text/html; charset=UTF-8");
         }
         ?>
     </ul>
+    <?php /* @implements FS-090.13: Per-Page Message Bars (Form Feedback) — per-page inline error/notice/warning block for the content area */ ?>
     <div id="content">
         <?php if($errors['err']) { ?>
             <div id="msg_error"><?php echo $errors['err']; ?></div>

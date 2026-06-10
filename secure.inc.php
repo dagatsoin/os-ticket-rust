@@ -18,6 +18,7 @@ if(!file_exists('client.inc.php')) die('Fatal Error.');
 require_once('client.inc.php');
 
 //Client Login page: Ajax interface can pre-declare the function to trap logins.
+// @implements FS-010.9: Client Page Bootstrap & Guard — declares clientLoginPage (login.php) unless the AJAX layer pre-declared its 403 trap
 if(!function_exists('clientLoginPage')) {
     function clientLoginPage($msg ='') {
         global $ost;
@@ -27,6 +28,8 @@ if(!function_exists('clientLoginPage')) {
 }
 
 //User must be logged in!
+// @implements FS-010.6: Client Session Lifecycle & Validation — requires a valid $thisclient on secure pages; routes to login + refreshes the sliding token
+// @implements FS-001.8: Client-Realm Gate — the authenticated-client requirement for the portal's "secure" pages
 if(!$thisclient || !$thisclient->getId() || !$thisclient->isValid()){
     clientLoginPage();
     exit;

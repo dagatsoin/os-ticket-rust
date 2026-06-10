@@ -16,9 +16,13 @@
 
 include_once INCLUDE_DIR.'class.charset.php';
 
+// @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — display formatter collection
+// @implements FS-003.10: HTML sanitization & safe HTML
+// @implements FS-003.11: HTML entity encode/decode & tag stripping
 class Format {
 
 
+    // @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — human-readable byte size
     function file_size($bytes) {
 
         if(!is_numeric($bytes))
@@ -31,6 +35,7 @@ class Format {
         return round(($bytes/1024000),1).' mb';
     }
 
+    // @implements FS-003.16: MIME-header & RFC 5987 decoding — decode MIME-encoded header words
     function mimedecode($text, $encoding='UTF-8') {
 
         if(function_exists('imap_mime_header_decode')
@@ -56,6 +61,7 @@ class Format {
      * language sub-component is defined in RFC5646, and that the filename
      * is URL encoded (in the charset specified)
      */
+    // @implements FS-003.16: MIME-header & RFC 5987 decoding — decode content-disposition filename*
     function decodeRfc5987($filename) {
         $match = array();
         if (preg_match("/([\w!#$%&+^_`{}~-]+)'([\w-]*)'(.*)$/",
@@ -67,6 +73,7 @@ class Format {
             return $filename;
     }
 
+	// @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — phone number formatting
 	function phone($phone) {
 
 		$stripped= preg_replace("/[^0-9]/", "", $phone);
@@ -78,6 +85,7 @@ class Format {
 			return $phone;
 	}
 
+    // @implements FS-003.12: Display formatting of free text — soft/hard truncation with ellipsis
     function truncate($string,$len,$hard=false) {
 
         if(!$len || $len>strlen($string))
@@ -88,19 +96,23 @@ class Format {
         return $hard?$string:(substr($string,0,strrpos($string,' ')).' ...');
     }
 
+    // @implements FS-003.13: Slash stripping (magic-quotes normalization) — recursive stripslashes
     function strip_slashes($var) {
         return is_array($var)?array_map(array('Format','strip_slashes'),$var):stripslashes($var);
     }
 
+    // @implements FS-003.12: Display formatting of free text — word-wrap with hard cut
     function wrap($text,$len=75) {
         return wordwrap($text,$len,"\n",true);
     }
 
+    // @implements FS-003.10: HTML sanitization & safe HTML — run htmLawed with supplied config
     function html($html, $config=array('balance'=>1)) {
         require_once(INCLUDE_DIR.'htmLawed.php');
         return htmLawed($html, $config);
     }
 
+    // @implements FS-003.10: HTML sanitization & safe HTML — enforce {safe,balance,comment} config
     function safe_html($html) {
         $config = array(
                 'safe' => 1, //Exclude applet, embed, iframe, object and script tags.
@@ -111,6 +123,7 @@ class Format {
         return Format::html($html, $config);
     }
 
+    // @implements FS-003.10: HTML sanitization & safe HTML — safe_html then optional decode-disabled striptags
     function sanitize($text, $striptags= true) {
 
         //balance and neutralize unsafe tags.
@@ -120,10 +133,12 @@ class Format {
         return $striptags?Format::striptags($text, false):$text;
     }
 
+    // @implements FS-003.11: HTML entity encode/decode & tag stripping — htmlchars alias of htmlencode
     function htmlchars($var) {
         return Format::htmlencode($var);
     }
 
+    // @implements FS-003.11: HTML entity encode/decode & tag stripping — UTF-8 entity encode (recurses arrays)
     function htmlencode($var) {
         $flags = ENT_COMPAT | ENT_QUOTES;
         if (phpversion() >= '5.4.0')
@@ -134,6 +149,7 @@ class Format {
             : htmlentities($var, $flags, 'UTF-8');
     }
 
+    // @implements FS-003.11: HTML entity encode/decode & tag stripping — UTF-8 entity decode (recurses arrays)
     function htmldecode($var) {
 
         if(is_array($var))
@@ -146,11 +162,13 @@ class Format {
         return html_entity_decode($var, $flags, 'UTF-8');
     }
 
+    // @implements FS-003.11: HTML entity encode/decode & tag stripping — input alias of htmlencode
     function input($var) {
         return Format::htmlencode($var);
     }
 
     //Format text for display..
+    // @implements FS-003.12: Display formatting of free text — clickable URLs + long-word wrap + nl2br
     function display($text) {
         global $cfg;
 
@@ -168,6 +186,7 @@ class Format {
         return nl2br($text);
     }
 
+    // @implements FS-003.11: HTML entity encode/decode & tag stripping — strip tags (optional decode-first)
     function striptags($var, $decode=true) {
 
         if(is_array($var))
@@ -177,6 +196,7 @@ class Format {
     }
 
     //make urls clickable. Mainly for display
+    // @implements FS-003.14: Clickable-URL rewriting — rewrite URLs/www/email into anchors via l.php redirect
     function clickableurls($text) {
         global $ost;
 
@@ -200,6 +220,7 @@ class Format {
         return $text;
     }
 
+    // @implements FS-003.12: Display formatting of free text — collapse 3+ newlines to 2
     function stripEmptyLines($string) {
         //return preg_replace("/(^[\r\n]*|[\r\n]+)[\s\t]*[\r\n]+/", "\n", $string);
         //return preg_replace('/\s\s+/',"\n",$string); //Too strict??
@@ -217,6 +238,7 @@ class Format {
      * @param array $array The array to implode
      * @return string The imploded array
     */
+    // @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — key/value array implode
     function array_implode( $glue, $separator, $array ) {
 
         if ( !is_array( $array ) ) return $array;
@@ -233,6 +255,7 @@ class Format {
     }
 
     /* elapsed time */
+    // @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — render elapsed seconds as d/h/m
     function elapsedTime($sec) {
 
         if(!$sec || !is_numeric($sec)) return "";
@@ -248,25 +271,30 @@ class Format {
     }
 
     /* Dates helpers...most of this crap will change once we move to PHP 5*/
+    // @implements FS-003.19: Time conversion helpers — DB time → user date string
     function db_date($time) {
         global $cfg;
         return Format::userdate($cfg->getDateFormat(), Misc::db2gmtime($time));
     }
 
+    // @implements FS-003.19: Time conversion helpers — DB time → user date-time string
     function db_datetime($time) {
         global $cfg;
         return Format::userdate($cfg->getDateTimeFormat(), Misc::db2gmtime($time));
     }
 
+    // @implements FS-003.19: Time conversion helpers — DB time → user day-date-time string
     function db_daydatetime($time) {
         global $cfg;
         return Format::userdate($cfg->getDayDateTimeFormat(), Misc::db2gmtime($time));
     }
 
+    // @implements FS-003.19: Time conversion helpers — apply session TZ offset/DST to a date
     function userdate($format, $gmtime) {
         return Format::date($format, $gmtime, $_SESSION['TZ_OFFSET'], $_SESSION['TZ_DST']);
     }
 
+    // @implements FS-003.19: Time conversion helpers — format GMT timestamp with offset + daylight saving
     function date($format, $gmtimestamp, $offset=0, $daylight=false){
 
         if(!$gmtimestamp || !is_numeric($gmtimestamp))
@@ -278,6 +306,7 @@ class Format {
     }
 
     // Thanks, http://stackoverflow.com/a/2955878/1025836
+    // @implements FS-003.15: File-size, phone, slug, elapsed-time & array formatting — Unicode-aware slugify
     /* static */
     function slugify($text) {
         // replace non letter or digits by -

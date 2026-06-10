@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-011.2: New-Ticket Form Layout — Open-a-New-Ticket web form: error-repopulation $info */
+/* @implements FS-011.3: Identity Pre-Fill for Signed-In Clients — identity pre-fill from valid client session */
+?>
+<?php
 if(!defined('OSTCLIENTINC')) die('Access Denied!');
 $info=array();
 if($thisclient && $thisclient->isValid()) {
@@ -9,6 +13,11 @@ if($thisclient && $thisclient->isValid()) {
 }
 
 $info=($_POST && $errors)?Format::htmlchars($_POST):$info;
+?>
+<?php
+/* @implements FS-011.2: New-Ticket Form Layout — form body: name/email static-vs-input by session, phone, subject, message; CSRF + a=open */
+/* @implements FS-011.3: Identity Pre-Fill for Signed-In Clients — name/email rendered static when a valid client session exists */
+/* @implements FS-011.4: Help-Topic Selection and Routing Effects — help-topic dropdown (public topics) */
 ?>
 <h1>Open a New Ticket</h1>
 <p>Please fill in the form below to open a new ticket.</p>
@@ -87,6 +96,11 @@ $info=($_POST && $errors)?Format::htmlchars($_POST):$info;
         </td>
     </tr>
 
+    <?php
+    /* @implements FS-011.7: Attachment Submission — attachments input gated by online-attachments policy */
+    /* @implements FS-011.6: Optional Priority Selection — priority select shown when allowPriorityChange */
+    /* @implements FS-011.5: CAPTCHA Challenge (Anonymous Submitters) — CAPTCHA for guests when enabled */
+    ?>
     <?php if(($cfg->allowOnlineAttachments() && !$cfg->allowAttachmentsOnlogin())
             || ($cfg->allowAttachmentsOnlogin() && ($thisclient && $thisclient->isValid()))) { ?>
     <tr>

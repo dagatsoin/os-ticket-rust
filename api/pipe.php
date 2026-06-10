@@ -19,6 +19,9 @@ ini_set('memory_limit', '256M'); //The concern here is having enough mem for ema
 require('api.inc.php');
 
 //Only local piping supported via pipe.php
+// @implements FS-041.1: Local Pipe Intake — local MTA email-pipe entry point; refuses non-CLI invocation
+// @implements BS-041.3: Local-Only Pipe — pipe.php supports only local piping (remote senders must use the HTTP email API)
+// @implements FS-001.16: System-Object Request & Environment Utilities — is_cli() guards the pipe to command-line execution
 if (!osTicket::is_cli())
     die('pipe.php only supports local piping - use http -> api/tickets.email');
 

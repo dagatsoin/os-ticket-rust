@@ -15,6 +15,9 @@
 require_once('class.file.php');
 require_once('class.category.php');
 
+// @implements FS-050.7: Public Single-Article View — FAQ article domain entity
+// @implements FS-050.17: FAQ Validation Rules — article persistence + validation
+// @implements BS-050.1: Public Visibility Requires Published Article AND Public Category
 class FAQ {
 
     var $id;
@@ -23,12 +26,14 @@ class FAQ {
     var $category;
     var $attachments;
 
+    // @implements FS-050.7: Public Single-Article View — construct/load an article by id
     function FAQ($id) {
         $this->id=0;
         $this->ht = array();
         $this->load($id);
     }
 
+    // @implements FS-050.7: Public Single-Article View — hydrate article + joined category ispublic + attachment count
     function load($id) {
 
         $sql='SELECT faq.*,cat.ispublic, count(attach.file_id) as attachments '
@@ -62,6 +67,7 @@ class FAQ {
     function getNotes() { return $this->ht['notes']; }
     function getNumAttachments() { return $this->ht['attachments']; }
 
+    // @implements BS-050.1: Public Visibility Requires Published Article AND Public Category — ispublished AND category ispublic
     function isPublished() { return (!!$this->ht['ispublished'] && !!$this->ht['ispublic']); }
 
     function getCreateDate() { return $this->ht['created']; }
@@ -75,6 +81,7 @@ class FAQ {
         return $this->category;
     }
 
+    // @implements FS-050.18: Help-Topic Association Management — resolve associated topic ids
     function getHelpTopicsIds() {
 
         if (!isset($this->ht['topics']) && ($topics=$this->getHelpTopics())) {
@@ -84,6 +91,7 @@ class FAQ {
         return $this->ht['topics'];
     }
 
+    // @implements FS-050.18: Help-Topic Association Management — resolve associated topics (parent / child path)
     function getHelpTopics() {
         //XXX: change it to obj (when needed)!
 
@@ -110,15 +118,18 @@ class FAQ {
     function setNotes($text) { $this->ht['notes'] = $text; }
 
     /* For ->attach() and ->detach(), use $this->attachments() */
+    // @implements FS-050.9: FAQ Article Attachments — attach/detach a file to the article
     function attach($file) { return $this->_attachments->add($file); }
     function detach($file) { return $this->_attachments->remove($file); }
 
+    // @implements FS-050.12: Staff FAQ Mutation Actions — publish the article
     function publish() {
         $this->setPublished(1);
 
         return $this->apply();
     }
 
+    // @implements FS-050.12: Staff FAQ Mutation Actions — unpublish the article
     function unpublish() {
         $this->setPublished(0);
 
@@ -126,11 +137,13 @@ class FAQ {
     }
 
     /* Same as update - but mainly called after one or more setters are changed. */
+    // @implements FS-050.12: Staff FAQ Mutation Actions — persist setter-driven changes (publish/unpublish)
     function apply() {
         //XXX: set errors and add ->getErrors() & ->getError()
         return $this->update($this->ht, $errors);               # nolint
     }
 
+    // @implements FS-050.18: Help-Topic Association Management — sync faq_topic (add new, remove unchecked)
     function updateTopics($ids){
 
         if($ids) {
@@ -153,6 +166,8 @@ class FAQ {
         return true;
     }
 
+    // @implements FS-050.12: Staff FAQ Mutation Actions — update article + re-sync topics + attachment keep/delete
+    // @implements FS-050.9: FAQ Article Attachments — keep-list detach + new uploads on update
     function update($vars, &$errors) {
 
         if(!$this->save($this->getId(), $vars, $errors))
@@ -179,6 +194,7 @@ class FAQ {
     }
 
 
+    // @implements FS-050.9: FAQ Article Attachments — list joined attachment files (storage owned by FS-022)
     function getAttachments() {
 
         if(!$this->attachments && $this->getNumAttachments()) {
@@ -199,6 +215,7 @@ class FAQ {
         return $this->attachments;
     }
 
+    // @implements FS-050.9: FAQ Article Attachments — render file.php?h=<hash> download links (hash per FS-022)
     function getAttachmentsLinks($separator=' ',$target='') {
 
         $str='';
@@ -217,6 +234,7 @@ class FAQ {
         return $str;
     }
 
+    // @implements FS-050.9: FAQ Article Attachments — upload/link files (numeric id reused, else AttachmentFile::upload)
     function uploadAttachments($files) {
 
         $i=0;
@@ -233,6 +251,7 @@ class FAQ {
         return $i;
     }
 
+    // @implements FS-050.9: FAQ Article Attachments — detach one attachment + reclaim orphaned file (FS-022)
     function deleteAttachment($file_id) {
         $deleted = 0;
         $sql='DELETE FROM '.FAQ_ATTACHMENT_TABLE
@@ -244,6 +263,7 @@ class FAQ {
         return ($deleted > 0);
     }
 
+    // @implements FS-050.9: FAQ Article Attachments — detach all attachments + reclaim orphaned files (FS-022)
     function deleteAttachments(){
 
         $deleted=0;
@@ -257,6 +277,8 @@ class FAQ {
     }
 
 
+    // @implements FS-050.18: Help-Topic Association Management — delete article cascades faq_topic + attachments
+    // @implements FS-050.9: FAQ Article Attachments — reclaim attachments on article delete
     function delete() {
 
         $sql='DELETE FROM '.FAQ_TABLE
@@ -275,6 +297,7 @@ class FAQ {
 
     /* ------------------> Static methods <--------------------- */
 
+    // @implements FS-050.12: Staff FAQ Mutation Actions — create article then link topics/attachments
     function add($vars, &$errors) {
         if(!($id=self::create($vars, $errors)))
             return false;
@@ -291,14 +314,17 @@ class FAQ {
         return $faq;
     }
 
+    // @implements FS-050.17: FAQ Validation Rules — create entry point (id=0)
     function create($vars, &$errors) {
         return self::save(0, $vars, $errors);
     }
 
+    // @implements FS-050.3: Public Article / Category Routing — strict lookup (validates getId()==id)
     function lookup($id) {
         return ($id && is_numeric($id) && ($obj= new FAQ($id)) && $obj->getId()==$id)? $obj : null;
     }
 
+    // @implements BS-050.2: Public KB Reachability Requires Toggle AND At Least One Published Public FAQ
     function countPublishedFAQs() {
         $sql='SELECT count(faq.faq_id) '
             .' FROM '.FAQ_TABLE.' faq '
@@ -308,6 +334,7 @@ class FAQ {
         return db_result(db_query($sql));
     }
 
+    // @implements BS-050.4: Article Question Uniqueness — resolve article id by exact question
     function findIdByQuestion($question) {
         $sql='SELECT faq_id FROM '.FAQ_TABLE
             .' WHERE question='.db_input($question);
@@ -317,6 +344,7 @@ class FAQ {
         return $id;
     }
 
+    // @implements BS-050.4: Article Question Uniqueness — resolve article by exact question
     function findByQuestion($question) {
 
         if(($id=self::findIdByQuestion($question)))
@@ -325,6 +353,9 @@ class FAQ {
         return false;
     }
 
+    // @implements FS-050.17: FAQ Validation Rules — validate (question/category/answer) + persist
+    // @implements BS-050.4: Article Question Uniqueness — "Question already exists" guard
+    // @implements EC-050.12: Mismatched hidden id on edit submit — "Internal error. Try again"
     function save($id, $vars, &$errors, $validation=false) {
 
         //Cleanup.

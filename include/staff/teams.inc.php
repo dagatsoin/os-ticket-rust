@@ -1,3 +1,4 @@
+<?php /* @implements FS-030.8: Team list view — admin gate, sort map (name/status/members/lead/created, default name ASC), not paginated */ ?>
 <?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
@@ -44,6 +45,11 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="teams.php?a=add" class="Icon newteam">Add New Team</a></b></div>
 <div class="clear"></div>
+<?php
+/* @implements FS-030.8: Team list view — team list table (Name/Status/Members link/Lead/Created/Updated) */
+/* @implements KL-030-12: Team "Last Updated" column header is a dead sort link — emits sort=updated, not in the sort map (name/status/members/lead/created), so the click silently reverts to default Name sort */
+/* @implements FS-030.12: Team bulk actions — mass actions Enable/Disable/Delete (do=mass_process, ids[]) with confirm dialog */
+?>
 <form action="teams.php" method="POST" name="teams">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >

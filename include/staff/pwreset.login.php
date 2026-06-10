@@ -1,4 +1,5 @@
 <?php
+// @implements FS-002.3: Staff password reset — re-identify & log in (newpasswd) step: username+token re-entry form (do=newpasswd) with CSRF token
 include_once(INCLUDE_DIR.'staff/login.header.php');
 defined('OSTSCPINC') or die('Invalid path');
 $info = ($_POST)?Format::htmlchars($_POST):array();

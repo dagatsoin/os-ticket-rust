@@ -13,6 +13,8 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-003.7: Declarative field-set validation — field-spec driven input validation
+// @implements FS-003.9: Standalone format validators — static email/phone/url/ip/username checks
 class Validator {
 
     var $input=array();
@@ -33,6 +35,8 @@ class Validator {
     }
 
 
+    // @implements FS-003.7: Declarative field-set validation — iterate field specs over an input source, collecting errors
+    // @implements FS-003.8: Per-type validation rules — dispatch each field to its typed rule
     function validate($source,$userinput=true){
 
         $this->errors=array();
@@ -136,6 +140,7 @@ class Validator {
 
     /*** Functions below can be called directly without class instance.
          Validator::func(var..);  (nolint) ***/
+    // @implements FS-003.9: Standalone format validators — email/phone/url/ip/username static checks
     function is_email($email) {
         return preg_match('/^([*+!.&#$|\'\\%\/0-9a-z^_`{}=?~:-]+)@(([0-9a-z-]+\.)+[0-9a-z]{2,})$/i',$email);
     }
@@ -178,6 +183,7 @@ class Validator {
         return $error == '';
     }
 
+    // @implements FS-003.7: Declarative field-set validation — one-shot helper: validate $vars against $fields, merge errors
     function process($fields,$vars,&$errors){
 
         $val = new Validator();

@@ -1,3 +1,4 @@
+<?php /* @implements FS-021.20: Staff-Initiated (Phone) New Ticket (`a=open` → `Ticket::open`) — staff-initiated (phone) new-ticket form (a=open -> create): canCreateTickets gate; requester email/name/phone, Send-alert-to-user (when staff-ticket notice enabled), source/dept/topic/priority/SLA/due date */ ?>
 <?php
 if(!defined('OSTSCPINC') || !$thisstaff || !$thisstaff->canCreateTickets()) die('Access Denied');
 $info=array();
@@ -171,6 +172,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             </td>
         </tr>
 
+        <?php /* @implements FS-021.20: Staff-Initiated (Phone) New Ticket (`a=open` → `Ticket::open`) — optional Assign To (staff s<id> / team t<id>) shown only when canAssignTickets */ ?>
         <?php
         if($thisstaff->canAssignTickets()) { ?>
         <tr>
@@ -204,6 +206,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
         </tr>
         <?php
         } ?>
+        <?php /* @implements FS-021.20: Staff-Initiated (Phone) New Ticket (`a=open` → `Ticket::open`) — issue block: required Subject + Issue summary (initial message body) */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Issue</strong>: The user will be able to see the issue summary below and any associated responses.</em>
@@ -219,6 +222,10 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 <textarea name="issue" cols="21" rows="8" style="width:80%;"><?php echo $info['issue']; ?></textarea>
             </td>
         </tr>
+        <?php
+        /* @implements FS-021.20: Staff-Initiated (Phone) New Ticket (`a=open` → `Ticket::open`) — optional Response block (canPostReply): canned-response prefill + Append, attachments, Close-On-Response (canCloseTickets) */
+        /* @implements FS-021.6: Reply Signature Selection — signature selection on the optional response */
+        ?>
         <?php
         //is the user allowed to post replies??
         if($thisstaff->canPostReply()) {

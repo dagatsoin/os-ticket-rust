@@ -1,6 +1,8 @@
 <?php
+// @implements FS-030.1: Admin access gate & navigation context — departments list in-partial admin re-check (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
+// @implements FS-030.3: Department list view — list query w/ manager + email + home-staff count joins; sort/order resolution
 $qstr='';
 $sql='SELECT dept.dept_id,dept_name,email.email_id,email.email,email.name as email_name,ispublic,count(staff.staff_id) as users '.
      ',CONCAT_WS(" ",mgr.firstname,mgr.lastname) as manager,mgr.staff_id as manager_id,dept.created,dept.updated  FROM '.DEPT_TABLE.' dept '.
@@ -46,6 +48,7 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="departments.php?a=add" class="Icon newDepartment">Add New Department</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-030.3: Department list view — list table (name+default marker, type, users, email, manager) + mass_process form (CSRF) */ ?>
 <form action="departments.php" method="POST" name="depts">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >
@@ -115,6 +118,8 @@ else
 <?php
 if($res && $num): //Show options..
 ?>
+<?php /* @implements FS-030.7: Department bulk actions — bulk Make Public / Make Private / Delete (default dept protected, checkbox disabled) + confirm dialog */ ?>
+<?php /* @implements BS-030-05: Default department cannot be deleted or disabled — default excluded from bulk actions */ ?>
 <p class="centered" id="actions">
     <input class="button" type="submit" name="make_public" value="Make Public" >
     <input class="button" type="submit" name="make_private" value="Make Private" >

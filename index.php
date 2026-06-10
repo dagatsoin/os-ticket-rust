@@ -13,9 +13,15 @@
 
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
+// @implements FS-001.14: Landing Page — boots the client gate, sets section 'home', renders the support-center landing page
+// @implements FS-010.1: Support-Center Landing Page — portal hub entry point booting through the client shell
 require('client.inc.php');
 $section = 'home';
 require(CLIENTINC_DIR.'header.inc.php');
+?>
+<?php
+// @implements FS-010.1: Support-Center Landing Page — #landing_page region: configured landing body or default welcome heading + two CTAs
+// @implements FS-032.6: Site Pages, Logos, Autoresponder, KB & Alerts Tabs — renders the admin-configured landing page body (getLandingPage)
 ?>
 <div id="landing_page">
     <?php
@@ -44,6 +50,8 @@ require(CLIENTINC_DIR.'header.inc.php');
 </div>
 <div class="clear"></div>
 <?php
+// @implements FS-010.1: Support-Center Landing Page — closing FAQ pointer rendered only when the KB is enabled
+// @implements FS-050.1: Knowledge-Base Enable/Disable Toggle — gates the FAQ link on isKnowledgebaseEnabled
 if($cfg && $cfg->isKnowledgebaseEnabled()){
     //FIXME: provide ability to feature or select random FAQs ??
 ?>

@@ -14,12 +14,15 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 require('admin.inc.php');
+// @implements FS-030.2: Page routing — list vs. form — department id lookup, "Unknown or invalid department ID." on miss
 $dept=null;
 if($_REQUEST['id'] && !($dept=Dept::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid department ID.';
 
+// @implements FS-030.5: Department creation & update — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-030.5: Department creation & update — update existing department
         case 'update':
             if(!$dept){
                 $errors['err']='Unknown or invalid department.';
@@ -29,6 +32,7 @@ if($_POST){
                 $errors['err']='Error updating department. Try again!';
             }
             break;
+        // @implements FS-030.5: Department creation & update — create new department
         case 'create':
             if(($id=Dept::create($_POST,$errors))){
                 $msg=Format::htmlchars($_POST['name']).' added successfully';
@@ -37,6 +41,8 @@ if($_POST){
                 $errors['err']='Unable to add department. Correct error(s) below and try again.';
             }
             break;
+        // @implements FS-030.7: Department bulk actions — bulk Make Public/Make Private/Delete
+        // @implements BS-030-05: Default department cannot be deleted or disabled — refuse batch containing default dept
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err'] = 'You must select at least one department';
@@ -102,6 +108,8 @@ if($_POST){
     }
 }
 
+// @implements FS-030.3: Department list view — list partial routing
+// @implements FS-030.4: Department add/edit form — form partial routing
 $page='departments.inc.php';
 if($dept || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='department.inc.php';

@@ -17,6 +17,8 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 
+// @implements FS-010.6: Client Session Lifecycle & Validation — client model built from ticket info
+// @implements BS-010.1: Identity Is Ticket-Number + Email, Validated In Order
 class Client {
 
     var $id;
@@ -30,11 +32,14 @@ class Client {
     var $ht;
 
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — construct client from ticket id + email
     function Client($id, $email=null) {
         $this->id =0;
         $this->load($id,$email);
     }
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — load client row from ticket by number (+email)
+    // @implements BS-010.1: Identity Is Ticket-Number + Email, Validated In Order
     function load($id=0, $email=null) {
 
         if(!$id && !($id=$this->getId()))
@@ -62,42 +67,52 @@ class Client {
         return($this->id);
     }
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — reload client model
     function reload() {
         return $this->load();
     }
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — client-role marker
     function isClient() {
         return TRUE;
     }
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — id accessor (placeholder = ticketID)
     function getId() {
         return $this->id;
     }
 
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — email is the scoping key
     function getEmail() {
         return $this->email;
     }
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — username (email) accessor
     function getUserName() {
         return $this->username;
     }
 
+    // @implements FS-010.10: Client Page Shell — Header, Footer & Navigation — display name accessor
     function getName() {
         return $this->fullname;
     }
 
+    // @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — phone accessor for header block
     function getPhone() {
         return $this->ht['phone'];
     }
 
+    // @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — phone extension accessor
     function getPhoneExt() {
         return $this->ht['phone_ext'];
     }
     
+    // @implements FS-010.6: Client Session Lifecycle & Validation — external ticket number accessor
     function getTicketID() {
         return $this->ticketID;
     }
 
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — per-email open/closed aggregate
     function getTicketStats() {
 
         if(!$this->stats['tickets'])
@@ -106,19 +121,24 @@ class Client {
         return $this->stats['tickets'];
     }
 
+    // @implements FS-010.10: Client Page Shell — Header, Footer & Navigation — "My Tickets (N)" total count
     function getNumTickets() {
         return ($stats=$this->getTicketStats())?($stats['open']+$stats['closed']):0;
     }
 
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — open ticket count
     function getNumOpenTickets() {
         return ($stats=$this->getTicketStats())?$stats['open']:0;
     }
 
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — closed ticket count
     function getNumClosedTickets() {
         return ($stats=$this->getTicketStats())?$stats['closed']:0;
     }
 
     /* ------------- Static ---------------*/
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — email-only ticket# resolver
+    // @implements KL-010.11: Email-Only Client Resolver Returns The OLDEST Ticket Despite Its "Last" Name — ORDER BY created lacks DESC, so despite the "Last"/"most-recent" naming this returns the oldest ticket for the email
     function getLastTicketIdByEmail($email) {
         $sql='SELECT ticketID FROM '.TICKET_TABLE
             .' WHERE email='.db_input($email)
@@ -130,14 +150,21 @@ class Client {
         return $tid;
     }
 
+    // @implements FS-010.6: Client Session Lifecycle & Validation — load client by ticket # (+email)
     function lookup($id, $email=null) {
         return ($id && is_numeric($id) && ($c=new Client($id,$email)) && $c->getId()==$id)?$c:null;
     }
 
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — resolve client from email alone
     function lookupByEmail($email) {
         return (($id=self::getLastTicketIdByEmail($email)))?self::lookup($id, $email):null;
     }
 
+    // @implements FS-010.3: Interactive Login (Ticket ID + Email) — POST login by ticket # + email
+    // @implements FS-010.4: Access-Link (Auto) Login — GET auto-login via per-ticket auth token
+    // @implements FS-010.5: Brute-Force Throttling & Lockout — per-session strike counter + lockout window
+    // @implements BS-010.1: Identity Is Ticket-Number + Email, Validated In Order
+    // @implements BS-010.2: Auth Token Is Mandatory For Link (GET) Login, Forbidden For Interactive (POST) Login
     /* static */ function login($ticketID, $email, $auth=null, &$errors=array()) {
         global $ost;
 

@@ -14,12 +14,15 @@
     vim: expandtab sw=4 ts=4 sts=4:
 **********************************************************************/
 require('admin.inc.php');
+// @implements FS-030.2: Page routing — list vs. form — team id lookup, "Unknown or invalid team ID." on miss
 $team=null;
 if($_REQUEST['id'] && !($team=Team::lookup($_REQUEST['id'])))
     $errors['err']='Unknown or invalid team ID.';
 
+// @implements FS-030.10: Team creation, update & member removal — POST dispatch
 if($_POST){
     switch(strtolower($_POST['do'])){
+        // @implements FS-030.10: Team creation, update & member removal — update + member removal
         case 'update':
             if(!$team){
                 $errors['err']='Unknown or invalid team.';
@@ -29,6 +32,7 @@ if($_POST){
                 $errors['err']='Unable to update team. Correct any error(s) below and try again!';
             }
             break;
+        // @implements FS-030.10: Team creation, update & member removal — create new team
         case 'create':
             if(($id=Team::create($_POST,$errors))){
                 $msg=Format::htmlchars($_POST['team']).' added successfully';
@@ -37,6 +41,7 @@ if($_POST){
                 $errors['err']='Unable to add team. Correct any error(s) below and try again.';
             }
             break;
+        // @implements FS-030.12: Team bulk actions — mass enable/disable/delete
         case 'mass_process':
             if(!$_POST['ids'] || !is_array($_POST['ids']) || !count($_POST['ids'])) {
                 $errors['err']='You must select at least one team.';
@@ -92,6 +97,8 @@ if($_POST){
     }
 }
 
+// @implements FS-030.8: Team list view — list partial routing
+// @implements FS-030.9: Team add/edit form — form partial routing
 $page='teams.inc.php';
 if($team || ($_REQUEST['a'] && !strcasecmp($_REQUEST['a'],'add')))
     $page='team.inc.php';

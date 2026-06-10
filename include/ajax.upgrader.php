@@ -17,8 +17,13 @@
 if(!defined('INCLUDE_DIR')) die('403');
 require_once INCLUDE_DIR.'class.upgrader.php';
 
+// @implements FS-061.11: AJAX progress protocol with manual fallback — the polled upgrade endpoint
 class UpgraderAjaxAPI extends AjaxController {
 
+    // @implements FS-061.11: AJAX progress protocol with manual fallback — 200 progress / 201 done / 416 aborted poll responses
+    // @implements FS-061.12: Abort, error capture & alerting — 416 short-circuit when aborted or errors accumulated
+    // @implements FS-061.14: Post-upgrade completion actions — setState('done') + session write-close on no pending upgrade
+    // @implements BS-061-03: Only an authenticated admin may run the upgrade — 403 Access Denied otherwise
     function upgrade() {
         global $thisstaff, $ost;
 

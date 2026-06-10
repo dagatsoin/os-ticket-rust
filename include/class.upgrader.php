@@ -17,7 +17,10 @@
 require_once INCLUDE_DIR.'class.setup.php';
 require_once INCLUDE_DIR.'class.migrater.php';
 
+// @implements FS-061.8: Multi-stream coordination — coordinates parallel schema-patch streams
+// @implements FS-061.15: Persistence of upgrade run state across requests — session-persistent upgrade state
 class Upgrader {
+    // @implements FS-061.2: Stream discovery from streams configuration — build per-stream upgraders, resume current stream
     function Upgrader($prefix, $basedir) {
         global $ost;
 
@@ -46,6 +49,7 @@ class Upgrader {
         return $this->streams[$this->current];
     }
 
+    // @implements FS-061.8: Multi-stream coordination — true when not aborted and any stream still has pending patches
     function isUpgradable() {
         if ($this->isAborted())
             return false;
@@ -70,12 +74,14 @@ class Upgrader {
         return $this->state;
     }
 
+    // @implements FS-061.14: Post-upgrade completion actions — set upgrade state; on 'done' create the upgraded ticket
     function setState($state) {
         $this->state = $state;
         if ($state == 'done')
             $this->createUpgradedTicket();
     }
 
+    // @implements FS-061.14: Post-upgrade completion actions — insert welcome "osTicket Upgraded!" ticket + first message
     function createUpgradedTicket() {
         global $cfg;
 
@@ -111,6 +117,7 @@ class Upgrader {
         $this->mode = $mode;
     }
 
+    // @implements FS-061.8: Multi-stream coordination — drive the current stream's upgrade step
     function upgrade() {
         if (!$this->current)
             return true;
@@ -175,6 +182,8 @@ class Upgrader {
  * for all the streams, whereas the work to upgrade each stream is done in
  * this class
  */
+// @implements FS-061.3: Hash-chained patch resolution within a stream — applies one hash-chained patch stream
+// @implements FS-061.5: Resumable procedural migration tasks — runs resumable migration tasks between patches
 class StreamUpgrader extends SetupWizard {
 
     var $prefix;
@@ -223,6 +232,7 @@ class StreamUpgrader extends SetupWizard {
         $this->migrater = null;
     }
 
+    // @implements FS-061.12: Abort, error capture & alerting — log, abort upgrade, alert the upgrading operator if not admin
     function onError($error) {
         global $ost, $thisstaff;
 
@@ -301,6 +311,7 @@ class StreamUpgrader extends SetupWizard {
         return !($this->getNextPatch() || $this->getPendingTask());
     }
 
+    // @implements FS-061.7: Patch metadata extraction (version annotation) — parse @key annotations from a patch doc comment
     function readPatchInfo($patch) {
         $info = $matches = $matches2 = array();
         if (preg_match(':/\*\*(.*)\*/:s', file_get_contents($patch), $matches)) {
@@ -335,6 +346,7 @@ class StreamUpgrader extends SetupWizard {
         return false;
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — load + wake the migration task class for the current patch hash
     function getTask() {
         global $ost;
 
@@ -353,6 +365,7 @@ class StreamUpgrader extends SetupWizard {
         return $this->task;
     }
 
+    // @implements FS-061.5: Resumable procedural migration tasks — run task in time-boxed batches; sleep/persist if unfinished
     function doTask() {
 
         if(!($task = $this->getTask()))
@@ -380,6 +393,7 @@ class StreamUpgrader extends SetupWizard {
         return false;
     }
 
+    // @implements FS-061.4: Per-patch batched application with time-boxing — apply up to 5 SQL patches per call, advance schema signature
     function upgrade() {
         global $ost;
 
@@ -440,6 +454,7 @@ class StreamUpgrader extends SetupWizard {
     }
 
     /************* TASKS **********************/
+    // @implements FS-061.6: Per-checkpoint cleanup scripts — run optional per-patch cleanup.sql after a patch/task completes
     function cleanup() {
         $file = $this->getSQLDir().$this->phash.'.cleanup.sql';
 

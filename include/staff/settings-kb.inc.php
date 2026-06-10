@@ -1,4 +1,10 @@
 <?php
+/* @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — Knowledgebase Settings tab (kb): enable_kb, enable_premade checkboxes */
+/* @implements FS-032.1: Settings Panel Entry & Tab Routing — in-partial admin re-check */
+/* @implements BS-032.1: Admin re-check inside settings partial */
+/* @implements BS-032.4: Knowledgebase enable toggles */
+?>
+<?php
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin() || !$config) die('Access Denied');
 ?>
 <h2>Knowledge Base Settings and Options</h2>

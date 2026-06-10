@@ -1,6 +1,8 @@
 <?php
+// @implements FS-042.2: Create / Edit Filter — in-partial admin gate for the filter editor (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff || !$thisstaff->isAdmin()) die('Access Denied');
 
+// @implements FS-042.3: Match Rules — Criteria, Operators & Values — supported match criteria + operators for the rule rows
 $matches=Filter::getSupportedMatches();
 $match_types=Filter::getSupportedMatchTypes();
 
@@ -22,6 +24,8 @@ if($filter && $_REQUEST['a']!='add'){
 }
 $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
 ?>
+<?php /* @implements FS-042.2: Create / Edit Filter — filter form (name, execution order 1..99 + stop-on-match, status; CSRF) */ ?>
+<?php /* @implements FS-042.6: Channel Targeting & Email-ID Scoping — Target selector (channel / specific system email) */ ?>
 <form action="filters.php?<?php echo $qstr; ?>" method="post" id="save">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="<?php echo $action; ?>">
@@ -99,6 +103,9 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
                 <span class="error">*&nbsp;<?php echo $errors['target']; ?></span>
             </td>
         </tr>
+        <?php /* @implements FS-042.4: Match Logic — Match-All vs Match-Any — Match All/Any selector */ ?>
+        <?php /* @implements FS-042.3: Match Rules — Criteria, Operators & Values — dynamic rule rows (what/how/value) */ ?>
+        <?php /* @implements BS-042-09: Rule cap — editor renders existing rules + 2 empty rows, hardcoded 25-rule cap */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Filter Rules</strong>: Rules are applied based on the criteria.&nbsp;<span class="error">*&nbsp;<?php echo $errors['rules']; ?></span></em>
@@ -155,6 +162,7 @@ $info=Format::htmlchars(($errors && $_POST)?$_POST:$info);
             if($i>=25) //Hardcoded limit of 25 rules...also see class.filter.php
                break;
         } ?>
+        <?php /* @implements FS-042.5: Filter Actions — reject ticket, use reply-to, disable autoresponder, canned response, dept/priority/SLA override, auto-assign (staff/team) */ ?>
         <tr>
             <th colspan="2">
                 <em><strong>Filter Actions</strong>: Can be overridden by other filters depending on processing order.&nbsp;</em>

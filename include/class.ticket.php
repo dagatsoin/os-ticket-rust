@@ -31,6 +31,7 @@ include_once(INCLUDE_DIR.'class.priority.php');
 include_once(INCLUDE_DIR.'class.sla.php');
 include_once(INCLUDE_DIR.'class.canned.php');
 
+// @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — Ticket domain class: staff workflow methods + shared create/append spine
 class Ticket {
 
     var $id;
@@ -55,6 +56,7 @@ class Ticket {
         $this->load($id);
     }
 
+    // @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — load ticket row + dept/sla/priority/lock joins; preload thread
     function load($id=0) {
 
         if(!$id && !($id=$this->getId()))
@@ -134,6 +136,8 @@ class Ticket {
         return ($this->getLockId());
     }
 
+    // @implements FS-021.2: Staff Access Check (`checkStaffAccess`) — dept access OR (open ticket + direct/team assignment)
+    // @implements BS-021.2: Ticket Visibility By Department Access Or Assignment — visibility predicate
     function checkStaffAccess($staff) {
 
         if(!is_object($staff) && !($staff=Staff::lookup($staff)))
@@ -159,6 +163,8 @@ class Ticket {
         return false;
     }
 
+    // @implements FS-010.7: Client Ticket View — client access gate: requester email match OR related-ticket visibility
+    // @implements BS-010.4: Client Ticket Access Is Scoped By Email (Or, If Enabled, Login Ticket) — scope predicate
     function checkClientAccess($client) {
         global $cfg;
 
@@ -173,6 +179,7 @@ class Ticket {
     }
 
     //Getters
+    // @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — ticket field/relation accessors (status/routing/timing/assignee/thread)
     function getId() {
         return  $this->id;
     }
@@ -189,6 +196,8 @@ class Ticket {
         return $this->ht['email'];
     }
 
+    // @implements BS-010.3: Auth Token Is A Salted Hash Of Ticket + Email — md5(id + email + secret) client-link token
+    // @implements FS-010.4: Access-Link (Auto) Login — token gates view.php auto-login access
     function getAuthToken() {
         # XXX: Support variable email address (for CCs)
         return md5($this->getId() . strtolower($this->getEmail()) . SECRET_SALT);
@@ -335,6 +344,8 @@ class Ticket {
         return $this->tlock;
     }
 
+    // @implements FS-021.18: Collaborative Edit Locking — auto-acquire/renew edit lock (TTL = lockTime minutes)
+    // @implements BS-021.3: One Active Lock Per Ticket; Locks Block Conflicting Replies — single-lock invariant
     function acquireLock($staffId, $lockTime) {
 
         if(!$staffId or !$lockTime) //Lockig disabled?
@@ -450,6 +461,7 @@ class Ticket {
         return $this->sla;
     }
 
+    // @implements FS-021.16: Workflow Event Alert E-mails — most recent staff respondent (R-type) for alert routing
     function getLastRespondent() {
 
         $sql ='SELECT  resp.staff_id '
@@ -497,6 +509,7 @@ class Ticket {
         return Message::lastByTicketId($this->getId());
     }
 
+    // @implements FS-021.22: Ticket Thread Model — lazy-load the conversation Thread object
     function getThread() {
 
         if(!$this->thread)
@@ -548,6 +561,7 @@ class Ticket {
 
 
     /* -------------------- Setters --------------------- */
+    // @implements FS-021: Staff Ticket View & Workflow — low-level ticket mutators (priority/dept/staff/team/sla/status/state/answered) shared across workflow actions
     function setLastMsgId($msgid) {
         return $this->lastMsgId=$msgid;
     }
@@ -618,6 +632,8 @@ class Ticket {
      *          specified in the filter should trump any other SLA to be
      *          considered.
      */
+    // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — SLA selection precedence
+    // @implements BS-021.7: SLA Follows the Owning Department on Transfer — trump > dept SLA > topic SLA > default
     function selectSLAId($trump=null) {
         global $cfg;
         # XXX Should the SLA be overridden if it was originally set via an
@@ -704,6 +720,8 @@ class Ticket {
     }
 
     //Close the ticket
+    // @implements FS-021.11: Close Ticket — stamp closed, clear overdue/duedate, credit closing staff, log event
+    // @implements BS-021.4: Closing Clears Overdue & Due Date and Credits the Closer — close side-effects
     function close() {
         global $thisstaff;
 
@@ -723,6 +741,8 @@ class Ticket {
     }
 
     //set status to open on a closed ticket.
+    // @implements FS-021.12: Reopen Ticket — status open, stamp reopened, annul prior closed event
+    // @implements BS-021.14: Reopen Annuls the Prior Close Event — annul prior close
     function reopen($isanswered=0) {
 
         $sql='UPDATE '.TICKET_TABLE.' SET updated=NOW(), reopened=NOW() '
@@ -736,6 +756,9 @@ class Ticket {
         return (db_query($sql) && db_affected_rows());
     }
 
+    // @implements FS-011.12: New-Ticket Autoresponse and Staff Alerts — autoresponse to requester + staff/admin alerts
+    // @implements FS-021.16: Workflow Event Alert E-mails — new-ticket alert dispatch
+    // @implements FS-041.9: Email-Sourced New-Ticket Creation Semantics — autoresponse suppression for email-origin creates
     function onNewTicket($message, $autorespond=true, $alertstaff=true) {
         global $cfg;
 
@@ -819,6 +842,8 @@ class Ticket {
         return true;
     }
 
+    // @implements BS-011.4: Over-Limit Notice on Reaching the Ceiling — over-limit notice to user + admin warning
+    // @implements FS-011.13: Public-Endpoint Protections (Ban-List, Open-Ticket Limit, Filters) — open-ticket ceiling handling
     function onOpenLimit($sendNotice=true) {
         global $ost, $cfg;
 
@@ -857,10 +882,13 @@ class Ticket {
         return true;
     }
 
+    // @implements FS-021.3: Post Reply to Requester — on staff response: mark answered, stamp lastresponse/updated
     function onResponse() {
         db_query('UPDATE '.TICKET_TABLE.' SET isanswered=1,lastresponse=NOW(), updated=NOW() WHERE ticket_id='.db_input($this->getId()));
     }
 
+    // @implements FS-021.5: Posting a Requester Message — on new requester message: unanswer, auto-assign/reopen, autoresponse
+    // @implements FS-041.8: Email-Sourced Thread Append Semantics — email-origin message append side-effects
     function onMessage($autorespond=true, $message=null) {
         global $cfg;
 
@@ -919,6 +947,8 @@ class Ticket {
         }
     }
 
+    // @implements FS-021.7: Assign / Reassign Ticket — on assignment: log internal note + assignment alerts
+    // @implements BS-021.9: No Self-Assignment Alerts — suppress alert when assignee is the actor
     function onAssign($assignee, $comments, $alert=true) {
         global $cfg, $thisstaff;
 
@@ -988,6 +1018,8 @@ class Ticket {
         return true;
     }
 
+   // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — on overdue: alert assigned/dept members/manager
+   // @implements FS-021.16: Workflow Event Alert E-mails — overdue alert dispatch unless SLA disables
    function onOverdue($whine=true, $comments="") {
         global $cfg;
 
@@ -1049,6 +1081,7 @@ class Ticket {
        return $this->getNumber();
     }
 
+    // @implements FS-040.11: Variable Substitution Grammar — ticket template variables (client_link/staff_link/dates/auth_token) for %{ticket.*}
     function getVar($tag) {
         global $cfg;
 
@@ -1104,6 +1137,7 @@ class Ticket {
     }
 
     //Replace base variables.
+    // @implements FS-040.11: Variable Substitution Grammar — inject this ticket into the var set and run substitution
     function replaceVars($input, $vars = array()) {
         global $ost;
 
@@ -1112,14 +1146,18 @@ class Ticket {
         return $ost->replaceTemplateVariables($input, $vars);
     }
 
+    // @implements BS-021.21: Mark-Overdue / Mark-Answered Are Idempotent — idempotent unanswered flag setter
     function markUnAnswered() {
         return (!$this->isAnswered() || $this->setAnsweredState(0));
     }
 
+    // @implements BS-021.21: Mark-Overdue / Mark-Answered Are Idempotent — idempotent answered flag setter
     function markAnswered() {
         return ($this->isAnswered() || $this->setAnsweredState(1));
     }
 
+    // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — mark overdue: set flag, log event, fire alert
+    // @implements BS-021.21: Mark-Overdue / Mark-Answered Are Idempotent — idempotent overdue marking
     function markOverdue($whine=true) {
 
         global $cfg;
@@ -1139,6 +1177,7 @@ class Ticket {
         return true;
     }
 
+    // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — clear overdue: drop flag, null past due date, zero past-due SLA
     function clearOverdue() {
 
         if(!$this->isOverdue())
@@ -1162,6 +1201,8 @@ class Ticket {
     }
 
     //Dept Tranfer...with alert.. done by staff
+    // @implements FS-021.10: Transfer Between Departments — reopen if closed, reselect SLA, log note+event, alerts
+    // @implements BS-021.7: SLA Follows the Owning Department on Transfer — SLA reselection on dept change
     function transfer($deptId, $comments, $alert = true) {
 
         global $cfg, $thisstaff;
@@ -1241,6 +1282,7 @@ class Ticket {
          return true;
     }
 
+    // @implements FS-021.7: Assign / Reassign Ticket — assign to staff member: set staff id, onAssign alerts, log event
     function assignToStaff($staff, $note, $alert=true) {
 
         if(!is_object($staff) && !($staff=Staff::lookup($staff)))
@@ -1255,6 +1297,7 @@ class Ticket {
         return true;
     }
 
+    // @implements FS-021.7: Assign / Reassign Ticket — assign to team: set team id, clear staff if was closed, alerts
     function assignToTeam($team, $note, $alert=true) {
 
         if(!is_object($team) && !($team=Team::lookup($team)))
@@ -1275,6 +1318,8 @@ class Ticket {
     }
 
     //Assign ticket to staff or team - overloaded ID.
+    // @implements FS-021.7: Assign / Reassign Ticket — dispatch on prefixed id (t=team, s/numeric=staff)
+    // @implements FS-021.8: Claim Ticket — numeric/self id resolves to a claim path
     function assign($assignId, $note, $alert=true) {
         global $thisstaff;
 
@@ -1292,6 +1337,7 @@ class Ticket {
     }
 
     //unassign primary assignee
+    // @implements FS-021.9: Release / Unassign Ticket — release open ticket (staff and/or team); blocked when closed
     function unassign() {
 
         if(!$this->isAssigned()) //We can't release what is not assigned buddy!
@@ -1319,6 +1365,8 @@ class Ticket {
     }
 
     //Insert message from client
+    // @implements FS-021.5: Posting a Requester Message — append requester Message (M): strip-quote, onMessage, new-msg alerts
+    // @implements FS-041.8: Email-Sourced Thread Append Semantics — email-origin message append + quoted-reply stripping
     function postMessage($vars, $origin='', $alerts=true) {
         global $cfg;
 
@@ -1397,6 +1445,8 @@ class Ticket {
         return $message;
     }
 
+    // @implements FS-022.14: Canned Response Consumption — post canned auto-reply (R) with canned attachments + autoreply email
+    // @implements BS-022.15: Canned Reply Posts as System and Marks Ticket Unanswered — canned reply side-effects
     function postCannedReply($canned, $msgId, $alert=true) {
         global $ost, $cfg;
 
@@ -1457,6 +1507,8 @@ class Ticket {
     }
 
     /* public */
+    // @implements FS-021.3: Post Reply to Requester — post staff Response (R): onResponse, email requester
+    // @implements BS-021.18: Reply Status Checkbox Can Close or Reopen On Reply — optional status-on-reply
     function postReply($vars, &$errors, $alert = true) {
         global $thisstaff, $cfg;
 
@@ -1517,6 +1569,7 @@ class Ticket {
     }
 
     //Activity log - saved as internal notes WHEN enabled!!
+    // @implements FS-021.23: Lifecycle Event Log & Activity Notes — activity note (SYSTEM, no alert) when activity logging enabled
     function logActivity($title, $note) {
         global $cfg;
 
@@ -1527,6 +1580,7 @@ class Ticket {
     }
 
     // History log -- used for statistics generation (pretty reports)
+    // @implements FS-021.23: Lifecycle Event Log & Activity Notes — lifecycle event row (created/closed/reopened/assigned/transferred/overdue) + annul
     function logEvent($state, $annul=null, $staff=null) {
         global $thisstaff;
 
@@ -1555,6 +1609,7 @@ class Ticket {
     }
 
     //Insert Internal Notes
+    // @implements FS-021.4: Post Internal Note — convenience wrapper to post an internal Note (N)
     function logNote($title, $note, $poster='SYSTEM', $alert=true) {
 
         $errors = array();
@@ -1565,6 +1620,8 @@ class Ticket {
                 $alert);
     }
 
+    // @implements FS-021.4: Post Internal Note — post internal Note (N): optional state change + staff note alerts
+    // @implements FS-041.8: Email-Sourced Thread Append Semantics — staff-sender email lands as an internal Note
     function postNote($vars, &$errors, $poster, $alert=true) {
         global $cfg, $thisstaff;
 
@@ -1657,6 +1714,7 @@ class Ticket {
     }
 
     //Print ticket... export the ticket thread as PDF.
+    // @implements FS-021.17: Print Ticket to PDF — stream ticket thread as PDF; paper size from session/staff default/Letter
     function pdfExport($psize='Letter', $notes=false) {
         global $thisstaff;
 
@@ -1675,6 +1733,8 @@ class Ticket {
         exit;
     }
 
+    // @implements FS-021.19: Delete Ticket — permanent delete: ticket row + orphaned thread + attachments
+    // @implements BS-021.16: Deletion Is Permanent and Cascades to Thread & Attachments — cascade semantics
     function delete() {
 
         $sql = 'DELETE FROM '.TICKET_TABLE.' WHERE ticket_id='.$this->getId().' LIMIT 1';
@@ -1687,6 +1747,7 @@ class Ticket {
         return true;
     }
 
+    // @implements FS-021.15: Edit Ticket Properties — validate, due-date rules, reselect SLA, clear overdue
     function update($vars, &$errors) {
 
         global $cfg, $thisstaff;
@@ -1774,6 +1835,7 @@ class Ticket {
 
 
    /*============== Static functions. Use Ticket::function(params); =============nolint*/
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — resolve internal id from external ticket number (subject threading)
     function getIdByExtId($extId, $email=null) {
 
         if(!$extId || !is_numeric($extId))
@@ -1793,6 +1855,7 @@ class Ticket {
 
 
 
+    // @implements FS-021.1: Ticket Lookup, Access Gate & Page Routing — static lookup by internal numeric id (requires loaded thread)
     function lookup($id) { //Assuming local ID is the only lookup used!
         return ($id
                 && is_numeric($id)
@@ -1802,10 +1865,13 @@ class Ticket {
             ?$ticket:null;
     }
 
+    // @implements FS-010.3: Interactive Login (Ticket ID + Email) — lookup by external ticket number + email (client portal access)
+    // @implements BS-010.1: Identity Is Ticket-Number + Email, Validated In Order — extId+email resolution
     function lookupByExtId($id, $email=null) {
         return self::lookup(self:: getIdByExtId($id, $email));
     }
 
+    // @implements BS-021.23: External Ticket Number Is Random-Unique or Sequential by Config — generate unique fixed-length random ext number
     function genExtRandID() {
         global $cfg;
 
@@ -1818,6 +1884,8 @@ class Ticket {
         return $id;
     }
 
+    // @implements FS-041.6: Threading Detection & Create-or-Append Flow — resolve ticket id from email message-id + sender
+    // @implements BS-041.17: Multi-Valued Message-Id Resolution — message-id based thread matching
     function getIdByMessageId($mid, $email) {
 
         if(!$mid || !$email)
@@ -1834,6 +1902,8 @@ class Ticket {
         return $id;
     }
 
+    // @implements FS-011.13: Public-Endpoint Protections (Ban-List, Open-Ticket Limit, Filters) — count open tickets for an email (max-open control)
+    // @implements BS-021.19: Max-Open-Tickets Limit Excludes Staff-Created Tickets — open-count basis for the ceiling
     function getOpenTicketsByEmail($email) {
 
         $sql='SELECT count(*) as open FROM '.TICKET_TABLE.' WHERE status='.db_input('open').' AND email='.db_input($email);
@@ -1844,6 +1914,7 @@ class Ticket {
     }
 
     /* Quick staff's tickets stats */
+    // @implements FS-020.11: Quick Ticket Stats — staff queue quick-stats (open/answered/overdue/assigned/closed counts)
     function getStaffStats($staff) {
         global $cfg;
 
@@ -1906,6 +1977,7 @@ class Ticket {
     /* Quick client's tickets stats
        @email - valid email.
      */
+    // @implements FS-010.8: "My Tickets" List (Related Tickets by Email) — per-email client stats: open vs closed counts
     function getClientStats($email) {
 
         if(!$email || !Validator::is_email($email))
@@ -1927,6 +1999,13 @@ class Ticket {
      *
      *  $autorespond and $alertstaff overrides config settings...
      */
+    // @implements FS-011.9: Ticket Creation, Routing, and Reference Assignment — web-origin create path
+    // @implements FS-021.20: Staff-Initiated (Phone) New Ticket — staff-origin create path
+    // @implements FS-041.9: Email-Sourced New-Ticket Creation Semantics — email-origin create path
+    // @implements FS-043.4: External Ticket-Create API Endpoint — API-origin create path
+    // @implements FS-042.7: Filter Evaluation Pipeline (Inbound Routing) — ticket filters applied to create args
+    // @implements FS-042.8: Fast Ban Pre-Screen (`isBanned`) — ban check before insertion
+    // @implements BS-021.19: Max-Open-Tickets Limit Excludes Staff-Created Tickets — origin guard on the open-ticket ceiling
     function create($vars, &$errors, $origin, $autorespond=true,
             $alertstaff=true) {
         global $ost, $cfg, $thisclient, $_FILES;
@@ -2181,6 +2260,8 @@ class Ticket {
         return $ticket;
     }
 
+    // @implements FS-021.20: Staff-Initiated (Phone) New Ticket — create('staff'), optional response/note/notice
+    // @implements BS-021.15: Staff-Created Tickets Default to No Auto-Response — autorespond defaults off
     function open($vars, &$errors) {
         global $thisstaff, $cfg;
 
@@ -2272,6 +2353,9 @@ class Ticket {
 
     }
 
+    // @implements FS-021.13: Due Date, SLA Selection & Overdue Marking — system overdue sweep marks eligible open tickets
+    // @implements BS-021.17: System Overdue Sweep — Cadence & Cap Owned by FS-043 BS-432 — per-run cap of 50
+    // @implements BS-432: Ticket Overdue Qualification — overdue eligibility predicate (FS-043)
     function checkOverdue() {
 
         $sql='SELECT ticket_id FROM '.TICKET_TABLE.' T1 '

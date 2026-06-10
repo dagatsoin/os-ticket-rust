@@ -15,8 +15,11 @@
 **********************************************************************/
 require_once("class.file.php");
 
+// @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code Bound to the Canned Table — non-functional, no caller
+// @implements FS-050: Knowledge Base / FAQ — legacy KB entity (live staff KB is the FAQ subsystem)
 class Knowledgebase {
 
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code Bound to the Canned Table — ctor reads CANNED_TABLE
     function Knowledgebase($id) {
         $res=db_query(
             'SELECT title, isenabled, dept_id, created, updated '
@@ -62,6 +65,7 @@ class Knowledgebase {
     function setDepartment($id) { $this->department = $id; }
 
     /* -------------> Validation and Clean methods <------------ */
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — incomplete validate (TODO stubs)
     function validate(&$errors, $what=null) {
         if (!$what) $what=$this->getHashtable();
         else $this->clean($what);
@@ -92,6 +96,7 @@ class Knowledgebase {
     }
 
     /* -------------> Database access methods <----------------- */
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — update writes CANNED_TABLE
     function update() { 
         if (!@$this->validate()) return false;
         db_query(
@@ -104,6 +109,7 @@ class Knowledgebase {
                 .' WHERE canned_id='.db_input($this->id));
         return db_affected_rows() == 1;
     }
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — delete on CANNED_TABLE
     function delete() {
         db_query('DELETE FROM '.CANNED_TABLE.' WHERE canned_id='
             .db_input($this->id));
@@ -114,6 +120,7 @@ class Knowledgebase {
     function detach($file) { return $this->_attachments->remove($file); }
 
     /* ------------------> Static methods <--------------------- */
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — create has malformed SQL (missing paren)
     function create($hash, &$errors) {
         if (!self::validate($hash, $errors)) return false;
         db_query('INSERT INTO '.CANNED_TABLE
@@ -125,6 +132,7 @@ class Knowledgebase {
         return db_insert_id();
     }
 
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — save dispatch create/update
     function save($id, $new_stuff, &$errors) {
         if (!$id) return self::create($new_stuff, $errors);
         if (!self::validate($errors, $new_stuff)) return false;
@@ -139,6 +147,7 @@ class Knowledgebase {
         return $obj->update();
     }
 
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — title lookup on CANNED_TABLE
     function findByTitle($title) {
         $res=db_query('SELECT canned_id FROM '.CANNED_TABLE
             .' WHERE title LIKE '.db_input($title));
@@ -148,6 +157,7 @@ class Knowledgebase {
         return false;
     }
 
+    // @implements KL-050.5: `Knowledgebase` Class Is Dead/Legacy Code — id-validated lookup
     function lookup($id) {
         return ($id && is_numeric($id) && ($obj= new Knowledgebase($id)) && $obj->getId()==$id)
             ? $obj : null;

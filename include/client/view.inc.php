@@ -1,4 +1,8 @@
 <?php
+/* @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — client ticket view: access guard (checkClientAccess), error-repopulation $info */
+/* @implements BS-010.5: Non-public department name substituted with system default in client view */
+?>
+<?php
 if(!defined('OSTCLIENTINC') || !$thisclient || !$ticket || !$ticket->checkClientAccess($thisclient)) die('Access Denied!');
 
 $info=($_POST && $errors)?Format::htmlchars($_POST):array();
@@ -9,6 +13,7 @@ if(!$dept || !$dept->isPublic())
     $dept = $cfg->getDefaultDept();
 
 ?>
+<?php /* @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — header block #ticketInfo: ticket number + Reload link, Status/Department/Create Date + Name/Email/Phone tables, Subject */ ?>
 <table width="800" cellpadding="1" cellspacing="0" border="0" id="ticketInfo">
     <tr>
         <td colspan="2" width="100%">
@@ -56,6 +61,11 @@ if(!$dept || !$dept->isPublic())
 <br>
 <h2>Subject:<?php echo Format::htmlchars($ticket->getSubject()); ?></h2>
 <br>
+<?php
+/* @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — thread #ticketThread: message(M)/response(R) entries only (note(N) skipped); (EMPTY) body, attachment links */
+/* @implements BS-010.7: Internal notes excluded from the client thread view */
+/* @implements BS-010.8: Staff name blanked in client thread per hideStaffName */
+?>
 <span class="Icon thread">Ticket Thread</span>
 <div id="ticketThread">
 <?php
@@ -95,6 +105,7 @@ if($ticket->getThreadCount() && ($thread=$ticket->getClientThread())) {
 <?php }elseif($warn) { ?>
     <div id="msg_warning"><?php echo $warn; ?></div>
 <?php } ?>
+<?php /* @implements FS-010.7: Client Ticket View (Thread, Header, Reply) — reply form #reply: CSRF, required Message textarea (repopulated on error), attachments input when allowOnlineAttachments, reopen-on-post hint when closed */ ?>
 <form id="reply" action="tickets.php?id=<?php echo $ticket->getExtId(); ?>#reply" name="reply" method="post" enctype="multipart/form-data">
     <?php csrf_token(); ?>
     <h2>Post a Reply</h2>

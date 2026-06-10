@@ -15,9 +15,11 @@
 **********************************************************************/
 require_once dirname(__file__) . "/class.module.php";
 
+// @implements FS-090.27: Full-Database Backup Exporter — backup signature + version constants for the dump header
 define('OSTICKET_BACKUP_SIGNATURE', 'osTicket-Backup');
 define('OSTICKET_BACKUP_VERSION', 'A');
 
+// @implements FS-090.27: Full-Database Backup Exporter — CLI entrypoint to DatabaseExporter full-database backup (optional zlib compress)
 class Exporter extends Module {
     var $prologue =
         "Dumps the osTicket database in formats suitable for the importer";
@@ -30,6 +32,7 @@ class Exporter extends Module {
             'help'=> "Send zlib compress data to the output stream"),
     );
 
+    // @implements FS-090.27: Full-Database Backup Exporter — run: open (optionally compressed) output stream, dump via DatabaseExporter
     function run($args, $options) {
         require_once dirname(__file__) . '/../../../main.inc.php';
         require_once INCLUDE_DIR . 'class.export.php';

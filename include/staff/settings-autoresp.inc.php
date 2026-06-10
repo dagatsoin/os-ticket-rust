@@ -1,3 +1,8 @@
+<?php
+/* @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — Autoresponder Settings tab (autoresp): four enable/disable radios — ticket_autoresponder, ticket_notice_active, message_autoresponder, overlimit_notice_active */
+/* @implements BS-032.4: Autoresponder enable toggles */
+/* @implements KL-032.8: Autoresponder tab has no in-partial admin re-check */
+?>
 <h2>Autoresponder Settings</h2>
 <form action="settings.php?t=autoresp" method="post" id="save">
 <?php csrf_token(); ?>

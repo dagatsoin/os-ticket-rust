@@ -19,6 +19,7 @@ define('FPDF_DIR', THIS_DIR . 'fpdf/');
 define('FPDF_FONTPATH', FPDF_DIR . 'font/'); //fonts directory.
 require (FPDF_DIR . 'fpdf.php');
 
+// @implements FS-021.17: Print Ticket to PDF — Ticket2PDF renders a ticket + thread to PDF
 class Ticket2PDF extends FPDF
 {
 
@@ -28,6 +29,7 @@ class Ticket2PDF extends FPDF
 
     var $ticket = null;
 
+	// @implements FS-021.17: Print Ticket to PDF — construct PDF doc + drive rendering
 	function Ticket2PDF($ticket, $psize='Letter', $notes=false) {
         global $thisstaff;
 
@@ -48,6 +50,7 @@ class Ticket2PDF extends FPDF
         return $this->ticket;
     }
 
+    // @implements FS-021.17: Print Ticket to PDF — resolve client logo image for the PDF header
     function getLogoFile() {
         global $ost;
 
@@ -68,6 +71,7 @@ class Ticket2PDF extends FPDF
     }
 
 	//report header...most stuff are hard coded for now...
+	// @implements FS-021.17: Print Ticket to PDF — PDF page header (logo, title, timestamp)
 	function Header() {
         global $cfg;
 
@@ -91,6 +95,7 @@ class Ticket2PDF extends FPDF
 	}
 
 	//Page footer baby
+	// @implements FS-021.17: Print Ticket to PDF — PDF page footer (printed-by + page number)
 	function Footer() {
         global $thisstaff;
 
@@ -113,6 +118,7 @@ class Ticket2PDF extends FPDF
 
     }
 
+    // @implements FS-021.17: Print Ticket to PDF — transcode text to windows-1252 for FPDF output
     function _utf8($text) {
         // Assume text is in utf-8 charset
         $flags = ENT_COMPAT;
@@ -131,6 +137,7 @@ class Ticket2PDF extends FPDF
         return $text;
     }
 
+    // @implements FS-021.17: Print Ticket to PDF — render ticket property grid + thread entries
     function _print() {
 
         if(!($ticket=$this->getTicket()))

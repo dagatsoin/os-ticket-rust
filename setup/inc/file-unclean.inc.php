@@ -1,4 +1,7 @@
 <?php
+// @implements FS-060.9: Re-run protection (already-installed detection) — "already installed?" view; links upgraders to Admin Panel
+// @implements BS-060-01: Already-installed detection blocks fresh install — rendered when install markers present
+// @implements EC-060-11: Direct access to step partials — SETUPINC guard dies Kwaheri!
 if(!defined('SETUPINC')) die('Kwaheri!');
 ?>
     <div id="main">

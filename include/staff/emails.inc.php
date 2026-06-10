@@ -1,6 +1,8 @@
 <?php
+// @implements FS-040.1: Email Account Listing — in-partial admin gate (else die 'Access Denied')
 if(!defined('OSTADMININC') || !$thisstaff->isAdmin()) die('Access Denied');
 
+// @implements FS-040.1: Email Account Listing — list query w/ dept + priority joins; sort/order/pagination
 $qstr='';
 $sql='SELECT email.*,dept.dept_name as department,priority_desc as priority '.
      ' FROM '.EMAIL_TABLE.' email '.
@@ -48,6 +50,8 @@ else
 <div style="float:right;text-align:right;padding-top:5px;padding-right:5px;">
     <b><a href="emails.php?a=add" class="Icon newEmail">Add New Email</a></b></div>
 <div class="clear"></div>
+<?php /* @implements FS-040.1: Email Account Listing — list table (email, priority, dept, created/updated; default email protected) */ ?>
+<?php /* @implements FS-040.4: Email Account Bulk Delete — mass_process delete form (CSRF) */ ?>
 <form action="emails.php" method="POST" name="emails">
  <?php csrf_token(); ?>
  <input type="hidden" name="do" value="mass_process" >

@@ -1,4 +1,11 @@
 <?php
+/* @implements FS-020.1: Queue Entry & Default Landing — staff ticket queue access gate (isStaff) */
+/* @implements FS-020.2: Predefined Queues (Status Tabs) — overloaded `status` resolves to real status + queue flags (open/answered/assigned/overdue/closed) */
+/* @implements FS-020.7: Basic (Keyword) Search — search detection (>=3 char keyword rule) */
+/* @implements BS-020.1: Default landing queue selection */
+/* @implements BS-020.6: Queue flag derivation from overloaded status */
+?>
+<?php
 if(!defined('OSTSCPINC') || !$thisstaff || !@$thisstaff->isStaff()) die('Access Denied');
 
 $qstr='&'; //Query string collector
@@ -53,6 +60,9 @@ switch(strtolower($_REQUEST['status'])){ //Status is overloaded
             $_REQUEST['status']=$status='open';
 }
 
+/* @implements FS-020.4: Visibility Scoping (Department + Assignment) — visibility predicate: own open assigned tickets OR (unless assigned-only) dept tickets OR team open tickets; then status + queue sub-filters (answered/assigned hidden on open per config) */
+/* @implements BS-020.2: Department + assignment visibility scoping rule */
+/* @implements BS-020.4: Open-queue sub-filter suppression (answered/assigned) per config */
 $qwhere ='';
 /* 
    STRICT DEPARTMENTS BASED PERMISSION!
@@ -101,6 +111,10 @@ if($staffId && ($staffId==$thisstaff->getId())) { //My tickets
     }
 }
 
+/* @implements FS-020.8: Advanced Search — advanced search predicate: keyword (numeric->ticket# prefix, email->exact, else deep LIKE w/ thread join), dept (bounded by access), topic, assignee/closed-by (3 query shapes), date range */
+/* @implements FS-020.7: Basic (Keyword) Search — keyword resolution shared with basic search */
+/* @implements BS-020.7: Keyword search shape selection (numeric / email / deep LIKE) */
+/* @implements BS-020.16: Advanced-search dept list bounded by access */
 //Search?? Somebody...get me some coffee 
 $deep_search=false;
 if($search):
@@ -194,6 +208,8 @@ if($search):
 
 endif;
 
+/* @implements FS-020.5: Sortable Columns & Sticky Sort — sort resolution: sort-key map, sticky per-queue sort (session <queue>_tickets), per-queue default sorts (answered/closed/overdue/open), order direction spliced into multi-term sorts */
+/* @implements BS-020.8: Sticky per-queue sort persistence rule */
 $sortOptions=array('date'=>'ticket.created','ID'=>'ticketID*1','pri'=>'priority_urgency','name'=>'ticket.name',
                    'subj'=>'ticket.subject','status'=>'ticket.status','assignee'=>'assigned','staff'=>'staff',
                    'dept'=>'dept_name');
@@ -257,6 +273,10 @@ if($search && $deep_search) {
     $sjoin=' LEFT JOIN '.TICKET_THREAD_TABLE.' thread ON (ticket.ticket_id=thread.ticket_id )';
 }
 
+/* @implements FS-020.3: Ticket Listing Table & Columns — query assembly: COUNT over same predicate; derived columns (duedate, effective_date, assignee, helptopic, non-self unexpired lock) */
+/* @implements FS-020.6: Pagination & Page Size — page-size (limit/personal/system/25), Pagenate */
+/* @implements FS-020.10: Export Current Query to CSV — export query stored in session search_<md5> */
+/* @implements BS-020.12: Export query persisted under session search token */
 $qgroup=' GROUP BY ticket.ticket_id';
 //get ticket count based on the query so far..
 $total=db_count("SELECT count(DISTINCT ticket.ticket_id) $qfrom $sjoin $qwhere");
@@ -303,6 +323,8 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting..
 
 //YOU BREAK IT YOU FIX IT.
 ?>
+<!-- @implements FS-020.7: Basic (Keyword) Search — basic keyword search box (GET a=search) -->
+<!-- @implements FS-020.8: Advanced Search — [advanced] link opens the advanced-search dialog -->
 <!-- SEARCH FORM START -->
 <div id='basic_search'>
     <form action="tickets.php" method="get">
@@ -321,6 +343,11 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting..
 <!-- SEARCH FORM END -->
 <div class="clear"></div>
 <div style="margin-bottom:20px">
+<!-- @implements FS-020.3: Ticket Listing Table & Columns — listing table: status-swap column (Priority/Status), rightmost Assigned-To/Closed-By/Department per queue -->
+<!-- @implements FS-020.5: Sortable Columns & Sticky Sort — sortable headers -->
+<!-- @implements FS-020.9: Mass / Bulk Actions From the Queue — mass-action form (a=mass_process); checkbox column only when canManageTickets -->
+<!-- @implements BS-020.5: Per-queue rightmost column selection -->
+<!-- @implements BS-020.9: Checkbox column gated by canManageTickets -->
 <form action="tickets.php" method="POST" name='tickets'>
 <?php csrf_token(); ?>
  <a class="refresh" href="<?php echo $_SERVER['REQUEST_URI']; ?>">Refresh</a>
@@ -472,6 +499,9 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting..
     </tfoot>
     </table>
     <?php
+    /* @implements FS-020.10: Export Current Query to CSV — export link (a=export&h=<token>) */
+    /* @implements FS-020.9: Mass / Bulk Actions From the Queue — queue-specific mass-action buttons (Reopen/Overdue/Close/Delete) gated by canManageTickets/canDeleteTickets */
+    /* @implements BS-020.10: Mass-action button availability per queue + permission */
     if($num>0){ //if we actually had any tickets returned.
         echo '<div>&nbsp;Page:'.$pageNav->getPageLinks().'&nbsp;';
         echo '<a class="export-csv" href="?a=export&h='
@@ -516,6 +546,7 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting..
     </form>
 </div>
 
+<!-- @implements FS-020.9: Mass / Bulk Actions From the Queue — mass-action confirm dialog (close/reopen/mark_overdue/delete) gating the bulk POST -->
 <div style="display:none;" class="dialog" id="confirm-action">
     <h3>Please Confirm</h3>
     <a class="close" href="">&times;</a>
@@ -546,6 +577,9 @@ $negorder=$order=='DESC'?'ASC':'DESC'; //Negate the sorting..
     <div class="clear"></div>
 </div>
 
+<!-- @implements FS-020.8: Advanced Search — advanced-search dialog (a=search): keyword, status, dept (access-bounded list), assignee, closed-by, help topic, date range -->
+<!-- @implements BS-020.3: Advanced-search field set -->
+<!-- @implements BS-020.16: Advanced-search dept list bounded by access -->
 <div class="dialog" style="display:none;" id="advanced-search">
     <h3>Advanced Ticket Search</h3>
     <a class="close" href="">&times;</a>

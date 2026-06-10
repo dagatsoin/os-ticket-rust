@@ -1,4 +1,5 @@
 <?php
+// @implements FS-050.13: Staff View Selection & Single-Article View — staff single-article management view (question/answer, attachments, help-topic associations) with loaded-FAQ gate (else die 'Access Denied')
 if(!defined('OSTSTAFFINC') || !$faq || !$thisstaff) die('Access Denied');
 
 $category=$faq->getCategory();
@@ -35,6 +36,8 @@ if($thisstaff->canManageFAQ()) {
 <div class="faded">&nbsp;Last updated <?php echo Format::db_date($faq->getUpdateDate()); ?></div>
 <hr>
 <?php
+// @implements FS-050.13: Staff View Selection & Single-Article View — manager Options panel (Publish/Unpublish, Edit, Delete via do=manage-faq) gated to canManageFAQ; CSRF
+// @implements FS-050.8: Staff FAQ Management Permission Gate — management affordances shown only when canManageFAQ()
 if($thisstaff->canManageFAQ()) {
     //TODO: add js confirmation....
     ?>

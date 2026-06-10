@@ -22,10 +22,13 @@ require('staff.inc.php');
 require_once(INCLUDE_DIR.'class.file.php');
 $h=trim($_GET['h']);
 //basic checks
+// @implements FS-022.10: Authorized Attachment Download & Inline Display — staff inline image, full 64-char download-hash compare
+// @implements BS-022.8: Download Access Requires a Fresh Session-Bound Hash
 if(!$h  || strlen($h)!=64  //32*2
         || !($file=AttachmentFile::lookup(substr($h,0,32))) //first 32 is the file hash.
         || strcasecmp($h, $file->getDownloadHash())) //next 32 is file id + session hash.
     die('Unknown or invalid file. #'.Format::htmlchars($_GET['h']));
 
+// @implements FS-022.11: Download vs Display Delivery Semantics — inline (display) delivery
 $file->display();
 ?>

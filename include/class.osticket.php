@@ -23,6 +23,9 @@ require_once(INCLUDE_DIR.'class.migrater.php');
 
 define('LOG_WARN',LOG_WARNING);
 
+// @implements FS-001.5: System & Configuration Singleton Startup — core osTicket runtime object
+// @implements FS-001.12: System Logging & Admin Alerting
+// @implements FS-001.16: System-Object Request & Environment Utilities
 class osTicket {
 
     var $loglevel=array(1=>'Error','Warning','Debug');
@@ -46,6 +49,7 @@ class osTicket {
     var $session;
     var $csrf;
 
+    // @implements FS-001.5: System & Configuration Singleton Startup — start session, load config, init CSRF
     function osTicket() {
 
         require_once(INCLUDE_DIR.'class.config.php'); //Config helper
@@ -57,10 +61,13 @@ class osTicket {
         $this->csrf = new CSRF('__CSRFToken__');
     }
 
+    // @implements FS-001.7: System-State Predicates (Online / Offline / Upgrade-Pending) — online iff helpdesk on + no upgrade pending
     function isSystemOnline() {
         return ($this->getConfig() && $this->getConfig()->isHelpDeskOnline() && !$this->isUpgradePending());
     }
 
+    // @implements FS-001.7: System-State Predicates (Online / Offline / Upgrade-Pending) — per-stream signature mismatch
+    // @implements FS-061.1: Upgrade-pending detection by schema-signature comparison
     function isUpgradePending() {
 		foreach (DatabaseMigrater::getUpgradeStreams(UPGRADE_DIR.'streams/') as $stream=>$hash)
 			if (strcasecmp($hash,
@@ -85,6 +92,7 @@ class osTicket {
         return THIS_VERSION;
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — accessor for the per-session CSRF object
     function getCSRF(){
         return $this->csrf;
     }
@@ -101,6 +109,8 @@ class osTicket {
         return ($token && $this->getCSRF()->validateToken($token));
     }
 
+    // @implements FS-001.11: Cross-Site Request Forgery Protection — validate token from POST body or X-CSRFToken header
+    // @implements FS-002.7: CSRF protection on state-changing requests
     function checkCSRFToken($name='') {
 
         $name = $name?$name:$this->getCSRF()->getTokenName();
@@ -117,14 +127,18 @@ class osTicket {
         return false;
     }
 
+    // @implements FS-002.10: Logout — derive single-use link token (CSRF token + salt + session id)
     function getLinkToken() {
         return md5($this->getCSRFToken().SECRET_SALT.session_id());
     }
 
+    // @implements FS-002.10: Logout — validate the single-use link token (case-insensitive)
     function validateLinkToken($token) {
             return ($token && !strcasecmp($token, $this->getLinkToken()));
     }
 
+    // @implements FS-022.13: Upload Validation (Type & Size) — allow file by configured extension allow-list
+    // @implements BS-022.13: Allowed File Types Are Matched by Extension Only
     function isFileTypeAllowed($file, $mimeType='') {
 
         if(!$file || !($allowedFileTypes=$this->getConfig()->getAllowedFileTypes()))
@@ -144,6 +158,7 @@ class osTicket {
     }
 
     /* Replace Template Variables */
+    // @implements FS-040.11: Variable Substitution Grammar — resolve %{token} placeholders via VariableReplacer
     function replaceTemplateVariables($input, $vars=array()) {
 
         $replacer = new VariableReplacer();
@@ -216,6 +231,7 @@ class osTicket {
     }
 
 
+    // @implements FS-001.12: System Logging & Admin Alerting — email an alert to the admin (loop-guarded)
     function alertAdmin($subject, $message, $log=false) {
 
         //Set admin's email address
@@ -243,22 +259,27 @@ class osTicket {
 
     }
 
+    // @implements FS-001.12: System Logging & Admin Alerting — debug-level log entry
     function logDebug($title, $message, $force=false) {
         return $this->log(LOG_DEBUG, $title, $message, false, $force);
     }
 
+    // @implements FS-001.12: System Logging & Admin Alerting — info-level log entry
     function logInfo($title, $message, $alert=false) {
         return $this->log(LOG_INFO, $title, $message, $alert);
     }
 
+    // @implements FS-001.12: System Logging & Admin Alerting — warning-level log entry
     function logWarning($title, $message, $alert=true) {
         return $this->log(LOG_WARN, $title, $message, $alert);
     }
 
+    // @implements FS-001.12: System Logging & Admin Alerting — error-level log entry
     function logError($title, $error, $alert=true) {
         return $this->log(LOG_ERR, $title, $error, $alert);
     }
 
+    // @implements FS-001.12: System Logging & Admin Alerting — DB-error log entry (alert gated by config)
     function logDBError($title, $error, $alert=true) {
 
         if($alert && !$this->getConfig()->alertONSQLError())
@@ -267,6 +288,8 @@ class osTicket {
         return $this->log(LOG_ERR, $title, $error, $alert);
     }
 
+    // @implements FS-001.12: System Logging & Admin Alerting — collapse priority to 3 levels, persist + optional alert
+    // @implements BS-033.2: Three Log Severity Levels (Error / Warning / Debug)
     function log($priority, $title, $message, $alert=false, $force=false) {
 
         //We are providing only 3 levels of logs. Windows style.
@@ -309,6 +332,9 @@ class osTicket {
         return true;
     }
 
+    // @implements FS-033.7: Automatic Log Purge (Grace-Period Sweep) — delete syslog rows past the grace period
+    // @implements FS-043.7: Cron Job Inventory — purge invoked by the cron cycle
+    // @implements BS-033.6: Auto-Purge Is Grace-Period-Gated and Cron-Driven
     function purgeLogs() {
 
         if(!($gp=$this->getConfig()->getLogGracePeriod()) || !is_numeric($gp))
@@ -327,6 +353,7 @@ class osTicket {
      *
      */
 
+    // @implements FS-001.16: System-Object Request & Environment Utilities — safe typed array-index reader
     function get_var($index, $vars, $default='', $type=null) {
 
         if(is_array($vars)
@@ -341,6 +368,7 @@ class osTicket {
         return db_input($this->get_var($index, $vars), $quote);
     }
 
+    // @implements FS-001.16: System-Object Request & Environment Utilities — resolve request PATH_INFO
     function get_path_info() {
         if(isset($_SERVER['PATH_INFO']))
             return $_SERVER['PATH_INFO'];
@@ -354,6 +382,7 @@ class osTicket {
     }
 
     /* static */
+    // @implements FS-001.3: Root-Path (URL Base) Resolution — derive ROOT_PATH from DOCUMENT_ROOT/SCRIPT_NAME
     function get_root_path($dir) {
 
         /* If run from the commandline, DOCUMENT_ROOT will not be set. It is
@@ -397,6 +426,7 @@ class osTicket {
     /**
      * Returns TRUE if the request was made via HTTPS and false otherwise
      */
+    // @implements FS-001.16: System-Object Request & Environment Utilities — detect HTTPS request (incl. forwarded proto)
     function is_https() {
         return (isset($_SERVER['HTTPS'])
                 && strtolower($_SERVER['HTTPS']) == 'on')
@@ -405,6 +435,8 @@ class osTicket {
     }
 
     /* returns true if script is being executed via commandline */
+    // @implements FS-001.16: System-Object Request & Environment Utilities — detect command-line execution
+    // @implements FS-043.10: Local (Command-Line) Cron Execution — CLI detection for the local cron path
     function is_cli() {
         return (!strcasecmp(substr(php_sapi_name(), 0, 3), 'cli')
                 || (!$_SERVER['REQUEST_METHOD'] && !$_SERVER['HTTP_HOST']) //Fallback when php-cgi binary is used via cli
@@ -412,6 +444,7 @@ class osTicket {
     }
 
     /**** static functions ****/
+    // @implements FS-001.5: System & Configuration Singleton Startup — static factory + default timezone seed
     function start() {
 
         if(!($ost = new osTicket()))

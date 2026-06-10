@@ -1,3 +1,10 @@
+<?php
+/* @implements FS-032.6: Site Pages, Logos, Autoresponder, Knowledge-Base & Alerts Tabs — Alerts and Notices tab (alerts): recipient matrix for six events (active radio + recipient checkboxes) + System Alerts (send_sys_errors, send_sql_errors, send_login_errors) */
+/* @implements BS-032.5: Alert recipient matrix */
+/* @implements KL-032.3: send_sys_errors rendered checked+disabled (always-on system error alerts) */
+/* @implements KL-032.8: Alerts tab has no in-partial admin re-check */
+/* @implements KL-032.9: Transfer alert error rendered under $errors['alert_alert_active'] key typo */
+?>
 <h2>Alerts and Notices</h2>
 <form action="settings.php?t=alerts" method="post" id="save">
 <?php csrf_token(); ?>

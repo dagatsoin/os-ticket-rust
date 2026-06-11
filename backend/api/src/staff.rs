@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use ost_core::attachment::load_attachments_by_ref;
 use ost_core::canned::{load_offerable_response, load_ticket_vars};
-use ost_core::mailer::{Mailer, OutboundMail};
+use ost_core::mailer::OutboundMail;
 use ost_core::permission::PERM_CAN_POST_REPLY;
 use ost_core::ticket::{load_thread, post_staff_reply, NewThreadEntry};
 use ost_core::variable::VariableReplacer;
@@ -389,13 +389,17 @@ pub async fn reply(
     .await
     .map_err(|_| ApiError::internal("Could not append the reply"))?;
 
-    // Mailer intent recorded post-commit (stub records, does not send).
-    let mail = OutboundMail {
-        to: email.clone(),
-        subject: format!("Ticket #{number} updated"),
-        body: entry.body.clone(),
-    };
-    let _ = state.mailer.send(mail);
+    // Mailer intent recorded/delivered post-commit (TS-M2-E3 swaps in the notice
+    // wrapper + packaged template; E1 keeps a plain send through the active
+    // transport so the route compiles against the async port).
+    let mail = OutboundMail::new(
+        email.clone(),
+        format!("Ticket #{number} updated"),
+        entry.body.clone(),
+    );
+    if let Err(err) = state.mailer.active.send(mail).await {
+        tracing::warn!(error = %err, "reply notification send failed");
+    }
 
     // Re-read the detail (now isanswered = true) so the response reflects §3.
     let detail = build_detail(

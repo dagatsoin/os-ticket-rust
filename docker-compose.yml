@@ -1,0 +1,24 @@
+# osTicket modernisation — local dev service containers.
+#
+# TS-M2-E1 (ROADMAP M2 Decisions §5): Mailpit is the in-browser/API oracle for
+# real outbound email. The backend points at it with
+#   SMTP_HOST=localhost SMTP_PORT=3704 SMTP_FROM=support@osticket.local
+# and delivered mail is asserted via the Mailpit REST API on :3705
+# (http://localhost:3705/api/v1/messages).
+#
+# Start: `docker compose up -d mailpit`
+#
+# PostgreSQL is the pre-existing shared container `backend-db-1` on :5432 and is
+# intentionally NOT defined here (ROADMAP — the project does not start its own
+# Postgres).
+services:
+  mailpit:
+    image: axllent/mailpit
+    container_name: osticket-mailpit
+    restart: unless-stopped
+    ports:
+      - "3704:1025" # SMTP  (host 3704 → container 1025)
+      - "3705:8025" # web UI + REST API (host 3705 → container 8025)
+    environment:
+      MP_MAX_MESSAGES: "5000"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"

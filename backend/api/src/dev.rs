@@ -28,7 +28,7 @@ pub async fn mailbox(State(state): State<AppState>) -> Response {
     if !state.app_env.dev_endpoints_enabled() {
         return ApiError::not_found("Not found").into_response();
     }
-    let recorded = state.mailer.recorded();
+    let recorded = state.mailer.recorder.recorded();
     (StatusCode::OK, Json(recorded)).into_response()
 }
 

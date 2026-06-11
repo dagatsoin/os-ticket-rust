@@ -40,3 +40,6 @@ hyper = { workspace = true }
 tools = { path = "../../tools" }
 sqlx = { workspace = true }
 tokio = { workspace = true }
+# TS-M2-E1 (ROADMAP M2 §4/§5) — Mailpit REST API assertions; skip-pass when
+# MAILPIT_URL is unset.
+reqwest = { workspace = true }

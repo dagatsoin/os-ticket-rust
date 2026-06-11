@@ -22,6 +22,10 @@ stage
 # committed.
 /var/blobs
 /var/
+# Blob store roots created when a test/binary runs with a non-root CWD
+# (e.g. `cargo test -p api` resolves BLOB_ROOT relative to backend/api).
+**/var/blobs
+backend/*/var/
 
 # NOTE: the committed `.sqlx/` query cache (cargo sqlx prepare) is intentionally
 # tracked so CI builds in SQLx offline mode without a live DB — do NOT ignore it.

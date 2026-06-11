@@ -126,7 +126,22 @@ container on **5432**.
 cargo run -p api               # backend on :3701 — applies migrations on startup, then serves
 cargo run -p tools --bin seed  # idempotent seed / M1 dev-reset (dept + group + staff + defaults)
 npm --prefix frontend run dev  # frontend on :3702
+
+# Real outbound email (TS-M2-E1 / M2 §5): start Mailpit, then run the backend
+# with the SMTP env so mail is delivered to Mailpit instead of the dev mailbox.
+docker compose up -d mailpit   # Mailpit: SMTP :3704, web UI + REST API :3705
+SMTP_HOST=localhost SMTP_PORT=3704 SMTP_FROM=support@osticket.local \
+  DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev cargo run -p api
+# Inspect delivered mail: http://localhost:3705  (REST: /api/v1/messages)
 ```
+
+**Outbound email (TS-M2-E)** — the mailer port (`ost_core::Mailer`) has two transports
+(DEVIATION D3): the real **`SmtpMailer`** (`lettre`, tokio1 + rustls) is selected at startup
+**when `SMTP_HOST` is set**, otherwise the M1 recording **`StubMailer`** + `GET /api/dev/mailbox`
+is retained. SMTP env: `SMTP_HOST`, `SMTP_PORT` (default 25), `SMTP_FROM` (+ optional
+`SMTP_FROM_NAME`, `SMTP_USER`, `SMTP_PASS` — auth is optional for Mailpit). Mailpit-dependent
+cargo tests **skip-pass when `MAILPIT_URL` is unset**:
+`MAILPIT_URL=http://localhost:3705 cargo test -p api --test smtp_mailer`.
 
 **Migrations** are applied automatically on `cargo run -p api` startup (and by the seed task);
 apply manually with `sqlx migrate run --source migrations` (see the Database section above).

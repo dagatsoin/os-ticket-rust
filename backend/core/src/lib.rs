@@ -37,7 +37,7 @@ pub use csrf::{
 };
 pub use error::{ApiError, ErrorBody, ErrorEnvelope};
 pub use hashing::{hash_password, verify_password, HashError};
-pub use mailer::{MailError, Mailer, OutboundMail, StubMailer};
+pub use mailer::{MailError, Mailer, OutboundMail, SmtpConfig, SmtpMailer, StubMailer};
 pub use permission::{
     GroupPermissions, PermissionDenied, PERM_CAN_CREATE_TICKETS, PERM_CAN_POST_REPLY,
 };

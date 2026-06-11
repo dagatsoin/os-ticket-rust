@@ -35,6 +35,110 @@ by the specs in [`specs/`](./specs/).
   reproduce. The frozen PHP under `legacy/` is the authoritative reference whenever a spec
   is ambiguous.
 
+## Stack decision (WORKING PROPOSAL — confirm before scaffolding)
+
+> Marked as a proposal; awaiting user confirmation. Tracked in
+> `kanban/osticket-modernisation/ROADMAP.md` under "Architecture / scope decisions".
+
+- **Backend**: Rust — **Axum** (HTTP) + **SQLx** (DB), Cargo workspace at the repo root.
+- **Database**: **PostgreSQL** (the legacy app used **MySQL** — modernisation switches to
+  PostgreSQL, **confirmed**). The project does **not** run its own Postgres: it uses the
+  **existing shared Docker container `backend-db-1`** (`postgres:16`) already running on this
+  machine, host port **5432**, with a dedicated database `osticket_dev` (later
+  `osticket_staging`).
+- **Frontend**: React + TypeScript — **Vite**, **MobX**, **Material-UI (MUI)**.
+- **Migrations / setup**: standard SQLx migrations + a seed fixture + a first-run admin
+  bootstrap **replace** the legacy installer/upgrader (FS-060 / FS-061). The legacy CLI /
+  packaging tooling (FS-092) is **dropped** in favour of Cargo + Docker + CI + pg_dump.
+
+## Ports (machine convention — range 37xx)
+
+| Service | Dev | Staging | Notes |
+|---------|-----|---------|-------|
+| Backend API (Rust/Axum) | **3701** | 3711 | REST API |
+| Frontend (Vite) | **3702** | 3712 | React dev server |
+| PostgreSQL | **5432** (shared) | 5432 (shared) | **Existing shared container `backend-db-1`** (`postgres:16`); databases `osticket_dev` / `osticket_staging`. Not a project-owned port. |
+
+Registered in `~/.claude/port-registry.md` under `osticket-modernisation`. Ports **3703/3713
+are freed** — the project does not start its own Postgres; it reuses the shared `backend-db-1`
+container on **5432**.
+
+### Database — existing shared container
+
+- **Container**: `backend-db-1` — image `postgres:16` — host port **5432** (maps to container
+  5432). Same instance shared with other projects on this machine (ptidonjon, sandwich, brio_dev…).
+- **Superuser**: `postgres` / `pass123`.
+- **Dev database**: `osticket_dev` (created). **Staging database**: `osticket_staging` (later).
+- **Connection string template**: `postgres://<user>:<password>@localhost:5432/<database>`
+- **`.env` example** (dev):
+  ```env
+  DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev
+  ```
+- The container is **not** owned by this repo — never `docker rm`/recreate it, and only ever
+  touch the `osticket_dev` / `osticket_staging` databases inside it.
+
+## Services
+
+> Backend scaffolded by TS-M1-A1; frontend by TS-M1-A5.
+
+- **Backend API** — Cargo workspace at the **repo root** (`Cargo.toml`), member crates under
+  `backend/`: `backend/api` (bin+lib — router, health, CORS, error envelope), `backend/core`
+  (shared JSON error envelope), `backend/db` (Postgres pool + short-timeout health ping). Port
+  **3701**; start: `cargo run -p api`. Config from `backend/.env` (template `backend/.env.example`):
+  `DATABASE_URL`, `APP_PORT`, `APP_FRONTEND_ORIGIN`. Health: `GET /api/health` →
+  `{ "status": "ok", "db": "ok" | "down" }` (db-down responds fast, never hangs). Shared error
+  envelope `{ "error": { "message", "fields" } }` with 422/401/403/404.
+- **Frontend** — location: `frontend/` (Vite + React + TS + MobX + MUI; **scaffolded by
+  TS-M1-A5**); port **3702**; start: `npm --prefix frontend run dev` (Vite proxies `/api`
+  → `http://localhost:3701`). Tests: `npm --prefix frontend test` (Vitest + RTL + MSW).
+  Build: `npm --prefix frontend run build`. Lint: `npm --prefix frontend run lint`.
+- **PostgreSQL** — **existing shared container `backend-db-1`** (`postgres:16`), host port
+  **5432**; database `osticket_dev`. Already running — no `docker compose up` needed.
+  Verify: `docker exec backend-db-1 psql -U postgres -d osticket_dev -c "select version();"`.
+
+## Application URLs
+
+> Provisional — valid once M1 / EPIC-M1-A scaffolding lands.
+
+- Frontend: `http://localhost:3702`
+- Backend API: `http://localhost:3701/api`
+- Health endpoint: `http://localhost:3701/api/health`
+
+## Quick Start
+
+> Provisional — exact commands finalised when scaffolding lands (TS-M1-A1 / A5).
+
+```sh
+# PostgreSQL: already running as the shared container `backend-db-1` on :5432
+# (db `osticket_dev`); no compose step needed. One-time, if missing:
+#   docker exec backend-db-1 psql -U postgres -c "CREATE DATABASE osticket_dev;"
+# Copy backend/.env.example → backend/.env (sets DATABASE_URL, APP_PORT=3701, APP_FRONTEND_ORIGIN).
+cargo run -p api               # backend on :3701 (TS-M1-A1: health only; migrations/seed land in A2/A3)
+npm --prefix frontend run dev  # frontend on :3702
+```
+
+Seeded staff credentials (from the M1 seed fixture, TS-M1-A3) will be documented here once
+TS-M1-A3 is implemented — QA uses them for the staff browser E2E.
+
+## Testing
+
+> Provisional command set.
+
+- Backend: `cargo test` (workspace unit/integration tests); `cargo clippy --all-targets -- -D warnings`
+  (lint); `SQLX_OFFLINE=true cargo build` (CI build without a live DB — uses the committed `.sqlx/`
+  query cache; see `.sqlx/README.md` for the `cargo sqlx prepare` convention).
+- Frontend: `npm --prefix frontend test` (component tests) and `npm --prefix frontend run build`.
+- **Browser E2E**: leaf user stories with UI flows and the M1 milestone root are validated by
+  **qa-test-plan** + **qa-criterion-tester** against the running frontend (`http://localhost:3702`).
+  Unit/API tests are never sufficient for `[BROWSER]` acceptance criteria.
+
+## Planning / Kanban
+
+Modernisation work is planned in `kanban/osticket-modernisation/`
+(columns `backlog → consolidation → todo → inProgress → review → qa → done`). The roadmap and
+milestone breakdown live in `kanban/osticket-modernisation/ROADMAP.md`. Current focus:
+**Milestone M1 — First Ticket Round-Trip** (all M1 leaf tickets in `consolidation/`).
+
 ## Hard rules
 
 - **Never push to any remote.** All git operations for this project stay **local** —

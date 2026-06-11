@@ -30,3 +30,6 @@ serde_json = { workspace = true }
 # TS-M1-A4b — DB-backed session integration tests (against TEST_DATABASE_URL).
 db = { path = "../db" }
 tokio = { workspace = true }
+# TS-M2-E2 — Mailpit REST API assertions for the send wrappers (skip-pass when
+# MAILPIT_URL is unset, ROADMAP M2 §5).
+reqwest = { workspace = true }

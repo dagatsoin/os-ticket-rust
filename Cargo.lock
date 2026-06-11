@@ -1235,6 +1235,7 @@ dependencies = [
  "http",
  "lettre",
  "password-hash",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2",

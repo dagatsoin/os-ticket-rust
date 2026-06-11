@@ -1,0 +1,22 @@
+[package]
+name = "tools"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[[bin]]
+name = "seed"
+path = "src/bin/seed.rs"
+
+[dependencies]
+ost_core = { path = "../backend/core" }
+db = { path = "../backend/db" }
+
+sqlx = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+dotenvy = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

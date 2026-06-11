@@ -1937,6 +1937,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tools"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "db",
+ "dotenvy",
+ "ost_core",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "tower"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -89,7 +89,9 @@ container on **5432**.
 
 - **Backend API** — Cargo workspace at the **repo root** (`Cargo.toml`), member crates under
   `backend/`: `backend/api` (bin+lib — router, health, CORS, error envelope), `backend/core`
-  (shared JSON error envelope), `backend/db` (Postgres pool + short-timeout health ping). Port
+  (shared JSON error envelope + TS-M1-A4a validation/sanitize/argon2id-hashing pure functions),
+  `backend/db` (Postgres pool + short-timeout health ping + embedded migrator); plus the
+  workspace-member `tools/` crate (the `seed` binary). Port
   **3701**; start: `cargo run -p api`. Config from `backend/.env` (template `backend/.env.example`):
   `DATABASE_URL`, `APP_PORT`, `APP_FRONTEND_ORIGIN`. Health: `GET /api/health` →
   `{ "status": "ok", "db": "ok" | "down" }` (db-down responds fast, never hangs). Shared error
@@ -119,12 +121,26 @@ container on **5432**.
 # (db `osticket_dev`); no compose step needed. One-time, if missing:
 #   docker exec backend-db-1 psql -U postgres -c "CREATE DATABASE osticket_dev;"
 # Copy backend/.env.example → backend/.env (sets DATABASE_URL, APP_PORT=3701, APP_FRONTEND_ORIGIN).
-cargo run -p api               # backend on :3701 (TS-M1-A1: health only; migrations/seed land in A2/A3)
+cargo run -p api               # backend on :3701 — applies migrations on startup, then serves
+cargo run -p tools --bin seed  # idempotent seed / M1 dev-reset (dept + group + staff + defaults)
 npm --prefix frontend run dev  # frontend on :3702
 ```
 
-Seeded staff credentials (from the M1 seed fixture, TS-M1-A3) will be documented here once
-TS-M1-A3 is implemented — QA uses them for the staff browser E2E.
+**Migrations** are applied automatically on `cargo run -p api` startup (and by the seed task);
+apply manually with `sqlx migrate run --source migrations` (see the Database section above).
+
+**Seeded staff credentials** (M1 seed fixture, TS-M1-A3) — used for the staff browser E2E:
+
+| Username | Password    |
+|----------|-------------|
+| `agent`  | `Agent123!` |
+
+The seed (`cargo run -p tools --bin seed`) is **idempotent** and is the **M1 dev-reset
+mechanism** — re-run it any time to return the dev DB to a known state. It upserts one
+department (`Support`), one permission group (flags `can_create_tickets` + `can_post_reply`
++ access to `Support`), the `agent` staff account (argon2id-hashed password via the TS-M1-A4a
+util), and the FS-091 reference defaults (`default_ticket_status=open`,
+`default_priority=normal`). It targets `DATABASE_URL` (default `osticket_dev`) only.
 
 ## Testing
 
@@ -133,6 +149,9 @@ TS-M1-A3 is implemented — QA uses them for the staff browser E2E.
 - Backend: `cargo test` (workspace unit/integration tests); `cargo clippy --all-targets -- -D warnings`
   (lint); `SQLX_OFFLINE=true cargo build` (CI build without a live DB — uses the committed `.sqlx/`
   query cache; see `.sqlx/README.md` for the `cargo sqlx prepare` convention).
+  - **DB-backed tests** (the `db` migration tests and the `tools` seed tests) read
+    `TEST_DATABASE_URL`; without it they skip (pass) so DB-less CI stays green. Run them with
+    `TEST_DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_test cargo test`.
 - Frontend: `npm --prefix frontend test` (component tests) and `npm --prefix frontend run build`.
 - **Browser E2E**: leaf user stories with UI flows and the M1 milestone root are validated by
   **qa-test-plan** + **qa-criterion-tester** against the running frontend (`http://localhost:3702`).

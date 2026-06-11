@@ -4,6 +4,7 @@ members = [
     "backend/api",
     "backend/core",
     "backend/db",
+    "tools",
 ]
 
 # Shared dependency versions for the osTicket modernisation backend workspace.

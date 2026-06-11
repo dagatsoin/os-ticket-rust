@@ -165,6 +165,101 @@ pub async fn seed(pool: &PgPool) -> anyhow::Result<SeedResult> {
     })
 }
 
+// --- TS-M2-prep: `--reset` dev purge (truncation half) -------------------
+//
+// @implements (test infra) TS-M2-prep: a deterministic dev reset that purges
+//   ticket-scoped data before re-seeding the baseline, so M2 E2E sweeps start
+//   from a clean Open queue. Mechanism is a flag on the seed binary (not an HTTP
+//   route). Production-safety: it refuses any DB whose name is not a known dev DB.
+
+/// The only database names `reset` will operate on (production-safety guard).
+///
+/// `--reset` is destructive (it truncates ticket data), so it refuses to run
+/// against anything but these dev/test databases. Verified against the live
+/// `current_database()`, not just the DSN, so a mislabelled URL cannot slip past.
+pub const ALLOWED_RESET_DBS: [&str; 2] = ["osticket_dev", "osticket_test"];
+
+/// Ticket-scoped tables truncated by `--reset`, in FK-safe (child-first) order.
+///
+/// PRESERVED by omission: `department`, `groups`, `group_dept_access`, `staff`,
+/// `sla`, `config`, and — once D1 lands them — the `canned_response` /
+/// `canned_attachment` tables (the seeded canned responses + their `policy.txt`
+/// blob must survive a reset). Only ticket-conversation state is purged here.
+///
+/// `session` is included so stale staff/client logins don't leak across sweeps;
+/// it has no FK to `ticket`, so its position in the list is immaterial.
+///
+/// NOTE (mailer): recorded mailer sends are NOT persisted in M2 — the StubMailer
+/// keeps them in an in-process `Vec`, so there is no DB table to truncate. If a
+/// later milestone persists sends, add that table at the head of this list.
+pub const RESET_TRUNCATE_TABLES: [&str; 4] = [
+    "ticket_attachment", // child of ticket + ticket_thread
+    "ticket_thread",     // child of ticket
+    "ticket",            // parent
+    "session",           // independent login state
+];
+
+/// A non-dev target database was refused (production-safety guard tripped).
+#[derive(Debug, thiserror::Error)]
+#[error(
+    "refusing to --reset database `{name}`: not a recognised dev DB \
+     (allowed: {allowed})",
+    name = .0,
+    allowed = ALLOWED_RESET_DBS.join(", ")
+)]
+pub struct NotADevDatabase(pub String);
+
+/// Assert the connected database is a recognised dev DB, or error.
+///
+/// Reads the LIVE `current_database()` (authoritative — a mislabelled DSN can't
+/// bypass it). Returns the database name on success.
+///
+/// @implements TS-M2-prep: production-safety guard on the destructive reset.
+pub async fn assert_dev_database(pool: &PgPool) -> anyhow::Result<String> {
+    let name: String = sqlx::query_scalar("SELECT current_database()")
+        .fetch_one(pool)
+        .await?;
+    if !ALLOWED_RESET_DBS.contains(&name.as_str()) {
+        return Err(NotADevDatabase(name).into());
+    }
+    Ok(name)
+}
+
+/// Destructively reset the dev DB: purge ticket-scoped data, then re-seed.
+///
+/// Refuses any non-dev database first ([`assert_dev_database`]). Truncates the
+/// ticket-conversation tables in FK-safe order inside one transaction (so a
+/// failure rolls back to the pre-reset state), then runs the idempotent [`seed`]
+/// to restore the dept/group/agent baseline + M2 config keys.
+///
+/// `TRUNCATE ... CASCADE RESTART IDENTITY` resets the identity sequences too, so
+/// a fresh sweep starts ticket numbering from a clean slate.
+///
+/// DEFERRED (after D1): blob reclamation under `BLOB_ROOT` — prune
+/// `attachment_file` rows + their on-disk blobs that are no longer referenced
+/// after the purge, preserving the seeded `policy.txt` canned blob. That half
+/// needs the D1 seeded canned responses to know what to preserve; it is NOT
+/// implemented here. See the ticket's AC-3 and the TODO in the binary.
+///
+/// @implements TS-M2-prep: ticket-data truncation half of `--reset`.
+pub async fn reset(pool: &PgPool) -> anyhow::Result<SeedResult> {
+    assert_dev_database(pool).await?;
+
+    let mut tx = pool.begin().await?;
+    // One TRUNCATE over all ticket-scoped tables: CASCADE handles any FK edges
+    // among them, RESTART IDENTITY rewinds the sequences. The explicit list
+    // documents exactly what is purged (and, by omission, what is preserved).
+    let stmt = format!(
+        "TRUNCATE TABLE {} RESTART IDENTITY CASCADE",
+        RESET_TRUNCATE_TABLES.join(", ")
+    );
+    sqlx::query(&stmt).execute(&mut *tx).await?;
+    tx.commit().await?;
+
+    // Restore the baseline (dept/group/agent + reference + M2 config keys).
+    seed(pool).await
+}
+
 /// Seed the four M2 config keys with their pinned defaults, idempotently.
 ///
 /// `INSERT ... ON CONFLICT (key) DO NOTHING` so a re-run leaves the existing

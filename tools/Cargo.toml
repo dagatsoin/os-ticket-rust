@@ -17,6 +17,8 @@ sqlx = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 dotenvy = { workspace = true }
+# TS-M2-prep — typed guard error for the destructive `--reset` dev-DB check.
+thiserror = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

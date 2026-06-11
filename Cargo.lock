@@ -1953,6 +1953,7 @@ dependencies = [
  "dotenvy",
  "ost_core",
  "sqlx",
+ "thiserror",
  "tokio",
 ]
 

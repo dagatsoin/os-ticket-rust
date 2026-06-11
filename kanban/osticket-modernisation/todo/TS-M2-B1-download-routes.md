@@ -30,20 +30,30 @@ leak). Blobs read from `BLOB_ROOT` (§1); streaming uses `tokio-util` io (§4).
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset`; backend on :3701; fixtures in `/tmp/qa-fixtures`.
+> Seed **ticket-A** (email `mia@example.com`) with an `M` `invoice.pdf` attachment (capture its
+> `attachmentId` from `GET /api/staff/tickets/{A}`), and **ticket-B** (different email). Client login
+> to per-ticket cookie jars — `curl -c /tmp/qa-clientA.jar -X POST .../api/client/login` (ticket-A
+> number + email), likewise `/tmp/qa-clientB.jar` for ticket-B.
+
 ### AC-1: FS-022.10/.11 — an authorized client downloads the blob with a Content-Disposition filename. [API-ONLY]
-- Client logged into the parent ticket → GET `/api/client/ticket/attachments/{attachmentId}` → 200, correct bytes, `Content-Disposition` filename, correct MIME.
+- Request: `curl -i -b /tmp/qa-clientA.jar http://localhost:3701/api/client/ticket/attachments/{attachmentId} -o /tmp/dl.pdf`.
+- Verify: HTTP 200; `Content-Disposition: attachment; filename="invoice.pdf"`; `Content-Type` is the stored MIME (octet-stream fallback); `cmp /tmp/dl.pdf /tmp/qa-fixtures/invoice.pdf` is byte-identical.
 - Status: [ ]
 
 ### AC-2: BS-022.8/D2/EC-022.9 — a client logged into a DIFFERENT ticket is denied (404, no existence leak). [API-ONLY]
-- Client session for ticket B requests ticket A's attachment id → **404**, no bytes (§8).
+- Request: `curl -i -b /tmp/qa-clientB.jar http://localhost:3701/api/client/ticket/attachments/{attachmentId}` (ticket-A's id, ticket-B session).
+- Verify: HTTP 404, empty body (no bytes, §8).
 - Status: [ ]
 
 ### AC-3: EC-022.7 — an unknown/mismatched attachment id is rejected (404). [API-ONLY]
-- GET a non-existent attachment id, and an id belonging to another ticket → **404**, shared error envelope (no existence leak §8).
+- Request: `curl -i -b /tmp/qa-clientA.jar .../api/client/ticket/attachments/999999`.
+- Verify: HTTP 404 with the shared error envelope; the response is indistinguishable from AC-2's cross-ticket 404 (no existence leak §8).
 - Status: [ ]
 
 ### AC-4: staff download — an authorized staff session downloads via the staff route. [API-ONLY]
-- Staff login → GET the staff attachment route → 200, bytes, Content-Disposition.
+- Request: staff login to `/tmp/qa-staff.jar`, then `curl -i -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{A}/attachments/{attachmentId} -o /tmp/dls.pdf`.
+- Verify: HTTP 200, bytes match `invoice.pdf`, `Content-Disposition` filename present.
 - Status: [ ]
 
 ## Dependencies

@@ -28,20 +28,27 @@ different surface; this is the composer.
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset`; backend on :3701, SPA on :3702; seed/open a
+> ticket; log in agent / Agent123! at http://localhost:3702/staff/login and open that ticket's detail.
+
 ### AC-1: BS-022.2 — the dropdown lists only enabled, dept-scoped responses. [BROWSER]
-- Open a ticket as staff → the dropdown shows "Acknowledge receipt" and NOT the disabled sample.
+- Navigate: the staff ticket detail; scroll to the reply composer.
+- Verify: the "Canned response" dropdown shows "Acknowledge receipt" and does NOT show "Closed — disabled sample".
 - Status: [ ]
 
 ### AC-2: FS-022.14 — selecting a response fills the textarea with the substituted body. [BROWSER]
-- Pick "Acknowledge receipt" → textarea shows the body with `%{ticket.number}` already substituted (no literal token).
+- Action: pick "Acknowledge receipt" from the dropdown.
+- Verify: the reply textarea is populated with the canned body and `%{ticket.number}` is already substituted to this ticket's number (no literal `%{...}`).
 - Status: [ ]
 
 ### AC-3: selecting a response shows its attachment as a chip. [BROWSER]
-- After selection → a `policy.txt` chip appears in the reply composer.
+- Action: (after AC-2's selection) inspect the composer.
+- Verify: a read-only `policy.txt` AttachmentChip (marked "from canned response") appears in the reply composer.
 - Status: [ ]
 
 ### AC-4: the reply box has an own-file input. [BROWSER]
-- A file input is present in the reply composer (wired to D4).
+- Navigate: the reply composer.
+- Verify: an own-file `<input type=file>` is present (wired to the D4 multipart POST).
 - Status: [ ]
 
 ## Dependencies

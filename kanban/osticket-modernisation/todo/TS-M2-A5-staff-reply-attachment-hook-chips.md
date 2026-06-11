@@ -31,20 +31,29 @@ stored under `BLOB_ROOT` (§1). Hashing via `sha2`/`hex` (§4).
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset`; backend on :3701; fixtures in `/tmp/qa-fixtures`.
+> Seed a ticket with a client `M` attachment (`curl -F attachment=@/tmp/qa-fixtures/invoice.pdf ...` to
+> `/api/tickets`); staff login to a cookie jar — `curl -c /tmp/qa-staff.jar -X POST .../api/staff/login`
+> (`agent`/`Agent123!`).
+
 ### AC-1: FS-021.3 — a staff reply with a permitted file binds a ticket_attachment (ref_type R) to the new entry. [API-ONLY]
-- Multipart reply with `note.png` → new `R` entry has a `ticket_attachment` for `note.png`.
+- Request: `curl -i -b /tmp/qa-staff.jar -X POST http://localhost:3701/api/staff/tickets/{id}/reply -F body=here -F attachment=@/tmp/qa-fixtures/note.png`.
+- Verify: HTTP 200/201; the new `R` entry's `attachments` lists `note.png`; `psql -c "select ref_type from ticket_attachment order by id desc limit 1;"` → `R`.
 - Status: [ ]
 
 ### AC-2: a disallowed/oversized reply attachment returns 422 and posts no reply. [API-ONLY]
-- Multipart reply with `evil.exe` → 422 field error; no `R` entry created.
+- Request: same `curl` but `-F attachment=@/tmp/qa-fixtures/evil.exe`; separately `@/tmp/qa-fixtures/big.pdf`.
+- Verify: HTTP 422 with a field error keyed on `attachment`; no new `R` entry (`psql -c "select count(*) from ticket_thread where ref_type='R';"` unchanged).
 - Status: [ ]
 
 ### AC-3: ticket-detail + client-thread responses expose each entry's attachments under `attachments: [{id,name,size,mime}]`. [API-ONLY]
-- GET staff detail + client thread → entries list their attachment metadata under the shared `attachments` key (§7), the same shape as canned detail (D2).
+- Request: `curl -b /tmp/qa-staff.jar .../api/staff/tickets/{id}` and `curl -b /tmp/qa-client.jar .../api/client/ticket` (client logged into the ticket).
+- Verify: both payloads list each thread entry's attachments under the key `attachments` as `[{id,name,size,mime}]` (§7) — the same shape canned detail (D2) returns; an entry with no file shows `attachments: []`.
 - Status: [ ]
 
 ### AC-4: a JSON (no-attachment) reply still posts and returns an empty `attachments` array (M1 contract preserved). [API-ONLY]
-- POST a plain JSON reply → new `R` entry with `attachments: []`; the M1 reply behaviour is unchanged.
+- Request: `curl -i -b /tmp/qa-staff.jar -X POST .../api/staff/tickets/{id}/reply -H 'Content-Type: application/json' -d '{"body":"plain"}'`.
+- Verify: HTTP 200/201; the new `R` entry has `attachments: []`; M1 reply behaviour unchanged.
 - Status: [ ]
 
 ## Dependencies

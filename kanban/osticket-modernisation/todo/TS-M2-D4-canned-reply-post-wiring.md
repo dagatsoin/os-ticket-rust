@@ -35,20 +35,29 @@ yet). Substitution and attachment-carry ARE preserved.
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset`; backend on :3701; fixtures in `/tmp/qa-fixtures`.
+> Seed a ticket `{id}`; staff login to `/tmp/qa-staff.jar`; obtain the "Acknowledge receipt" `{cannedId}`
+> from `GET /api/staff/tickets/{id}/canned`.
+
 ### AC-1: FS-022.14 — posting with a cannedId appends an R entry with the substituted body + carried attachments. [API-ONLY]
-- POST reply with `cannedId` for "Acknowledge receipt" → new `R` entry, body substituted, a `ticket_attachment` for `policy.txt` (same file id as the canned attachment — no new blob).
+- Request: `curl -i -b /tmp/qa-staff.jar -X POST http://localhost:3701/api/staff/tickets/{id}/reply -F cannedId={cannedId} -F body=''`.
+- Verify: HTTP 200/201; the new `R` entry's body is the substituted canned text (ticket number present, no literal `%{...}`) and `attachments` lists `policy.txt`; `psql -c "select count(*) from attachment_file;"` is unchanged from before the reply (the canned blob is re-bound by file id, no new blob — D1).
 - Status: [ ]
 
 ### AC-2: §3 — a posted canned reply marks the ticket answered (isanswered=true), like any staff reply. [API-ONLY]
-- After the canned reply → ticket detail shows `isanswered=true` (Answered), the same as a plain M1 reply. (BS-022.15's "mark unanswered" is the SYSTEM auto-reply path, DEFERRED to M5.)
+- Setup: before replying, `curl -b /tmp/qa-staff.jar .../api/staff/tickets/{id}` shows `isanswered=false`.
+- Request: post the AC-1 canned reply.
+- Verify: ticket detail now shows `isanswered=true` (Answered), the same as a plain M1 reply (BS-022.15's "mark unanswered" SYSTEM path is DEFERRED to M5); the `R` entry's author is the posting agent (not "SYSTEM").
 - Status: [ ]
 
 ### AC-3: own-file + canned in one reply both bind. [API-ONLY]
-- POST with `cannedId` + an own `note.png` → the `R` entry carries both `policy.txt` (canned) and `note.png` (own).
+- Request: `curl -i -b /tmp/qa-staff.jar -X POST .../api/staff/tickets/{id}/reply -F cannedId={cannedId} -F body='' -F attachment=@/tmp/qa-fixtures/note.png`.
+- Verify: the `R` entry's `attachments` carries BOTH `policy.txt` (canned) and `note.png` (own).
 - Status: [ ]
 
 ### AC-4: a plain reply (no canned, no file) still posts (M1 unchanged). [API-ONLY]
-- POST a plain reply → new `R` entry, no attachments; status behaviour unchanged from M1 baseline.
+- Request: `curl -i -b /tmp/qa-staff.jar -X POST .../api/staff/tickets/{id}/reply -H 'Content-Type: application/json' -d '{"body":"plain"}'`.
+- Verify: HTTP 200/201; new `R` entry with `attachments: []`; status behaviour unchanged from the M1 baseline.
 - Status: [ ]
 
 ## Dependencies

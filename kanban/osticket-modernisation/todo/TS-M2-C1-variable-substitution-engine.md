@@ -24,8 +24,11 @@ a ticket.
 
 ## Acceptance Tests
 
+> Pure `VariableReplacer` unit tests (TDD, no DB except AC-6). Run: `cargo test -p ost_core variable_replacer`.
+> AC-6 is DB-backed (`TEST_DATABASE_URL`, skip-pass when unset). Each bullet is the call → expected output.
+
 ### AC-1: BS-040.14 — dot-path traversal resolves nested tokens. [API-ONLY]
-- `render("#%{ticket.number} — %{ticket.dept.name}", ctx)` → number + dept name substituted.
+- Run/Verify: `render("#%{ticket.number} — %{ticket.dept.name}", ctx)` → both the number and dept name substituted, no literal `%{...}`.
 - Status: [ ]
 
 ### AC-2: BS-040.17 — an unknown token is left literally in the output. [API-ONLY]
@@ -45,7 +48,8 @@ a ticket.
 - Status: [ ]
 
 ### AC-6: the M2 catalog tokens all resolve against a real seeded ticket. [API-ONLY]
-- For a seeded ticket, each of number/name/subject/email/status/create_date/dept.name resolves to the ticket's value.
+- Setup: `TEST_DATABASE_URL` set; a ticket seeded; build the context from its row (`cargo test -p ost_core variable_replacer::catalog`).
+- Run/Verify: rendering `%{ticket.number|name|subject|email|status|create_date}` and `%{ticket.dept.name}` each yields the seeded ticket's value (no literal `%{...}`); `%{url}` resolves to the passed base URL.
 - Status: [ ]
 
 ## Dependencies

@@ -35,16 +35,25 @@ resolved to an absolute path at startup; all binaries and tests honor it.
 
 ## Acceptance Tests
 
+> Backend tests. DB-backed cases read `TEST_DATABASE_URL` and skip-pass when unset (M1 §). Run with:
+> `TEST_DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_test cargo test -p ost_core blob_store`.
+
 ### AC-1: FS-022.12/D1 — putting identical bytes twice yields one blob + one attachment_file hash. [API-ONLY]
-- Test: `store.put(b)` twice with identical bytes → same SHA-256, one file on disk, one `attachment_file` row reused.
+- Setup: a `BlobStore` rooted at a tempdir (`BLOB_ROOT` override).
+- Run: a unit test calls `store.put(b)` twice with identical bytes (`cargo test -p ost_core blob_store::dedup`).
+- Verify: both calls return the same SHA-256; exactly one file on disk under `<root>/aa/bb/<sha256>`; the `attachment_file` upsert reuses one row (one `hash`).
 - Status: [ ]
 
 ### AC-2: FS-022.12 — a stored blob round-trips byte-for-byte via open(hash). [API-ONLY]
-- Test: `open(hash)` returns exactly the bytes written; the on-disk path matches `<BLOB_ROOT>/aa/bb/<sha256>`.
+- Setup: a `BlobStore` rooted at a tempdir.
+- Run: unit test `store.put(bytes)` then `store.open(hash)` (`cargo test -p ost_core blob_store::roundtrip`).
+- Verify: `open(hash)` yields exactly the bytes written; the on-disk path equals `<BLOB_ROOT>/aa/bb/<sha256>`.
 - Status: [ ]
 
 ### AC-3: schema — a ticket_attachment binds a file to a ticket + thread entry with ref_type M/R/N. [API-ONLY]
-- Test: insert an `attachment_file` then a `ticket_attachment` (ref_type `M`); FK to thread entry + attachment_file enforced; ref_type constrained to M/R/N.
+- Setup: `TEST_DATABASE_URL` set; migrations applied.
+- Run: integration test inserts an `attachment_file` then a `ticket_attachment` (ref_type `M`); attempts a bad `ref_type` and an orphan `file_id` (`cargo test -p db attachment_schema`).
+- Verify: the valid insert succeeds; the FK to the thread entry + `attachment_file` is enforced; `ref_type` is constrained to `M`/`R`/`N` (a fourth value errors).
 - Status: [ ]
 
 ## Dependencies

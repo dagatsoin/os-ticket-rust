@@ -29,24 +29,28 @@ under `BLOB_ROOT` (ROADMAP M2 Decisions §1).
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset`; backend on :3701; fixtures in `/tmp/qa-fixtures`
+> (see US-M2-1 Test Infrastructure for the creation block). Staff reads use a cookie jar from
+> `POST /api/staff/login` (`agent`/`Agent123!`).
+
 ### AC-1: FS-011.7 — create with a permitted file returns 201 and binds a ticket_attachment to the M entry. [API-ONLY]
-- Request: multipart POST with valid fields + `invoice.pdf`.
-- Expect: 201 + ticket number; staff detail shows the `M` entry with a `ticket_attachment` for `invoice.pdf`.
+- Request: `curl -i -X POST http://localhost:3701/api/tickets -F name=Mia -F email=mia@example.com -F subject=Inv -F message=see -F attachment=@/tmp/qa-fixtures/invoice.pdf`.
+- Verify: HTTP 201 + a 6-digit ticket number; `curl -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}` shows the `M` entry with `attachments` listing `invoice.pdf` (name/size/mime).
 - Status: [ ]
 
 ### AC-2: EC-011.5 — create with a disallowed/oversized file returns 422 and creates no ticket. [API-ONLY]
-- Request: multipart POST with `evil.exe` (and separately a > 1 MB file).
-- Expect: 422 with a field error on `attachment`; no ticket, no blob.
+- Request: `curl -i -X POST .../api/tickets -F name=Mia -F email=mia@example.com -F subject=Bad -F message=x -F attachment=@/tmp/qa-fixtures/evil.exe`; separately repeat with `@/tmp/qa-fixtures/big.pdf`.
+- Verify: both return HTTP 422 with a field error keyed on `attachment` (§2); `docker exec backend-db-1 psql -U postgres -d osticket_dev -c "select count(*) from ticket;"` is unchanged and `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` is unchanged (no ticket, no blob).
 - Status: [ ]
 
 ### AC-3: D1 — two creates with identical bytes share one attachment_file / one blob. [API-ONLY]
-- Request: two multipart creates with the SAME `.pdf` bytes.
-- Expect: two tickets, two `ticket_attachment` rows, ONE `attachment_file` (same SHA-256), one blob on disk.
+- Request: run the AC-1 `curl` twice with the SAME `/tmp/qa-fixtures/invoice.pdf` bytes.
+- Verify: two ticket numbers; `psql -c "select count(*) from ticket_attachment;"` → 2; `select count(*) from attachment_file;` → 1 (same SHA-256); `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` → 1 blob.
 - Status: [ ]
 
 ### AC-4: create with NO attachment still returns 201 (M1 unchanged). [API-ONLY]
-- Request: JSON (or multipart with no file part) valid create.
-- Expect: 201, no `ticket_attachment`.
+- Request: `curl -i -X POST .../api/tickets -H 'Content-Type: application/json' -d '{"name":"Mia","email":"mia@example.com","subject":"Plain","message":"hi"}'`.
+- Verify: HTTP 201; the new ticket's `M` entry has `attachments: []` (no `ticket_attachment`), M1 contract preserved.
 - Status: [ ]
 
 ## Dependencies

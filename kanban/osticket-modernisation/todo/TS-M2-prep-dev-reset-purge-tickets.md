@@ -33,20 +33,31 @@ flag keeps one reset mechanism and needs no env-gated route surface.
 
 ## Acceptance Tests
 
+> Setup (all): backend on :3701; fixtures in `/tmp/qa-fixtures`; staff cookie jar from
+> `POST /api/staff/login` (`agent`/`Agent123!`). Run the binary as `cargo run -p tools --bin seed -- --reset`.
+> The tool must refuse a non-dev target DB (guard on the DB name / dev env).
+
 ### AC-1: `--reset` purges all tickets + thread entries + ticket attachments so the Open queue is empty. [API-ONLY]
-- Create a few tickets (some with attachments), run `seed -- --reset`, then `GET /api/staff/tickets?status=open` → empty.
+- Setup: create a few tickets, some with a `.pdf` — `curl -X POST .../api/tickets -F name=A -F email=a@x.com -F subject=s -F message=m -F attachment=@/tmp/qa-fixtures/invoice.pdf` (repeat for a couple).
+- Request: run `cargo run -p tools --bin seed -- --reset`, then `curl -s -b /tmp/qa-staff.jar 'http://localhost:3701/api/staff/tickets?status=open'`.
+- Verify: the Open queue is empty; `docker exec backend-db-1 psql -U postgres -d osticket_dev -c "select count(*) from ticket; select count(*) from ticket_attachment;"` → both 0.
 - Status: [ ]
 
 ### AC-2: `--reset` preserves the seeded department, group, `agent` account, and seeded canned responses. [API-ONLY]
-- After reset → staff login `agent`/`Agent123!` works; the seeded canned responses still resolve.
+- Request: after the reset, `curl -i -X POST .../api/staff/login` with `agent`/`Agent123!`; `psql -c "select count(*) from canned_response;"`.
+- Verify: staff login succeeds (200); the two seeded canned responses still resolve (count = 2), and the seeded department/group rows remain.
 - Status: [ ]
 
 ### AC-3: `--reset` reclaims orphaned blobs but keeps referenced ones. [API-ONLY]
-- After reset → ticket-only blobs are gone from `var/blobs/`; the seeded `policy.txt` canned blob remains.
+- Setup: note `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` after AC-1's ticket-with-attachment creates (ticket blob + seeded `policy.txt` present).
+- Request: run `cargo run -p tools --bin seed -- --reset`, then re-run the `find ... | wc -l`.
+- Verify: the ticket-only blob is gone; the seeded `policy.txt` canned blob remains (still referenced by the re-seeded canned response).
 - Status: [ ]
 
 ### AC-4: plain `seed` (no flag) remains non-destructive (M1 contract). [API-ONLY]
-- With existing tickets present, run plain `seed` → tickets untouched; baseline reseeded idempotently.
+- Setup: with one or more tickets present, note the ticket count.
+- Request: run `cargo run -p tools --bin seed` (no flag).
+- Verify: `psql -c "select count(*) from ticket;"` is unchanged (tickets untouched); the dept/group/`agent` baseline is reseeded idempotently (no duplicate rows).
 - Status: [ ]
 
 ## Test Infrastructure

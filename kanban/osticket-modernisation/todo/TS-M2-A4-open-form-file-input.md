@@ -25,24 +25,32 @@ validation surfaced inline, and an attachment chip on the confirmation page.
 ## Acceptance Tests
 
 ### AC-1: the /open form renders a file input with helper text when attachments are enabled. [BROWSER]
-- Navigate http://localhost:3702/open → a file input + allowed-types/size helper text is present.
+- Setup: `cargo run -p tools --bin seed -- --reset`; fixtures present (see Test Infrastructure).
+- Navigate: http://localhost:3702/open
+- Verify: a file input is present alongside Name/Email/Subject/Message, with helper text naming the allowed types and the 1 MB cap.
 - Status: [ ]
 
 ### AC-2: a valid submission with a file shows the confirmation page with an AttachmentChip. [BROWSER]
-- Submit valid fields + `invoice.pdf` → confirmation shows the ticket number AND a chip `invoice.pdf`.
+- Navigate: http://localhost:3702/open
+- Action: fill valid Name/Email/Subject/Message; choose `/tmp/qa-fixtures/invoice.pdf`; submit.
+- Verify: the confirmation page shows the 6-digit ticket number AND an AttachmentChip labelled `invoice.pdf`.
 - Status: [ ]
 
 ### AC-3: a disallowed type shows an inline error on the file field and blocks submission. [BROWSER]
-- Choose `evil.exe`, submit → inline "invalid file type" error under the input; no confirmation page.
+- Navigate: http://localhost:3702/open
+- Action: fill valid fields; choose `/tmp/qa-fixtures/evil.exe`; attempt submit.
+- Verify: an inline "invalid file type" error renders under the file input; no confirmation page.
 - Status: [ ]
 
 ### AC-4: an oversized file shows an inline "too big" error. [BROWSER]
-- Choose a > 1 MB permitted file, submit → inline "too big" error; no confirmation page.
+- Navigate: http://localhost:3702/open
+- Action: fill valid fields; choose `/tmp/qa-fixtures/big.pdf` (permitted type, > 1 MB); attempt submit.
+- Verify: an inline "too big" error renders under the file input; no confirmation page.
 - Status: [ ]
 
 ## Test Infrastructure
 
-- Fixtures: `invoice.pdf` (< 1 MB), `evil.exe`, an oversized permitted-type file. Reused by US-M2-1.
+- Fixtures (create once; full block in US-M2-1 Test Infrastructure): `/tmp/qa-fixtures/invoice.pdf` (< 1 MB), `/tmp/qa-fixtures/evil.exe` (bad type), `/tmp/qa-fixtures/big.pdf` (> 1 MB permitted type). Reused by US-M2-1.
 
 ## Dependencies
 

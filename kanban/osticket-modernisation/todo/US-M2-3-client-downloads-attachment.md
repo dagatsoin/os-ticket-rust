@@ -61,8 +61,9 @@ only download attachments that belong to a ticket I'm logged into.
 - Status: [ ]
 
 ### AC-4: A bad / unknown attachment id is rejected. [API-ONLY]
-- Request: as an authenticated client of a ticket, request a download for a non-existent attachment id (and an attachment id belonging to another ticket).
-- Expect: **404** with the shared error envelope; no bytes (no existence leak §8). (EC-022.7 / EC-022.8 cross-session replay covered by the session-bound route, D2.)
+- Setup: `cargo run -p tools --bin seed -- --reset`; seed a ticket-A with both attachments and a ticket-B (different email); authenticate a client session for ticket-A — `curl -c /tmp/qa-client.jar -X POST http://localhost:3701/api/client/login` with ticket-A number + its email.
+- Request: with that session, request a non-existent attachment id — `curl -i -b /tmp/qa-client.jar http://localhost:3701/api/client/ticket/attachments/999999`; then request ticket-B's real attachment id via the same ticket-A session.
+- Verify: both return **404** with the shared error envelope and an empty/zero-byte body (no existence leak §8); the 404 is identical whether the id is non-existent or belongs to another ticket (EC-022.7; EC-022.8 cross-session replay is structurally covered by the session-bound no-ticketId route, D2 §8).
 - Status: [ ]
 
 ## Checklist (children)

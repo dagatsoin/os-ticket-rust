@@ -27,16 +27,27 @@ when `SMTP_HOST` is set**, otherwise the M1 stub mailer + `GET /api/dev/mailbox`
 
 ## Acceptance Tests
 
+> Setup: `docker compose up -d mailpit`; the integration tests target the running Mailpit via
+> `MAILPIT_URL=http://localhost:3705` and **skip-pass when it is unset** (§5). Run:
+> `MAILPIT_URL=http://localhost:3705 cargo test -p api smtp_mailer`. Empty the inbox before each case
+> with `curl -X DELETE http://localhost:3705/api/v1/messages`.
+
 ### AC-1: D3 — with SMTP_HOST set, a send is delivered to Mailpit. [API-ONLY]
-- Backend `SMTP_HOST=localhost SMTP_PORT=3704`; trigger a send → the message appears in Mailpit (`GET http://localhost:3705/api/v1/messages`).
+- Setup: bind the `SmtpMailer` with `SMTP_HOST=localhost SMTP_PORT=3704 SMTP_FROM=support@example.com`; empty Mailpit.
+- Request: trigger a send through the mailer, then `curl -s http://localhost:3705/api/v1/messages | jq '.total'`.
+- Verify: `.total` is 1 — the message is delivered to Mailpit.
 - Status: [ ]
 
 ### AC-2: D3 — with SMTP_HOST unset, a send is recorded in the stub dev mailbox, not delivered. [API-ONLY]
-- Backend with no `SMTP_HOST`; trigger a send → recorded in `GET /api/dev/mailbox`, nothing in Mailpit.
+- Setup: bind the mailer with **no `SMTP_HOST`** (stub path); empty Mailpit.
+- Request: trigger a send, then `curl -s http://localhost:3701/api/dev/mailbox` and `curl -s http://localhost:3705/api/v1/messages | jq '.total'`.
+- Verify: the send is recorded in the dev mailbox JSON; Mailpit `.total` is 0 (nothing delivered).
 - Status: [ ]
 
 ### AC-3: FS-040.12 — the delivered message is plain-text with the configured From. [API-ONLY]
-- Inspect the Mailpit message → text/plain body, `From` = `SMTP_FROM`.
+- Setup: AC-1's SMTP config; one delivered message.
+- Request: `curl -s http://localhost:3705/api/v1/messages | jq '.messages[0].ID'` then `curl -s http://localhost:3705/api/v1/message/{ID}`.
+- Verify: the message has a `text/plain` part (no HTML part, KL-040.1), and `From` equals `SMTP_FROM` (`support@example.com`).
 - Status: [ ]
 
 ## Test Infrastructure

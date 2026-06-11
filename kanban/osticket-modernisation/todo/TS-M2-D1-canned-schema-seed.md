@@ -25,16 +25,23 @@ Epic A binding + Epic B download).
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset` (seeds the two canned samples). DB queries via
+> `docker exec backend-db-1 psql -U postgres -d osticket_dev`. Schema AC-1 is a `db` integration test
+> (`TEST_DATABASE_URL`, skip-pass when unset): `cargo test -p db canned_schema`.
+
 ### AC-1: schema — a canned_response with title uniqueness + dept scope + enabled flag persists. [API-ONLY]
-- Insert two responses; duplicate title rejected; dept_id 0 + isenabled stored.
+- Run: integration test inserts two responses, then a third reusing a title (`cargo test -p db canned_schema`).
+- Verify: the duplicate-title insert errors (unique constraint); `dept_id=0` and `isenabled` persist as written.
 - Status: [ ]
 
 ### AC-2: seed — "Acknowledge receipt" exists enabled, dept 0, body holds %{ticket.number}, bound to policy.txt. [API-ONLY]
-- Query after seed → the response + a `canned_attachment` row → `attachment_file` for `policy.txt` (one blob on disk).
+- Run: `psql -c "select title,dept_id,isenabled,body from canned_response where title='Acknowledge receipt';"` and `psql -c "select af.name from canned_attachment ca join attachment_file af on af.id=ca.file_id join canned_response cr on cr.id=ca.canned_id where cr.title='Acknowledge receipt';"`.
+- Verify: the response is `isenabled=true`, `dept_id=0`, its body contains `%{ticket.number}`; the joined `attachment_file.name` is `policy.txt`; `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` shows the one seeded blob.
 - Status: [ ]
 
 ### AC-3: seed — a disabled sample response exists (for the enabled-only filter test). [API-ONLY]
-- Query after seed → a response with isenabled = false.
+- Run: `psql -c "select title,isenabled from canned_response where isenabled=false;"`.
+- Verify: "Closed — disabled sample" is present with `isenabled=false`.
 - Status: [ ]
 
 ## Dependencies

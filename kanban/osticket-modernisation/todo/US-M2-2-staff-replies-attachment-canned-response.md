@@ -47,13 +47,14 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 ## Acceptance Criteria
 
 ### AC-1: The agent sees a clickable attachment chip on the client's original message. [BROWSER]
-- Setup: `cargo run -p tools --bin seed -- --reset`; open a ticket via /open with a `.pdf` (or use the carried root-AC-1 ticket).
+- Setup: `cargo run -p tools --bin seed -- --reset`; fixtures present (see Test Infrastructure); open a ticket via http://localhost:3702/open with `/tmp/qa-fixtures/invoice.pdf` (or use the carried root-AC-1 ticket).
 - Navigate: log in agent / Agent123!; open that ticket.
 - Verify: the customer's `M` message shows an **attachment chip** for the uploaded file.
 - Status: [ ]
 
 ### AC-2: The reply box exposes a "Canned response" dropdown listing only enabled, dept-scoped responses. [BROWSER]
-- Verify: the reply area shows a **"Canned response" dropdown** that includes the seeded "Acknowledge receipt" (enabled, All-Departments) and does NOT include any seeded disabled response.
+- Navigate: on the staff detail view from AC-1, scroll to the reply composer (same staff session).
+- Verify: the reply area shows a **"Canned response" dropdown** that includes the seeded "Acknowledge receipt" (enabled, All-Departments) and does NOT include the seeded "Closed — disabled sample".
 - Status: [ ]
 
 ### AC-3: Selecting a canned response fills the reply with a substituted body and shows its attachment chip. [BROWSER]
@@ -68,7 +69,7 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 - Status: [ ]
 
 ### AC-5: The agent can additionally attach their own file on a reply. [BROWSER]
-- Action: in the reply box, choose an own file (e.g. `note.png`, permitted type), type some text, post.
+- Action: in the reply box own-file input, choose `/tmp/qa-fixtures/note.png` (permitted type), type some text, post.
 - Verify: the new `R` entry shows a chip for `note.png` (the own-file attachment path works alongside / independent of canned attachments).
 - Status: [ ]
 
@@ -81,8 +82,12 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 
 ## Test Infrastructure
 
-- Seeded canned responses from TS-M2-D1: "Acknowledge receipt" (enabled, All-Departments, body with `%{ticket.number}`, carries `policy.txt`) + one disabled response (negative case for AC-2).
-- Fixture `note.png` (permitted) for AC-5 own-file path.
+- Seeded canned responses from TS-M2-D1: "Acknowledge receipt" (enabled, All-Departments, body with `%{ticket.number}`, carries `policy.txt`) + "Closed — disabled sample" (disabled; negative case for AC-2).
+- Fixtures (create once; see US-M2-1 Test Infrastructure for the full block): `/tmp/qa-fixtures/invoice.pdf` (AC-1 client upload) and `/tmp/qa-fixtures/note.png` (AC-5 own-file path):
+  ```sh
+  mkdir -p /tmp/qa-fixtures
+  printf '\211PNG\r\n\032\n\000\000\000\rIHDR\000\000\000\001\000\000\000\001\010\006\000\000\000\037\025\304\211' > /tmp/qa-fixtures/note.png
+  ```
 
 ## Dependencies
 

@@ -27,20 +27,30 @@ base. Mailpit-dependent assertions skip-pass when `MAILPIT_URL` is unset (§5).
 
 ## Acceptance Tests
 
+> Setup (AC-1..3): `docker compose up -d mailpit`; `cargo run -p tools --bin seed -- --reset`; backend with
+> `SMTP_HOST=localhost SMTP_PORT=3704 SMTP_FROM=support@example.com`; empty Mailpit
+> (`curl -X DELETE http://localhost:3705/api/v1/messages`). Mailpit assertions skip-pass when `MAILPIT_URL`
+> is unset (§5). Staff login to `/tmp/qa-staff.jar`.
+
 ### AC-1: FS-011.12 — opening a ticket delivers an autoresponse to the requester (Mailpit). [API-ONLY]
-- With Mailpit up, create a ticket as mia@example.com → a To-mia autoresponse appears in Mailpit, body substituted.
+- Request: `curl -s -X POST http://localhost:3701/api/tickets -H 'Content-Type: application/json' -d '{"name":"Mia","email":"mia@example.com","subject":"Hi","message":"hello"}'`; then `curl -s http://localhost:3705/api/v1/messages | jq '.messages[] | {to:.To,subject:.Subject}'`.
+- Verify: a message **To mia@example.com** is present; its subject/body reference the new ticket number and contain no literal `%{...}`.
 - Status: [ ]
 
 ### AC-2: FS-021.3 — an agent reply delivers a notification to the requester (Mailpit). [API-ONLY]
-- Post a staff reply → a To-mia notification appears in Mailpit, body substituted.
+- Request: `curl -s -b /tmp/qa-staff.jar -X POST http://localhost:3701/api/staff/tickets/{id}/reply -H 'Content-Type: application/json' -d '{"body":"on it"}'`; then re-list Mailpit messages.
+- Verify: a NEW message **To mia@example.com** appears whose body reflects the reply/ticket details, substituted (no literal tokens).
 - Status: [ ]
 
 ### AC-3: no mail is sent when the underlying write fails. [API-ONLY]
-- Force a create/reply failure (e.g. invalid payload) → no message in Mailpit / dev mailbox.
+- Request: force a failing create — `curl -i -s -X POST .../api/tickets -H 'Content-Type: application/json' -d '{"name":"","email":"bad","subject":"","message":""}'` (validation error).
+- Verify: HTTP 422; `curl -s http://localhost:3705/api/v1/messages | jq '.total'` is unchanged (no message); the dev mailbox is unchanged too (sends fire only after a successful commit).
 - Status: [ ]
 
 ### AC-4: with SMTP_HOST unset both events record intent in the dev mailbox (M1 fallback). [API-ONLY]
-- Restart with no SMTP_HOST; create + reply → both recorded in `GET /api/dev/mailbox`, nothing in Mailpit.
+- Setup: restart the backend with **no `SMTP_HOST`** (`unset SMTP_HOST; cargo run -p api`); empty Mailpit; `cargo run -p tools --bin seed -- --reset`.
+- Request: create a ticket (JSON) and post a staff reply; then `curl -s http://localhost:3701/api/dev/mailbox`.
+- Verify: BOTH the autoresponse and the notification are recorded in the dev mailbox JSON; `curl -s http://localhost:3705/api/v1/messages | jq '.total'` is 0 (nothing delivered to Mailpit).
 - Status: [ ]
 
 ## Dependencies

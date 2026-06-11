@@ -23,20 +23,28 @@ one with its body **variable-substituted** (Epic C) for that ticket plus its att
 
 ## Acceptance Tests
 
+> Setup (all): `cargo run -p tools --bin seed -- --reset`; backend on :3701; seed a ticket and capture
+> its `{id}`; staff login to a cookie jar — `curl -c /tmp/qa-staff.jar -X POST .../api/staff/login`
+> (`agent`/`Agent123!`). Note the canned ids from the list route.
+
 ### AC-1: BS-022.1/.2 — the list returns only enabled, dept-scoped responses. [API-ONLY]
-- GET the list for a seeded ticket → "Acknowledge receipt" present; the disabled sample absent.
+- Request: `curl -s -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}/canned`.
+- Verify: the list includes "Acknowledge receipt" (enabled, dept 0); it does NOT include "Closed — disabled sample".
 - Status: [ ]
 
 ### AC-2: FS-022.14 — fetching a response returns its body with %{ticket.number} substituted. [API-ONLY]
-- GET the canned detail for a ticket → body has the ticket's number, no literal `%{...}`.
+- Request: `curl -s -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}/canned/{cannedId}` (the "Acknowledge receipt" id).
+- Verify: the returned `body` contains the ticket's own number and no literal `%{...}`.
 - Status: [ ]
 
 ### AC-3: FS-022.14 — the response includes its attachment list under the shared `attachments` key. [API-ONLY]
-- GET the detail → `attachments` (§7) includes `policy.txt` with id/name/size/mime.
+- Request: same detail call as AC-2.
+- Verify: the payload's `attachments` (§7) lists `policy.txt` with `id/name/size/mime` — the same shape as thread-entry attachments (A5).
 - Status: [ ]
 
 ### AC-4: BS-022.2 — fetching a disabled canned id returns 404. [API-ONLY]
-- GET the detail for the disabled sample → 404.
+- Request: `curl -i -s -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}/canned/{disabledCannedId}` (the "Closed — disabled sample" id from a direct DB lookup).
+- Verify: HTTP 404 (out-of-scope/disabled canned id is not fetchable).
 - Status: [ ]
 
 ## Dependencies

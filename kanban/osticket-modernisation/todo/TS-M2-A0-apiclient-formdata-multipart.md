@@ -35,23 +35,28 @@ of the UI tickets that depend on it. See ROADMAP **Decisions (M2) §13** and §2
 
 ## Acceptance Tests
 
+> Frontend Vitest + MSW unit tests against `frontend/src/api/apiClient.ts` (TDD). No browser, no live
+> backend. Run: `npm --prefix frontend test -- apiClient`. These are [API-ONLY] because A0 is a pure
+> client-plumbing enabler with no user-facing surface — its UI consumers (A4, D3) carry the [BROWSER] ACs.
+
 ### AC-1: a FormData body is sent without JSON.stringify and without a Content-Type header. [API-ONLY]
-- Call apiClient with a `FormData` body → the request carries the raw FormData (no JSON body) and **no**
-  `Content-Type` header is set by apiClient (browser-provided boundary).
+- Run: call `apiClient(...)` with a `FormData` body; intercept the outgoing request in MSW.
+- Verify: the request body is the raw FormData (not a JSON string) and apiClient sets **no** `Content-Type` header (browser-provided multipart boundary).
 - Status: [ ]
 
 ### AC-2: a JSON body still serializes with application/json (M1 path unchanged). [API-ONLY]
-- Call apiClient with a plain-object body → `JSON.stringify`d body + `Content-Type: application/json`.
+- Run: call `apiClient(...)` with a plain-object body.
+- Verify: the body is `JSON.stringify`d and `Content-Type: application/json` is set — the M1 path is unchanged.
 - Status: [ ]
 
 ### AC-3: the CSRF header, error-envelope parsing, and 401 redirect are preserved on the FormData path. [API-ONLY]
-- A mutating FormData request injects `X-CSRFToken`; a 422 envelope is parsed into field errors; a 401
-  triggers the realm-login redirect — identical to the JSON path.
+- Run: a mutating FormData request; separately mock a 422 envelope response and a 401 response.
+- Verify: the request injects `X-CSRFToken`; the 422 envelope is parsed into field errors; the 401 triggers the realm-login redirect — identical to the JSON path.
 - Status: [ ]
 
 ### AC-4: the MSW harness can assert on multipart parts. [API-ONLY]
-- A test handler reads `await request.formData()` and asserts on individual parts (text fields + a file
-  part), enabling A4/D3 component tests.
+- Run: a multipart-capable MSW handler reads `await request.formData()`.
+- Verify: the handler can assert on individual parts (text fields + a file part), enabling the A4/D3 component tests.
 - Status: [ ]
 
 ## Test Infrastructure

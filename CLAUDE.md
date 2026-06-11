@@ -1,34 +1,56 @@
-# osTicket 1.7 — Spec Reverse-Engineering Project
+# osTicket Modernisation Project
 
 ## What this repo is
 
-A snapshot of **osTicket 1.7**, an open-source PHP web helpdesk / support-ticket system
-(~290 PHP files / ~59,600 lines). It provides a public client portal (open/view tickets),
-a staff control panel (ticket workflow), an admin configuration area, an email pipeline
-(POP3/IMAP fetch + mail piping + outbound mail), an external API + cron, and a knowledge
-base / FAQ, all backed by MySQL (`ost_`-prefixed tables).
+The **osTicket modernisation project**. The repository began as a spec
+reverse-engineering effort against a snapshot of **osTicket 1.7** (an open-source PHP web
+helpdesk / support-ticket system, ~290 PHP files / ~59,600 lines: a public client portal,
+a staff control panel, an admin configuration area, an email pipeline (POP3/IMAP fetch +
+mail piping + outbound mail), an external API + cron, and a knowledge base / FAQ, all
+backed by MySQL `ost_`-prefixed tables).
 
-## What we are doing here
+That reverse-engineering run is **complete**, and the repo has now entered its
+**modernisation phase**: we are building a clean reimplementation on a modern stack, driven
+by the specs in [`specs/`](./specs/).
 
-Reverse-engineering **technology-agnostic functional specifications** from the existing
-source — documentation only. This mirrors the method used on `/Users/warfog/dev/crm_pascal`.
+## Current layout
 
-- **Functional specifications** live in [`specs/`](./specs/) (FS-XXX docs with embedded
+- **`legacy/`** — the original osTicket 1.7 PHP source, archived verbatim and **frozen**.
+  The pre-modernisation state is captured by the annotated git tag **`php-1.7-final`**.
+- **`specs/`** — technology-agnostic functional specifications (FS-XXX docs with embedded
   BS-XXX business rules, EC-XXX edge cases, KL-XXX known limitations). Start with
   [`specs/CLAUDE.md`](./specs/CLAUDE.md) for the index and conventions.
-- **Process artifacts** (the plan, trackers, gap/coverage/dedup reports) live in
-  [`work/`](./work/). The resume point and full method is
+- **`work/`** — process artifacts from the reverse-engineering run (plan, trackers,
+  gap / coverage / dedupe reports). The method is
   [`work/SPEC_REVERSE_ENGINEER_PLAN.md`](./work/SPEC_REVERSE_ENGINEER_PLAN.md).
+- **`kanban/`** — modernisation planning (to be created by planning).
+- **Rust backend** — a Cargo workspace at the repo root (to be created).
+- **React/TypeScript frontend** — (to be created).
 
-## Hard rule
+## The new implementation
 
-**Report spec only.** Never modify any PHP / source file. The only permitted source edit
-is the insertion of **additive `@implements` comment tags** during Phase 3 (coverage tagging),
-which never alter executable code. Tags use the canonical requirement-level form
-`@implements FS-XXX.N: <Title> — <note>` — one id per line, with BS/EC/KL first-class
-(normalized from the original bracketed `[FS-XXX]` form in Round 3).
+- **Backend**: **Rust** — a Cargo workspace at the repo root (to be created).
+- **Frontend**: **React + TypeScript**.
+- **Source of truth**: the functional specifications under `specs/` define the behaviour to
+  reproduce. The frozen PHP under `legacy/` is the authoritative reference whenever a spec
+  is ambiguous.
 
-## Status
+## Hard rules
+
+- **Never push to any remote.** All git operations for this project stay **local** —
+  no `git push`, no `git push --tags`, no remote `gh` operations.
+- **The legacy PHP source is frozen.** Never modify any file under `legacy/`. The original
+  "report spec only — never modify any PHP / source file" rule still applies in full to
+  everything under `legacy/`. The only edits ever made to that source were the additive
+  `@implements` comment tags inserted during the reverse-engineering coverage phase; no
+  further source edits are permitted.
+- **Spec / `@implements` paths are pre-move.** File paths referenced inside `specs/` and in
+  the `@implements` tags refer to the original (pre-move) repo-root paths. They are now
+  located under `legacy/` — e.g. a spec referencing `include/class.ticket.php` now means
+  `legacy/include/class.ticket.php`. Prefix legacy references with `legacy/` when resolving
+  them.
+
+## Reverse-engineering run summary (complete)
 
 **ALL 4 PHASES COMPLETE — RUN COMPLETE (2026-06-10).** Phase 0 (scouting),
 **Phase 1 (GENERATE)**, **Phase 2 (GAP-CLOSE)**, **Phase 3 (COVERAGE)** and

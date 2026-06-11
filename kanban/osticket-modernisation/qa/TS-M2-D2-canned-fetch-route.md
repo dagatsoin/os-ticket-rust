@@ -30,22 +30,22 @@ one with its body **variable-substituted** (Epic C) for that ticket plus its att
 ### AC-1: BS-022.1/.2 — the list returns only enabled, dept-scoped responses. [API-ONLY]
 - Request: `curl -s -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}/canned`.
 - Verify: the list includes "Acknowledge receipt" (enabled, dept 0); it does NOT include "Closed — disabled sample".
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: FS-022.14 — fetching a response returns its body with %{ticket.number} substituted. [API-ONLY]
 - Request: `curl -s -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}/canned/{cannedId}` (the "Acknowledge receipt" id).
 - Verify: the returned `body` contains the ticket's own number and no literal `%{...}`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: FS-022.14 — the response includes its attachment list under the shared `attachments` key. [API-ONLY]
 - Request: same detail call as AC-2.
 - Verify: the payload's `attachments` (§7) lists `policy.txt` with `id/name/size/mime` — the same shape as thread-entry attachments (A5).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: BS-022.2 — fetching a disabled canned id returns 404. [API-ONLY]
 - Request: `curl -i -s -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}/canned/{disabledCannedId}` (the "Closed — disabled sample" id from a direct DB lookup).
 - Verify: HTTP 404 (out-of-scope/disabled canned id is not fetchable).
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

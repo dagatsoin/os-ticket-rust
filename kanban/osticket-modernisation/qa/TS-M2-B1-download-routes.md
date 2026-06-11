@@ -39,22 +39,22 @@ leak). Blobs read from `BLOB_ROOT` (§1); streaming uses `tokio-util` io (§4).
 ### AC-1: FS-022.10/.11 — an authorized client downloads the blob with a Content-Disposition filename. [API-ONLY]
 - Request: `curl -i -b /tmp/qa-clientA.jar http://localhost:3701/api/client/ticket/attachments/{attachmentId} -o /tmp/dl.pdf`.
 - Verify: HTTP 200; `Content-Disposition: attachment; filename="invoice.pdf"`; `Content-Type` is the stored MIME (octet-stream fallback); `cmp /tmp/dl.pdf /tmp/qa-fixtures/invoice.pdf` is byte-identical.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-022.8/D2/EC-022.9 — a client logged into a DIFFERENT ticket is denied (404, no existence leak). [API-ONLY]
 - Request: `curl -i -b /tmp/qa-clientB.jar http://localhost:3701/api/client/ticket/attachments/{attachmentId}` (ticket-A's id, ticket-B session).
 - Verify: HTTP 404, empty body (no bytes, §8).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: EC-022.7 — an unknown/mismatched attachment id is rejected (404). [API-ONLY]
 - Request: `curl -i -b /tmp/qa-clientA.jar .../api/client/ticket/attachments/999999`.
 - Verify: HTTP 404 with the shared error envelope; the response is indistinguishable from AC-2's cross-ticket 404 (no existence leak §8).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: staff download — an authorized staff session downloads via the staff route. [API-ONLY]
 - Request: staff login to `/tmp/qa-staff.jar`, then `curl -i -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{A}/attachments/{attachmentId} -o /tmp/dls.pdf`.
 - Verify: HTTP 200, bytes match `invoice.pdf`, `Content-Disposition` filename present.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

@@ -42,22 +42,22 @@ of the UI tickets that depend on it. See ROADMAP **Decisions (M2) §13** and §2
 ### AC-1: a FormData body is sent without JSON.stringify and without a Content-Type header. [API-ONLY]
 - Run: call `apiClient(...)` with a `FormData` body; intercept the outgoing request in MSW.
 - Verify: the request body is the raw FormData (not a JSON string) and apiClient sets **no** `Content-Type` header (browser-provided multipart boundary).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: a JSON body still serializes with application/json (M1 path unchanged). [API-ONLY]
 - Run: call `apiClient(...)` with a plain-object body.
 - Verify: the body is `JSON.stringify`d and `Content-Type: application/json` is set — the M1 path is unchanged.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: the CSRF header, error-envelope parsing, and 401 redirect are preserved on the FormData path. [API-ONLY]
 - Run: a mutating FormData request; separately mock a 422 envelope response and a 401 response.
 - Verify: the request injects `X-CSRFToken`; the 422 envelope is parsed into field errors; the 401 triggers the realm-login redirect — identical to the JSON path.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: the MSW harness can assert on multipart parts. [API-ONLY]
 - Run: a multipart-capable MSW handler reads `await request.formData()`.
 - Verify: the handler can assert on individual parts (text fields + a file part), enabling the A4/D3 component tests.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

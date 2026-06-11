@@ -42,19 +42,19 @@ resolved to an absolute path at startup; all binaries and tests honor it.
 - Setup: a `BlobStore` rooted at a tempdir (`BLOB_ROOT` override).
 - Run: a unit test calls `store.put(b)` twice with identical bytes (`cargo test -p ost_core blob_store::dedup`).
 - Verify: both calls return the same SHA-256; exactly one file on disk under `<root>/aa/bb/<sha256>`; the `attachment_file` upsert reuses one row (one `hash`).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: FS-022.12 — a stored blob round-trips byte-for-byte via open(hash). [API-ONLY]
 - Setup: a `BlobStore` rooted at a tempdir.
 - Run: unit test `store.put(bytes)` then `store.open(hash)` (`cargo test -p ost_core blob_store::roundtrip`).
 - Verify: `open(hash)` yields exactly the bytes written; the on-disk path equals `<BLOB_ROOT>/aa/bb/<sha256>`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: schema — a ticket_attachment binds a file to a ticket + thread entry with ref_type M/R/N. [API-ONLY]
 - Setup: `TEST_DATABASE_URL` set; migrations applied.
 - Run: integration test inserts an `attachment_file` then a `ticket_attachment` (ref_type `M`); attempts a bad `ref_type` and an orphan `file_id` (`cargo test -p db attachment_schema`).
 - Verify: the valid insert succeeds; the FK to the thread entry + `attachment_file` is enforced; `ref_type` is constrained to `M`/`R`/`N` (a fourth value errors).
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

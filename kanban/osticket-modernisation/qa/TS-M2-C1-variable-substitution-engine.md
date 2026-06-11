@@ -29,28 +29,28 @@ a ticket.
 
 ### AC-1: BS-040.14 — dot-path traversal resolves nested tokens. [API-ONLY]
 - Run/Verify: `render("#%{ticket.number} — %{ticket.dept.name}", ctx)` → both the number and dept name substituted, no literal `%{...}`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-040.17 — an unknown token is left literally in the output. [API-ONLY]
 - `render("%{ticket.bogus}", ctx)` → output still contains the literal `%{ticket.bogus}`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: BS-040.19 — %{url} is always present without being supplied in the ticket context. [API-ONLY]
 - `render("%{url}", ctx)` → the configured base URL (FQDN).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: BS-040.14 — a single-character token name is NOT recognized (left untouched). [API-ONLY]
 - `render("%{x}", ctx)` → literal `%{x}` preserved (the grammar requires ≥1 trailing char).
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: BS-040.18 — substitution applies across an array (subject + body pair). [API-ONLY]
 - `render(["%{ticket.subject}", "Ticket %{ticket.number}"], ctx)` → both substituted.
-- Status: [ ]
+- Status: [x]
 
 ### AC-6: the M2 catalog tokens all resolve against a real seeded ticket. [API-ONLY]
 - Setup: `TEST_DATABASE_URL` set; a ticket seeded; build the context from its row (`cargo test -p ost_core variable_replacer::catalog`).
 - Run/Verify: rendering `%{ticket.number|name|subject|email|status|create_date}` and `%{ticket.dept.name}` each yields the seeded ticket's value (no literal `%{...}`); `%{url}` resolves to the passed base URL.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

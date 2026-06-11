@@ -50,25 +50,25 @@ email notifying me, each personalised with my ticket details — observable in t
 - Navigate: http://localhost:3702/open → submit a ticket as "mia@example.com" (note the ticket number).
 - Navigate: http://localhost:3705 (Mailpit web UI).
 - Verify: the inbox lists a message **To mia@example.com** whose subject/body reference the ticket number; **no literal `%{...}`** remains in the rendered body.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: An agent reply sends a notification email, visible in Mailpit, addressed to the requester. [BROWSER]
 - Navigate: log in agent / Agent123!; open the ticket; post a reply.
 - Navigate: http://localhost:3705 (Mailpit).
 - Verify: a NEW message **To mia@example.com** appears whose body reflects the reply/ticket details (substituted, no literal tokens).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: The sent mail carries anti-loop headers. [API-ONLY]
 - Setup: `docker compose up -d mailpit`; backend with `SMTP_HOST=localhost SMTP_PORT=3704`; `curl -X DELETE http://localhost:3705/api/v1/messages`; trigger AC-1 (create a ticket) AND AC-2 (post a staff reply) so both an autoresponse and a notice are captured.
 - Request: list captured messages — `curl -s http://localhost:3705/api/v1/messages | jq '.messages[].ID'`; fetch each message's headers — `curl -s http://localhost:3705/api/v1/message/{ID}/headers` (or `/api/v1/message/{ID}` and read `.Headers`).
 - Verify: the autoresponse message carries `Precedence: auto_reply` (or `bulk`), `X-Auto-Response-Suppress`, and `Auto-Submitted: auto-replied` (BS-040.22); the reply-notice message carries the notice-class headers (`X-Auto-Response-Suppress: OOF, AutoReply`, `Auto-Submitted: auto-generated`).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: With SMTP_HOST unset, sends fall back to the stub mailer (no Mailpit delivery). [API-ONLY]
 - Setup: stop the backend; restart it with **`SMTP_HOST` unset** (`unset SMTP_HOST; cargo run -p api`); `curl -X DELETE http://localhost:3705/api/v1/messages` to empty Mailpit; `cargo run -p tools --bin seed -- --reset`.
 - Request: create a ticket — `curl -s -X POST http://localhost:3701/api/tickets -H 'Content-Type: application/json' -d '{"name":"Mia","email":"mia@example.com","subject":"Stub","message":"hi"}'`; then `curl -s http://localhost:3701/api/dev/mailbox`.
 - Verify: the intended autoresponse To `mia@example.com` is RECORDED in the dev mailbox JSON (M1 behaviour preserved); `curl -s http://localhost:3705/api/v1/messages | jq '.total'` → 0 (nothing delivered to Mailpit).
-- Status: [ ]
+- Status: [x]
 
 ## Checklist (children)
 

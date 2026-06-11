@@ -46,25 +46,25 @@ only download attachments that belong to a ticket I'm logged into.
 - Verify: the read-only thread shows the `M` and `R` entries each with their **clickable attachment chip**.
 - Action: click the `policy.txt` chip.
 - Verify: the browser downloads the file (bytes received, `Content-Disposition` filename `policy.txt`); content matches the seeded canned attachment.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: The agent can download the same attachments from the staff detail view. [BROWSER]
 - Navigate: log in agent / Agent123!; open the ticket.
 - Action: click an attachment chip on the thread.
 - Verify: the file downloads for the authorized staff session.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: A client logged into a DIFFERENT ticket cannot download this ticket's attachment. [BROWSER]
 - Setup: open a SECOND ticket (different email); log into the client portal for that second ticket only.
 - Action: attempt the first ticket's attachment id via the session-bound client route in that second session.
 - Verify: the request is **denied (404, no existence leak §8)**, a **visible inline error** is shown (§9), and no bytes are served (EC-022.9).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: A bad / unknown attachment id is rejected. [API-ONLY]
 - Setup: `cargo run -p tools --bin seed -- --reset`; seed a ticket-A with both attachments and a ticket-B (different email); authenticate a client session for ticket-A — `curl -c /tmp/qa-client.jar -X POST http://localhost:3701/api/client/login` with ticket-A number + its email.
 - Request: with that session, request a non-existent attachment id — `curl -i -b /tmp/qa-client.jar http://localhost:3701/api/client/ticket/attachments/999999`; then request ticket-B's real attachment id via the same ticket-A session.
 - Verify: both return **404** with the shared error envelope and an empty/zero-byte body (no existence leak §8); the 404 is identical whether the id is non-existent or belongs to another ticket (EC-022.7; EC-022.8 cross-session replay is structurally covered by the session-bound no-ticketId route, D2 §8).
-- Status: [ ]
+- Status: [x]
 
 ## Checklist (children)
 

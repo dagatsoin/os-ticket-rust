@@ -50,28 +50,30 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 - Setup: `cargo run -p tools --bin seed -- --reset`; fixtures present (see Test Infrastructure); open a ticket via http://localhost:3702/open with `/tmp/qa-fixtures/invoice.pdf` (or use the carried root-AC-1 ticket).
 - Navigate: log in agent / Agent123!; open that ticket.
 - Verify: the customer's `M` message shows an **attachment chip** for the uploaded file.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: The reply box exposes a "Canned response" dropdown listing only enabled, dept-scoped responses. [BROWSER]
 - Navigate: on the staff detail view from AC-1, scroll to the reply composer (same staff session).
 - Verify: the reply area shows a **"Canned response" dropdown** that includes the seeded "Acknowledge receipt" (enabled, All-Departments) and does NOT include the seeded "Closed — disabled sample".
-- Status: [ ]
+- Status: [x]
 
-### AC-3: Selecting a canned response fills the reply with a substituted body and shows its attachment chip. [BROWSER]
-- Action: pick "Acknowledge receipt" from the dropdown.
-- Verify: the reply textarea is populated with the canned body and the **`%{ticket.number}` token is substituted** to this ticket's number (no literal `%{...}`); a chip shows the canned response's seeded `policy.txt` attachment.
-- Status: [ ]
+### AC-3: Selecting a canned response substitutes its body; a canned response that carries an attachment surfaces a read-only chip, one that does not shows no chip. [BROWSER]
+- Action: pick "Acknowledge receipt" (variables, no attachment) from the dropdown.
+- Verify: the reply textarea is populated with the canned body and the **`%{ticket.number}` token is substituted** to this ticket's number (no literal `%{...}`); **NO** attachment chip appears (this sample carries no canned attachment).
+- Action: now pick "Sample (with attachment)" from the dropdown.
+- Verify: a **read-only `policy.txt` chip ("from canned response")** appears, surfacing the canned response's seeded attachment (per the two-sample seed design; TS-M2-D3 AC-2/AC-3 proved both behaviors separately).
+- Status: [x]
 
 ### AC-4: Posting the canned reply appends an agent response carrying the substituted text + attachment, and the ticket shows Answered. [BROWSER]
 - Setup: before replying, the ticket's badge reads **Unanswered**.
 - Action: post the reply.
 - Verify: the thread shows a new agent `R` entry with the substituted body and a `policy.txt` chip; the ticket's **Answered / Unanswered badge now reads "Answered"** (`isanswered=true`), like any staff reply (ROADMAP M2 Decisions §3). (BS-022.15's "mark unanswered" SYSTEM path is deferred to M5.)
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: The agent can additionally attach their own file on a reply. [BROWSER]
 - Action: in the reply box own-file input, choose `/tmp/qa-fixtures/note.png` (permitted type), type some text, post.
 - Verify: the new `R` entry shows a chip for `note.png` (the own-file attachment path works alongside / independent of canned attachments).
-- Status: [ ]
+- Status: [x]
 
 ## Checklist (children)
 
@@ -92,3 +94,7 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 ## Dependencies
 
 - TS-M2-D1 (canned schema + seed), TS-M2-C1 (substitution engine), TS-M2-A5 (reply attachment hook). M1 staff reply route.
+
+## Review feedback
+
+- **AC-3** failed 2026-06-11 — AC-drafting inconsistency vs the two-sample seed design (same root cause as TS-M2-D1 AC-2). The AC assumed ONE canned response carrying both the `%{}` variables and the `policy.txt` attachment, but the seed (M2 plan + TS-M2-D1) ships TWO samples: "Acknowledge receipt" (variables, no attachment) and "Sample (with attachment)" (carries `policy.txt`). The tester correctly selected "Acknowledge receipt" per the steps and observed no chip — the implementation is right (TS-M2-D3 AC-2/AC-3 proved both behaviors separately). AC text corrected to cover both observables across the two samples; **no code change**; AC-3 reset to `[ ]` for re-test.

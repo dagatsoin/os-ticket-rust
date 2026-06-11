@@ -33,17 +33,17 @@ custom-header support (ROADMAP M2 Decisions §4); Mailpit-dependent assertions s
 ### AC-1: BS-040.22 — an auto-reply send carries the autoreply anti-loop headers. [API-ONLY]
 - Run: `send_autoreply(...)` via the SMTP mailer to Mailpit.
 - Verify: the captured message carries `Precedence: auto_reply`, `X-Autoreply: yes`, `X-Auto-Response-Suppress: DR, RN, OOF, AutoReply`, and `Auto-Submitted: auto-replied`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-040.22 — a notice send carries the notice anti-loop headers. [API-ONLY]
 - Run: `send_notice(...)` via the SMTP mailer to Mailpit.
 - Verify: the captured message carries `X-Auto-Response-Suppress: OOF, AutoReply` and `Auto-Submitted: auto-generated`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: FS-040.10/.11 — the autoresponse + notification templates render with tokens substituted. [API-ONLY]
 - Run: render both packaged-default templates for a seeded ticket context (`cargo test -p ost_core send_wrappers::templates`).
 - Verify: each template's subject + body contain the ticket's number and no literal `%{...}` remains.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

@@ -31,28 +31,28 @@ default-deny quirk.
 ### AC-1: BS-022.13 — a permitted extension passes; a disallowed extension is rejected. [API-ONLY]
 - Run: unit test `validate_upload("invoice.pdf", 100, ..)` against allow-list `.pdf,.png,.jpg,.txt,.doc`, and `validate_upload("evil.exe", 100, ..)`.
 - Verify: `invoice.pdf` returns Ok; `evil.exe` returns a field error "Invalid file type".
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-022.14 — an empty allow-list rejects everything; `.*` allows all. [API-ONLY]
 - Run: unit test with `allowed_filetypes=""` then `allowed_filetypes=".*"`.
 - Verify: with the empty list every file is rejected (default-deny); with `.*` any extension passes.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: FS-022.13 — a file larger than max_file_size is rejected with a too-big error. [API-ONLY]
 - Run: unit test `validate_upload(name, 1048577, ..)` and `validate_upload(name, 1048576, ..)` against `max_file_size=1048576`.
 - Verify: the 1 MB + 1 byte file returns the "too big" error; the at-cap file passes.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: when allow_attachments is disabled, validation reports attachments not permitted. [API-ONLY]
 - Run: unit test with `allow_attachments=false`.
 - Verify: any upload is refused (master switch) regardless of type/size.
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: the four config keys seed idempotently with the pinned defaults. [API-ONLY]
 - Setup: `TEST_DATABASE_URL` set.
 - Run: run the seed twice (`cargo test -p tools config_seed::idempotent`), then `docker exec backend-db-1 psql -U postgres -d osticket_test -c "select key,value from config where key in ('allow_attachments','allowed_filetypes','max_file_size','helpdesk_url') order by key;"`.
 - Verify: `allow_attachments`=on, `allowed_filetypes`=`.pdf,.png,.jpg,.txt,.doc`, `max_file_size`=`1048576`, `helpdesk_url`=`http://localhost:3702`; a second seed run leaves exactly one row per key (idempotent).
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

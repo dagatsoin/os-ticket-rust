@@ -36,19 +36,19 @@ when `SMTP_HOST` is set**, otherwise the M1 stub mailer + `GET /api/dev/mailbox`
 - Setup: bind the `SmtpMailer` with `SMTP_HOST=localhost SMTP_PORT=3704 SMTP_FROM=support@example.com`; empty Mailpit.
 - Request: trigger a send through the mailer, then `curl -s http://localhost:3705/api/v1/messages | jq '.total'`.
 - Verify: `.total` is 1 — the message is delivered to Mailpit.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: D3 — with SMTP_HOST unset, a send is recorded in the stub dev mailbox, not delivered. [API-ONLY]
 - Setup: bind the mailer with **no `SMTP_HOST`** (stub path); empty Mailpit.
 - Request: trigger a send, then `curl -s http://localhost:3701/api/dev/mailbox` and `curl -s http://localhost:3705/api/v1/messages | jq '.total'`.
 - Verify: the send is recorded in the dev mailbox JSON; Mailpit `.total` is 0 (nothing delivered).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: FS-040.12 — the delivered message is plain-text with the configured From. [API-ONLY]
 - Setup: AC-1's SMTP config; one delivered message.
 - Request: `curl -s http://localhost:3705/api/v1/messages | jq '.messages[0].ID'` then `curl -s http://localhost:3705/api/v1/message/{ID}`.
 - Verify: the message has a `text/plain` part (no HTML part, KL-040.1), and `From` equals `SMTP_FROM` (`support@example.com`).
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

@@ -32,18 +32,29 @@ Epic A binding + Epic B download).
 ### AC-1: schema — a canned_response with title uniqueness + dept scope + enabled flag persists. [API-ONLY]
 - Run: integration test inserts two responses, then a third reusing a title (`cargo test -p db canned_schema`).
 - Verify: the duplicate-title insert errors (unique constraint); `dept_id=0` and `isenabled` persist as written.
-- Status: [ ]
+- Status: [x]
 
-### AC-2: seed — "Acknowledge receipt" exists enabled, dept 0, body holds %{ticket.number}, bound to policy.txt. [API-ONLY]
-- Run: `psql -c "select title,dept_id,isenabled,body from canned_response where title='Acknowledge receipt';"` and `psql -c "select af.name from canned_attachment ca join attachment_file af on af.id=ca.file_id join canned_response cr on cr.id=ca.canned_id where cr.title='Acknowledge receipt';"`.
-- Verify: the response is `isenabled=true`, `dept_id=0`, its body contains `%{ticket.number}`; the joined `attachment_file.name` is `policy.txt`; `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` shows the one seeded blob.
-- Status: [ ]
+### AC-2: seed — "Acknowledge receipt" exists enabled, dept 0, body holds %{ticket.number} (no attachment); policy.txt is bound to "Sample (with attachment)". [API-ONLY]
+- Run: `psql -c "select title,dept_id,isenabled,body from canned_response where title='Acknowledge receipt';"` and `psql -c "select af.name from canned_attachment ca join attachment_file af on af.id=ca.file_id join canned_response cr on cr.id=ca.canned_id where cr.title='Sample (with attachment)';"`.
+- Verify: the "Acknowledge receipt" response is `isenabled=true`, `dept_id=0`, its body contains `%{ticket.number}` (and carries no attachment); the attachment join for "Sample (with attachment)" returns `attachment_file.name` = `policy.txt`; `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` shows the one seeded blob.
+- Status: [x]
 
 ### AC-3: seed — a disabled sample response exists (for the enabled-only filter test). [API-ONLY]
 - Run: `psql -c "select title,isenabled from canned_response where isenabled=false;"`.
 - Verify: "Closed — disabled sample" is present with `isenabled=false`.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 
 - TS-M2-A1 (blob store + attachment_file), TS-M1-A3 (seed harness).
+
+## Review feedback
+
+- **AC-2** — failed in QA on 2026-06-11, but the root cause was an **AC drafting inconsistency**, not an
+  implementation bug. The AC's attachment join targeted "Acknowledge receipt" (canned_id=1), whereas the
+  ticket's own seed design (Impact §, and the M2 plan: "two samples — ONE with variables, ONE carrying an
+  attachment") binds `policy.txt` to "Sample (with attachment)" (canned_id=2); "Acknowledge receipt" carries
+  the `%{ticket...}` variables with no attachment. The implementation matches the design. AC-2's title and
+  test steps were corrected to join the attachment to "Sample (with attachment)" and to assert "Acknowledge
+  receipt" has no attachment; all other assertions (enabled, dept 0, body holds `%{ticket.number}`, blob
+  count 1) are unchanged. **No code change required.** AC-2 reset to `[ ]` for re-test.

@@ -28,25 +28,25 @@ validation surfaced inline, and an attachment chip on the confirmation page.
 - Setup: `cargo run -p tools --bin seed -- --reset`; fixtures present (see Test Infrastructure).
 - Navigate: http://localhost:3702/open
 - Verify: a file input is present alongside Name/Email/Subject/Message, with helper text naming the allowed types and the 1 MB cap.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: a valid submission with a file shows the confirmation page with an AttachmentChip. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill valid Name/Email/Subject/Message; choose `/tmp/qa-fixtures/invoice.pdf`; submit.
 - Verify: the confirmation page shows the 6-digit ticket number AND an AttachmentChip labelled `invoice.pdf`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: a disallowed type shows an inline error on the file field and blocks submission. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill valid fields; choose `/tmp/qa-fixtures/evil.exe`; attempt submit.
 - Verify: an inline "invalid file type" error renders under the file input; no confirmation page.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: an oversized file shows an inline "too big" error. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill valid fields; choose `/tmp/qa-fixtures/big.pdf` (permitted type, > 1 MB); attempt submit.
 - Verify: an inline "too big" error renders under the file input; no confirmation page.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

@@ -39,22 +39,22 @@ stored under `BLOB_ROOT` (§1). Hashing via `sha2`/`hex` (§4).
 ### AC-1: FS-021.3 — a staff reply with a permitted file binds a ticket_attachment (ref_type R) to the new entry. [API-ONLY]
 - Request: `curl -i -b /tmp/qa-staff.jar -X POST http://localhost:3701/api/staff/tickets/{id}/reply -F body=here -F attachment=@/tmp/qa-fixtures/note.png`.
 - Verify: HTTP 200/201; the new `R` entry's `attachments` lists `note.png`; `psql -c "select ref_type from ticket_attachment order by id desc limit 1;"` → `R`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: a disallowed/oversized reply attachment returns 422 and posts no reply. [API-ONLY]
 - Request: same `curl` but `-F attachment=@/tmp/qa-fixtures/evil.exe`; separately `@/tmp/qa-fixtures/big.pdf`.
 - Verify: HTTP 422 with a field error keyed on `attachment`; no new `R` entry (`psql -c "select count(*) from ticket_thread where ref_type='R';"` unchanged).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: ticket-detail + client-thread responses expose each entry's attachments under `attachments: [{id,name,size,mime}]`. [API-ONLY]
 - Request: `curl -b /tmp/qa-staff.jar .../api/staff/tickets/{id}` and `curl -b /tmp/qa-client.jar .../api/client/ticket` (client logged into the ticket).
 - Verify: both payloads list each thread entry's attachments under the key `attachments` as `[{id,name,size,mime}]` (§7) — the same shape canned detail (D2) returns; an entry with no file shows `attachments: []`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: a JSON (no-attachment) reply still posts and returns an empty `attachments` array (M1 contract preserved). [API-ONLY]
 - Request: `curl -i -b /tmp/qa-staff.jar -X POST .../api/staff/tickets/{id}/reply -H 'Content-Type: application/json' -d '{"body":"plain"}'`.
 - Verify: HTTP 200/201; the new `R` entry has `attachments: []`; M1 reply behaviour unchanged.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

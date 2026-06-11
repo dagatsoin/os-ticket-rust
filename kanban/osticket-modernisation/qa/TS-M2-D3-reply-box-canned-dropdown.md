@@ -34,22 +34,22 @@ different surface; this is the composer.
 ### AC-1: BS-022.2 — the dropdown lists only enabled, dept-scoped responses. [BROWSER]
 - Navigate: the staff ticket detail; scroll to the reply composer.
 - Verify: the "Canned response" dropdown shows "Acknowledge receipt" and does NOT show "Closed — disabled sample".
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: FS-022.14 — selecting a response fills the textarea with the substituted body. [BROWSER]
 - Action: pick "Acknowledge receipt" from the dropdown.
 - Verify: the reply textarea is populated with the canned body and `%{ticket.number}` is already substituted to this ticket's number (no literal `%{...}`).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: selecting a response shows its attachment as a chip. [BROWSER]
 - Action: (after AC-2's selection) inspect the composer.
 - Verify: a read-only `policy.txt` AttachmentChip (marked "from canned response") appears in the reply composer.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: the reply box has an own-file input. [BROWSER]
 - Navigate: the reply composer.
 - Verify: an own-file `<input type=file>` is present (wired to the D4 multipart POST).
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

@@ -49,28 +49,28 @@ clear message before my ticket is created.
 - Setup: `cargo run -p tools --bin seed -- --reset`; fixtures present (see Test Infrastructure).
 - Navigate: http://localhost:3702/open
 - Verify: alongside Name/Email/Subject/Message there is an **attachment file input** with helper text naming the allowed types and the 1 MB max.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: Submitting a valid form WITH a permitted file shows a confirmation page with a ticket number AND an attachment chip. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill Name "Mia Wong", Email "mia@example.com", Subject "Invoice query", Message "See the attached invoice."; in the attachment file input choose `/tmp/qa-fixtures/invoice.pdf` (< 1 MB).
 - Action: submit.
 - Verify: the confirmation page renders a 6-digit ticket number AND an **attachment chip** labelled `invoice.pdf`. Record {number, email} for downstream flows.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: A disallowed file type shows an inline validation error and creates no ticket. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill valid Name/Email/Subject/Message; choose `/tmp/qa-fixtures/evil.exe` (disallowed extension).
 - Action: attempt to submit.
 - Verify: an **inline error on the attachment field** ("Invalid file type" / not-allowed message); no confirmation page; logging in as staff (agent / Agent123!) shows no new ticket in the Open queue.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: An oversized file (> 1 MB) shows an inline validation error and creates no ticket. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill valid fields; choose `/tmp/qa-fixtures/big.pdf` (permitted extension, > 1 MB).
 - Action: attempt to submit.
 - Verify: an **inline "too big" error** on the attachment field; no confirmation page; no new ticket in the staff Open queue.
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: The attachment persists bound to the ticket's first message and dedups identical bytes. [API-ONLY]
 - Setup: `cargo run -p tools --bin seed -- --reset`; fixtures present (see Test Infrastructure).
@@ -79,7 +79,7 @@ clear message before my ticket is created.
 - Request: read each ticket's detail as staff — `curl -c /tmp/qa-staff.jar -X POST http://localhost:3701/api/staff/login` with `agent`/`Agent123!` (keep the `ost_staff_sess` cookie jar), then `curl -b /tmp/qa-staff.jar http://localhost:3701/api/staff/tickets/{id}` for each ticket.
 - Verify (DB): `docker exec backend-db-1 psql -U postgres -d osticket_dev -c "select count(*) from attachment_file; select count(*) from ticket_attachment;"` → 1 `attachment_file` row, 2 `ticket_attachment` rows.
 - Verify (disk): `find "${BLOB_ROOT:-var/blobs}" -type f | wc -l` → exactly 1 blob; each ticket's `M` entry in the detail JSON lists the file under `attachments` with the right name/size, both pointing at the same `attachment_file` id (one `storage_key` / SHA-256 — D1 dedup).
-- Status: [ ]
+- Status: [x] — D1 dedup verified: 2 uploads of identical invoice.pdf -> +1 attachment_file (id=52, hash cfa3...), +1 disk blob (cf/a3/...), +2 ticket_attachment rows (tickets 191532 & 507152, both file_id=52, ref_type M). Both staff detail JSONs list invoice.pdf size 69 under the M entry. Absolute counts read 2/2 not 1/1 only because the seed reset preserves the canned policy.txt blob (attachment_file id=4); the upload DELTA matches the AC exactly.
 
 ## Checklist (children)
 

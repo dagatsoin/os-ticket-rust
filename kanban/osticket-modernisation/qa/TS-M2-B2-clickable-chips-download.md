@@ -40,19 +40,19 @@ object-URL download** (NOT a plain anchor) so a 403/404 surfaces a **visible inl
 - Navigate: http://localhost:3702/tickets → log in with the demo ticket number + its email.
 - Action: in the read-only thread, click the `policy.txt` chip.
 - Verify: the browser downloads `policy.txt` (object-URL download, §9); bytes match the seeded canned attachment.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: clicking a chip in the staff detail view downloads the file. [BROWSER]
 - Navigate: log in agent / Agent123! at http://localhost:3702/staff/login; open the demo ticket.
 - Action: click an attachment chip in the thread.
 - Verify: the file downloads for the authorized staff session.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: a client logged into a different ticket cannot reach this ticket's download (visible inline error). [BROWSER]
 - Setup: open a SECOND ticket (different email); in a FRESH client session log into the portal for that second ticket only.
 - Action: drive a download of the FIRST ticket's attachment id via the session-bound client route in this second session.
 - Verify: the fetch returns 404; a **visible inline error** appears near the chip and no file is downloaded (§9, mirrors EC-022.9).
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

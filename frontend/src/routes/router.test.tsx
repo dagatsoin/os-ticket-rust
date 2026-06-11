@@ -24,9 +24,9 @@ describe("AppRoutes — three branches", () => {
     expect(screen.getByText("Staff Sign In")).toBeInTheDocument();
   });
 
-  it("resolves the staff dashboard at /staff", () => {
+  it("redirects the /staff index to the staff login when unauthenticated", () => {
     renderWithProviders(<AppRoutes />, { route: "/staff" });
-    expect(screen.getByText("Staff Dashboard")).toBeInTheDocument();
+    expect(screen.getByText("Staff Sign In")).toBeInTheDocument();
   });
 
   it("resolves the client portal branch at /tickets", () => {

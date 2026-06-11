@@ -7,7 +7,12 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { PublicHomePage } from "../pages/PublicHomePage";
 import { OpenTicketPage } from "../pages/OpenTicketPage";
-import { StaffLoginPage, StaffDashboardPage } from "../pages/StaffArea";
+import {
+  StaffLoginPage,
+  StaffDashboardPage,
+  StaffQueuePage,
+  StaffTicketDetailPage,
+} from "../pages/StaffArea";
 import { ClientLoginPage, ClientTicketsPage } from "../pages/ClientPortal";
 import { NotFoundPage } from "../pages/NotFoundPage";
 
@@ -23,6 +28,8 @@ export function AppRoutes() {
         <Route path="staff">
           <Route index element={<StaffDashboardPage />} />
           <Route path="login" element={<StaffLoginPage />} />
+          <Route path="tickets" element={<StaffQueuePage />} />
+          <Route path="tickets/:id" element={<StaffTicketDetailPage />} />
         </Route>
 
         {/* Client portal branch — /tickets/* */}

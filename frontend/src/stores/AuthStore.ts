@@ -16,6 +16,13 @@ export interface AuthUser {
 export interface AuthEndpoints {
   login: string;
   logout: string;
+  /**
+   * Optional profile endpoint (e.g. GET /api/staff/me). When set, the store
+   * fetches the profile after a successful login and treats THAT as the
+   * authenticated user — the login response itself carries no profile (only
+   * `{ ok, csrfToken }`). Also used by `loadProfile()` for session restore.
+   */
+  profile?: string;
 }
 
 export class AuthStore {
@@ -38,12 +45,20 @@ export class AuthStore {
     return this.user !== null;
   }
 
-  /** POST credentials to the realm login endpoint; on success store the user. */
+  /**
+   * POST credentials to the realm login endpoint; on success store the user.
+   * When a `profile` endpoint is configured, the authenticated user is the
+   * profile fetched from it (the login response carries only `{ ok, csrfToken }`),
+   * never a token.
+   */
   async login(credentials: Record<string, unknown>): Promise<void> {
     this.loading = true;
     this.error = null;
     try {
-      const user = await this.api.post<AuthUser>(this.endpoints.login, credentials);
+      const loginResult = await this.api.post<AuthUser>(this.endpoints.login, credentials);
+      const user = this.endpoints.profile
+        ? await this.api.get<AuthUser>(this.endpoints.profile)
+        : loginResult;
       runInAction(() => {
         this.user = user;
       });
@@ -55,6 +70,25 @@ export class AuthStore {
     } finally {
       runInAction(() => {
         this.loading = false;
+      });
+    }
+  }
+
+  /**
+   * Best-effort session restore: fetch the profile endpoint and, on success,
+   * mark the realm authenticated. A failure (e.g. no session) leaves the store
+   * unauthenticated. No-op when no profile endpoint is configured.
+   */
+  async loadProfile(): Promise<void> {
+    if (!this.endpoints.profile) return;
+    try {
+      const user = await this.api.get<AuthUser>(this.endpoints.profile);
+      runInAction(() => {
+        this.user = user;
+      });
+    } catch {
+      runInAction(() => {
+        this.user = null;
       });
     }
   }

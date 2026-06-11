@@ -25,17 +25,26 @@ describe("Auth stores (staff + client)", () => {
     expect(root.staffAuth.user).toBeNull();
   });
 
-  it("sets the user and authenticated flag on a successful staff login", async () => {
+  it("sets the user from /me (not the login response) on a successful staff login", async () => {
     server.use(
+      // The login response carries only { ok, csrfToken } — never the profile.
       http.post("/api/staff/login", () =>
-        HttpResponse.json({ id: 7, name: "Agent Smith" }),
+        HttpResponse.json({ ok: true, csrfToken: "csrf-1" }),
+      ),
+      http.get("/api/staff/me", () =>
+        HttpResponse.json({ id: 7, username: "smith", name: "Agent Smith", deptId: 1 }),
       ),
     );
 
     await root.staffAuth.login({ username: "smith", password: "pw" });
 
     expect(root.staffAuth.isAuthenticated).toBe(true);
-    expect(root.staffAuth.user).toEqual({ id: 7, name: "Agent Smith" });
+    expect(root.staffAuth.user).toEqual({
+      id: 7,
+      username: "smith",
+      name: "Agent Smith",
+      deptId: 1,
+    });
     // Realms are independent: a staff login does not authenticate the client realm.
     expect(root.clientAuth.isAuthenticated).toBe(false);
   });

@@ -51,31 +51,31 @@ customer's message, and post a reply that becomes part of the ticket thread.
 - Verify: login is rejected with an error message; the URL stays on /staff/login (no session).
 - Action: type "agent" / "Agent123!", submit.
 - Verify: the browser lands on the staff control panel (e.g. /staff/tickets) showing the agent is logged in.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: The staff panel shows an Open-tickets queue listing the ticket created in US-M1-2 (subject + number visible). [BROWSER]
 - Setup: ensure at least one open ticket exists — either carry over the ticket from US-M1-2 AC-3, or seed one via `curl -s -X POST http://localhost:3701/api/dev/seed-ticket` → {ticketNumber, email}.
 - Navigate: http://localhost:3702/staff/tickets (logged in as agent from AC-1).
 - Verify: the Open-tickets queue lists the ticket with its subject ("Printer broken") and its 6-digit number, newest first (created DESC).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: Clicking a ticket opens its detail view showing the customer's original message in the thread. [BROWSER]
 - Navigate: http://localhost:3702/staff/tickets (logged in).
 - Action: click the ticket row for the US-M1-2 ticket.
 - Verify: the detail view opens and the thread shows the customer's original message (the `M` entry, "My printer won't print.") in chronological order (oldest first).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: Typing a reply and posting it adds the reply to the thread, visible immediately. [BROWSER]
 - Navigate: the ticket detail view from AC-3.
 - Action: type "We are looking into your printer issue." in the reply box and post it.
 - Verify: the thread refetches and the new `R` response appears below the customer message, authored by the agent. Ticket stays Open (no status checkboxes in M1).
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: An unauthenticated request to a staff route is rejected (401/redirect). [API-ONLY]
 - Request: `curl -s -o /dev/null -w "%{http_code}" http://localhost:3701/api/staff/tickets?status=open` (no session cookie).
 - Expect: 401 with the shared error envelope; no ticket data returned.
 - Verify (browser variant): navigating to http://localhost:3702/staff/tickets with no staff session redirects to /staff/login (apiClient 401 handling).
-- Status: [ ]
+- Status: [x]
 
 ## Checklist (children)
 

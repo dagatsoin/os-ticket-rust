@@ -54,33 +54,33 @@ See ROADMAP.md → Decisions → 6 for the pinned app shape.
 ### AC-1: npm run build and npm test (Vitest) pass. [API-ONLY]
 - Request: in `frontend/`, run `npm run build` then `npm test`.
 - Expect: both succeed (build emits the bundle; Vitest suite green).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: The dev server serves the app shell at the configured frontend URL. [BROWSER]
 - Setup: start the dev server — `npm run dev` (port 3702); API may be mocked/unavailable for this check.
 - Navigate: http://localhost:3702/
 - Verify: the React app shell renders (MUI layout visible) — not a blank page, build error overlay, or connection-refused.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: The router resolves all three branches (/, /tickets/*, /staff/*) to their placeholder views. [BROWSER]
 - Navigate: http://localhost:3702/ then http://localhost:3702/staff/login then http://localhost:3702/tickets.
 - Verify: each branch resolves to its placeholder view (public, staff, client) without a router "no match" / blank screen.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: The apiClient injects X-CSRFToken on a mutating request and redirects to the realm login on a 401 (TDD target). [API-ONLY]
 - Request: `npm test` — the apiClient unit test (MSW-mocked) asserts a mutating request carries the `X-CSRFToken` header from the realm XSRF cookie, and that a 401 response triggers a redirect to the matching realm login (`/staff/login` or client login).
 - Expect: both assertions pass.
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: The apiClient parses the shared JSON error envelope into field/top-level errors (unit test). [API-ONLY]
 - Request: `npm test` — the apiClient unit test feeds `{ "error": { "message": "...", "fields": { "email": "..." } } }` and asserts it is parsed into top-level + per-field errors.
 - Expect: parsing assertion passes.
-- Status: [ ]
+- Status: [x]
 
 ### AC-6: The shell displays a healthy/unhealthy indicator reflecting the /api/health response (component test, MSW harness). [API-ONLY]
 - Request: `npm test` — a component test with the MSW harness mocks `/api/health` as ok then down and asserts the shell indicator reflects "backend OK" / "down" accordingly.
 - Expect: indicator reflects both states.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

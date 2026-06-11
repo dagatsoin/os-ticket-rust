@@ -36,22 +36,22 @@ field mapping) is a **TDD target**.
 ### AC-1: Component — the form shows validation errors for empty required fields and invalid email (mocked client). [API-ONLY]
 - Request: `npm test` — the form component test renders the form, leaves required fields empty / enters an invalid email, and asserts inline errors appear and submit is gated.
 - Expect: validation errors shown; submit disabled until valid.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: Component — a backend 422 response maps each field error onto its field (mocked client). [API-ONLY]
 - Request: `npm test` — the mocked apiClient returns a 422 envelope with `fields`; assert each field error is rendered on its corresponding field.
 - Expect: server field errors mapped onto fields (backend authoritative).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: Component — a successful submit renders the confirmation with the returned ticket number (mocked client). [API-ONLY]
 - Request: `npm test` — the mocked apiClient returns 201 + a ticket number; assert the confirmation view renders that number.
 - Expect: confirmation shows the returned number.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: The form-store validation / submit-gating / 422-mapping logic is covered by unit tests (TDD target). [API-ONLY]
 - Request: `npm test` — the MobX form-store unit tests cover validation state, submit gating, and 422→field mapping in isolation.
 - Expect: form-store unit tests green.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

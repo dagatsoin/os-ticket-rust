@@ -38,27 +38,27 @@ generate the seeded staff hash).
 ### AC-1: BS-003 — it should reject an invalid email and accept a valid one (FS-003.7/.8/.9). [API-ONLY]
 - Request: `cargo test -p core validate_email` (or run the full suite `cargo test -p core`).
 - Expect: tests assert valid addresses pass and malformed ones (no @, no domain, spaces) are rejected.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-003 — it should reject a missing required field and enforce length bounds (FS-011.8). [API-ONLY]
 - Request: `cargo test -p core required_fields` (covered by the core suite).
 - Expect: empty/missing required fields rejected; over-length input rejected at the configured bounds.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: BS-003 — it should strip/escape disallowed HTML from free-text via ammonia (FS-003.10). [API-ONLY]
 - Request: `cargo test -p core sanitize` (covered by the core suite).
 - Expect: a payload like `<script>alert(1)</script>hello` has the disallowed HTML stripped/escaped while safe text is preserved.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: BS-002 — it should hash a password with argon2id and verify the correct plaintext, rejecting a wrong one. [API-ONLY]
 - Request: `cargo test -p core hashing` (covered by the core suite).
 - Expect: `hash("Agent123!")` verifies against "Agent123!" → true and against "wrong" → false.
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: BS-002 — it should produce argon2id hashes only (no legacy algorithm path exists). [API-ONLY]
 - Request: `cargo test -p core hashing` plus inspect the emitted hash string prefix (`$argon2id$`).
 - Expect: hashes are argon2id; no phpass/MD5/bcrypt code path is reachable.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

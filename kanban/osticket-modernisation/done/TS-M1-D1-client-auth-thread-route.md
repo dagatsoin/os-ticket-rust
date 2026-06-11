@@ -35,24 +35,24 @@ client session scoped to that one ticket, and a route returning the ticket's thr
 - Setup: seed a ticket — `curl -s -X POST http://localhost:3701/api/dev/seed-ticket` → {ticketNumber, email}.
 - Request (wrong email): `curl -s -i -X POST http://localhost:3701/api/client/login -H 'Content-Type: application/json' -d '{"ticketNumber":"<n>","email":"wrong@example.com"}'` → expect 401/422, no session cookie.
 - Request (correct): `curl -s -i -c /tmp/cli.txt -X POST http://localhost:3701/api/client/login -H 'Content-Type: application/json' -d '{"ticketNumber":"<n>","email":"<email>"}'` → expect a `ost_client_sess` cookie set.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-010 — the thread route returns only the session's own ticket and its entries in order. [API-ONLY]
 - Request: `curl -s -b /tmp/cli.txt http://localhost:3701/api/client/ticket`.
 - Expect: the logged-in client's ticket + thread entries in chronological order; no other ticket's data.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: BS-010 — a client session is denied access to a different ticket's thread. [API-ONLY]
 - Setup: seed ticketB separately. The client session is ticket-scoped (cookie binds ticketA only).
 - Request: confirm there is no parameterised path letting the client read ticketB — `GET /api/client/ticket` always returns the bound ticketA; and a staff route accessed with the client cookie returns 401/403.
 - Expect: no access to another ticket's thread.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: FS-010 (security) — the client thread route returns M + R entries and NEVER an N internal note, even if the ticket has one. [API-ONLY]
 - Setup: seed a ticket WITH an internal note — `curl -s -X POST http://localhost:3701/api/dev/seed-ticket -H 'Content-Type: application/json' -d '{"withReply":true,"withNote":true}'` → {ticketNumber, email}; log in the client realm for it.
 - Request: `curl -s -b /tmp/cli.txt http://localhost:3701/api/client/ticket`.
 - Expect: only `M` and `R` entries returned; the `N` internal note is absent (security-critical).
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

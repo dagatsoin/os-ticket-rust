@@ -37,33 +37,33 @@ EPIC-M1-A AC-2 (FE→BE→DB connectivity) and underpins every later route.
 - Setup: start the API — `cargo run -p api` (DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev).
 - Request: `curl -s -o /dev/null -w "%{http_code}" http://localhost:3701/api/health`.
 - Expect: the port is listening and returns an HTTP response (not connection-refused).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: GET /api/health returns 200 with status "ok" when the DB is reachable. [API-ONLY]
 - Request: `curl -s http://localhost:3701/api/health` (shared backend-db-1 Postgres up).
 - Expect: 200, body `{ "status": "ok", "db": "ok" }`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: GET /api/health reports db "down" (not crash) within the short ping timeout when the DB is unreachable. [API-ONLY]
 - Setup: run the API pointed at an unreachable DB (e.g. DATABASE_URL pointing at a dead port) OR temporarily stop DB reachability.
 - Request: time the call — `curl -s -w "\n%{time_total}\n" http://localhost:3701/api/health`.
 - Expect: a fast structured response (within the short ping timeout, no hang) reporting `db: "down"`; the process does not crash.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: Error responses use the shared JSON error envelope with the correct status codes (422/401/403/404). [API-ONLY]
 - Request: hit an unknown route — `curl -s -w "\n%{http_code}\n" http://localhost:3701/api/does-not-exist`.
 - Expect: 404 with shape `{ "error": { "message": "...", "fields": {...} } }`. (422/401/403 are exercised by downstream tickets B2/C1; the envelope shape is owned and asserted here.)
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: cargo build and cargo test pass on the workspace. [API-ONLY]
 - Request: `cargo build` then `cargo test` at the repo root.
 - Expect: both succeed (exit 0).
-- Status: [ ]
+- Status: [x]
 
 ### AC-6: The build succeeds in CI without a live DB using the committed .sqlx/ cache (SQLx offline mode). [API-ONLY]
 - Request: `SQLX_OFFLINE=true cargo build` with no DATABASE_URL / no DB reachable.
 - Expect: build succeeds using the committed `.sqlx/` query cache.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

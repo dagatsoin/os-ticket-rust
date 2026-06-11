@@ -41,28 +41,28 @@ incrementally.
 - Setup: shared backend-db-1 Postgres up, `osticket_dev` present.
 - Request: `DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev sqlx migrate run`.
 - Expect: all migrations apply with exit 0, no errors.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: Re-running migrations is a safe no-op (idempotency). [API-ONLY]
 - Request: run `sqlx migrate run` a SECOND time against the already-migrated `osticket_dev`.
 - Expect: no error, no duplicate objects (migration tracking table reports nothing new to apply).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: The schema exposes ticket + thread + staff + dept + groups + session + config tables with FS-091-aligned columns. [API-ONLY]
 - Request: `psql postgres://postgres:pass123@localhost:5432/osticket_dev -c '\dt'` and `\d ticket`, `\d ticket_thread`, `\d staff`, `\d department`, `\d groups`, `\d session`, `\d config`.
 - Expect: all listed tables exist with FS-091-aligned columns; `groups` is named `groups` (not the reserved `group`).
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: The ticket table exposes both ticket_id PK and the external 6-digit ticketID, with the UNIQUE (ticketID, email) constraint (BS-091.1). [API-ONLY]
 - Request: `psql ... -c '\d ticket'` and inspect constraints.
 - Verify: surrogate `ticket_id` primary key AND external `ticketID` column both present; a UNIQUE constraint over `(ticketID, email)` exists.
 - Request (enforcement): attempt to insert two rows with the same `(ticketID, email)` via psql → the second must fail with a unique-violation.
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: Enum-valued columns are text + CHECK constraint (no native PG enum types). [API-ONLY]
 - Request: `psql ... -c '\dT'` (expect NO custom enum types for status/priority/thread-type) and `\d+` on the relevant tables to see the CHECK constraints.
 - Expect: status/priority/thread-entry-type columns are `text` with a `CHECK (... IN (...))` constraint; no native PG `CREATE TYPE ... AS ENUM`.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

@@ -34,18 +34,18 @@ single-ticket detail with its thread.
 - Setup: log in staff (`curl -c /tmp/c.txt ... /api/staff/login`); ensure ≥2 open tickets exist (seed via `POST /api/dev/seed-ticket` twice, or `POST /api/tickets`).
 - Request: `curl -s -b /tmp/c.txt 'http://localhost:3701/api/staff/tickets?status=open'`.
 - Expect: a list of open tickets each with number + subject + created-at, ordered created DESC (the most recently created first).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-021 — the detail route returns the ticket with its thread entries created ASC (chronological), including all entry types M/R/N. [API-ONLY]
 - Setup: seed a ticket that has a staff reply AND an internal note — `curl -s -X POST http://localhost:3701/api/dev/seed-ticket -d '{"withReply":true,"withNote":true}' -H 'Content-Type: application/json'` → capture its id (via the list route).
 - Request: `curl -s -b /tmp/c.txt http://localhost:3701/api/staff/tickets/{id}`.
 - Expect: the ticket plus thread entries in chronological order (created ASC), INCLUDING the `N` internal note (staff see notes).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: Both routes are denied without a staff session (401). [API-ONLY]
 - Request: `curl -s -o /dev/null -w "%{http_code}" 'http://localhost:3701/api/staff/tickets?status=open'` and `.../api/staff/tickets/1` with NO cookie.
 - Expect: 401 for both.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

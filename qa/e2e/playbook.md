@@ -64,7 +64,7 @@
 - Setup: start the dev server — `npm run dev` (port 3702); the API may be mocked or unavailable for this check.
 - Navigate: {BASE_URL_FRONTEND}/
 - Verify: the React app shell renders (MUI layout visible) — not a blank page, a build-error overlay, or a connection-refused screen.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 0.2 — Router resolves all three branches to placeholder views (TS-M1-A5 AC-3)
 
@@ -74,7 +74,7 @@
 - Verify: the staff branch resolves to its placeholder login view.
 - Navigate: {BASE_URL_FRONTEND}/tickets
 - Verify: the client-portal branch resolves to its placeholder login view.
-- Status: [ ]
+- Status: [x]
 
 ---
 
@@ -96,7 +96,7 @@
 - Verify: the page renders an "Open a New Ticket" heading and four fields — Name, Email, Subject, Message (no help-topic / CAPTCHA / attachment fields in M1).
 - Navigate: {BASE_URL_FRONTEND}/
 - Verify: the public landing exposes a link/route to /open.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.2 — Invalid submission is blocked with an inline validation error (US-M1-2 AC-2)
 
@@ -105,7 +105,7 @@
 - Action: attempt to submit.
 - Verify: an inline validation error appears on the offending field and the submit is blocked (422 mapped to the field); no confirmation page is shown.
 - Verify (persistence): no new ticket was created — the invalid attempt produced nothing in the queue (asserted later in Flow 1.6, where the queue shows only the valid Flow 1.3 ticket).
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.3 — Visitor submits a valid ticket and sees a ticket number (US-M1-2 AC-3 / M1 AC-1)
 
@@ -113,28 +113,28 @@
 - Action: fill Name "Jane Doe", Email "jane@example.com", Subject "Printer broken", Message "My printer won't print.".
 - Action: submit the form.
 - Verify: a confirmation page renders a generated 6-digit ticket number (100000–999999). CARRY {ticketNumber, email="jane@example.com"} forward to Flows 1.6–1.9 — do NOT reseed.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.4 — Staff login rejects wrong credentials (US-M1-3 AC-1, negative path)
 
 - Navigate: {BASE_URL_FRONTEND}/staff/login (staff realm uses the distinct ost_staff_sess cookie).
 - Action: type Username "agent", Password "wrongpass", submit.
 - Verify: login is rejected with an error message; the URL stays on /staff/login and no staff session is established.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.5 — Agent logs in with seeded credentials (US-M1-3 AC-1 / M1 AC-2)
 
 - Navigate: {BASE_URL_FRONTEND}/staff/login (same browser session as Flow 1.4).
 - Action: type Username "agent", Password "Agent123!", submit.
 - Verify: the agent lands on the staff control panel (e.g. /staff/tickets) showing the agent is logged in.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.6 — Agent sees the just-created ticket in the Open queue (US-M1-3 AC-2 / M1 AC-3)
 
 - Navigate: {BASE_URL_FRONTEND}/staff/tickets
 - Verify: the Open-tickets queue lists the Flow 1.3 ticket — its carried-over 6-digit number and subject "Printer broken" are visible, newest first (created DESC).
 - Verify: no spurious ticket from the blocked Flow 1.2 attempt appears.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.7 — Agent opens the ticket, reads the message, posts a reply (US-M1-3 AC-3 + AC-4 / M1 AC-4)
 
@@ -142,7 +142,7 @@
 - Verify: the detail thread shows the customer's original `M` message "My printer won't print." (chronological, oldest first).
 - Action: type "We are looking into your printer issue." in the reply box and post it.
 - Verify: the thread refetches and the new agent `R` response appears below the customer message. The ticket stays Open.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.8 — Client login rejects a wrong email for the ticket number (US-M1-4 AC-1, negative path)
 
@@ -150,7 +150,7 @@
 - Navigate: {BASE_URL_FRONTEND}/tickets (client portal login).
 - Action: enter the Flow 1.3 ticket number with a WRONG email ("wrong@example.com"), submit.
 - Verify: login is rejected with a sensible error; no client session is established.
-- Status: [ ]
+- Status: [x]
 
 ### Flow 1.9 — Client logs in and views the original message + agent reply (US-M1-4 AC-1 + AC-2 / M1 AC-5)
 
@@ -158,7 +158,7 @@
 - Action: enter the Flow 1.3 ticket number with the correct email "jane@example.com", submit.
 - Verify: login succeeds and the client lands on the read-only ticket-thread view.
 - Verify: the thread renders the customer's original `M` message followed by the agent's `R` reply "We are looking into your printer issue." in chronological order; no reply box (read-only in M1) and no internal note (`N`) is shown.
-- Status: [ ]
+- Status: [x]
 
 ---
 

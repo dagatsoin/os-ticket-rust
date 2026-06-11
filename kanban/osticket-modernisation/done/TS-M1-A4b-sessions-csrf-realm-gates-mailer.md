@@ -44,33 +44,33 @@ transport without touching callers. See ROADMAP.md → Decisions for the pinned 
 - Setup: log in staff to obtain `ost_staff_sess` + `XSRF-TOKEN-STAFF` — `curl -s -c /tmp/c.txt -X POST http://localhost:3701/api/staff/login -H 'Content-Type: application/json' -d '{"username":"agent","password":"Agent123!"}'`.
 - Request (missing token): POST an authenticated mutating route (e.g. a staff reply) with the session cookie but NO `X-CSRFToken` header → expect 403.
 - Request (matching token): repeat with `-H "X-CSRFToken: <value of XSRF-TOKEN-STAFF cookie>"` → expect the request is accepted (passes CSRF, proceeds to the route).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-001 — deny a staff-realm route to a client-realm session and vice versa. [API-ONLY]
 - Setup: obtain a client session — `curl -s -c /tmp/cli.txt -X POST http://localhost:3701/api/client/login -d '{"ticketNumber":"<n>","email":"<e>"}' -H 'Content-Type: application/json'`.
 - Request: use the client cookie against a staff route — `curl -s -o /dev/null -w "%{http_code}" -b /tmp/cli.txt http://localhost:3701/api/staff/tickets?status=open` → expect 401/403.
 - Request: use a staff cookie against the client route `GET /api/client/ticket` → expect 401/403.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: BS-001 — a DB-backed session expires after the 86400s TTL and the session id is regenerated on login. [API-ONLY]
 - Request (regeneration): record the session id before login, log in, and confirm a NEW session id is issued (fixation defence) — assert via integration test or by comparing `ost_staff_sess` cookie values pre/post login.
 - Request (TTL): covered by an integration test that inserts a session with an expiry past 86400s and asserts it is treated as expired/invalid. (TTL = 86400 in the `session` table.)
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: BS-001 — the generic permission gate allows/denies based on a named permission. [API-ONLY]
 - Request: `cargo test -p core permission_gate` — assert the gate grants when the session's group holds the named permission (`can_post_reply`) and denies when it does not.
 - Expect: allow/deny purely on the named permission (not a hardcoded check).
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: FS-040 — the stub mailer records an intended send without dispatching real mail. [API-ONLY]
 - Request: `cargo test -p core stub_mailer` (or trigger a flow that sends) and assert the mailer port recorded the intended send while dispatching nothing.
 - Expect: the recorded-sends store grows by one; no real SMTP transport is invoked.
-- Status: [ ]
+- Status: [x]
 
 ### AC-6: FS-040 — GET /api/dev/mailbox returns recorded sends when dev-enabled and is disabled (404/forbidden) in production. [API-ONLY]
 - Request (dev): `curl -s http://localhost:3701/api/dev/mailbox` with the dev env flag enabled → returns the JSON list of recorded sends.
 - Request (prod): build/run with the dev flag OFF → `curl -s -o /dev/null -w "%{http_code}" http://localhost:3701/api/dev/mailbox` returns 404/403.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

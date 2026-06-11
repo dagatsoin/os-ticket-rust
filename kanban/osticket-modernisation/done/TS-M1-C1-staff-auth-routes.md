@@ -41,17 +41,17 @@ gate on protected routes.
 - Request: `curl -s -i -c /tmp/c.txt -X POST http://localhost:3701/api/staff/login -H 'Content-Type: application/json' -d '{"username":"agent","password":"Agent123!"}'` — confirm an `ost_staff_sess` (HttpOnly) cookie and an `XSRF-TOKEN-STAFF` cookie are set.
 - Request: `curl -s -b /tmp/c.txt http://localhost:3701/api/staff/me`.
 - Expect: 200 with `{ id, username: "agent", name, deptId }`.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-002 — invalid credentials are rejected (401), no session issued. [API-ONLY]
 - Request: `curl -s -i -X POST http://localhost:3701/api/staff/login -H 'Content-Type: application/json' -d '{"username":"agent","password":"wrong"}'`.
 - Expect: 401, shared error envelope, no `ost_staff_sess` cookie set.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: BS-002 — a staff-only route without a session is rejected (401). [API-ONLY]
 - Request: `curl -s -o /dev/null -w "%{http_code}" http://localhost:3701/api/staff/me` (no cookie).
 - Expect: 401.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

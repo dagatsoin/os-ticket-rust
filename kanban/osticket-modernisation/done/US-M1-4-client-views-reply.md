@@ -52,19 +52,19 @@ ticket thread, including the agent's reply.
 - Verify: login is rejected with a sensible error; no client session established.
 - Action: enter the ticket number with the correct email, submit.
 - Verify: login succeeds and the client lands on the ticket-thread view.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: After login, the client sees the ticket thread with their original message and the agent's reply, in order. [BROWSER]
 - Navigate: the client ticket-thread view from AC-1 (logged in as the client).
 - Verify: the thread renders the customer's original message (`M`) followed by the agent's reply (`R`) in chronological order; the view is read-only (no reply box in M1) and shows no internal note (`N`).
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: A client session cannot retrieve another ticket's thread. [API-ONLY]
 - Setup: seed two tickets — `curl -s -X POST http://localhost:3701/api/dev/seed-ticket` twice → ticketA {numberA, emailA}, ticketB {numberB, emailB}.
 - Request: log in the client realm as ticketA — `curl -s -c /tmp/cli.txt -X POST http://localhost:3701/api/client/login -H 'Content-Type: application/json' -d '{"ticketNumber":"<numberA>","email":"<emailA>"}'`.
 - Request: `curl -s -b /tmp/cli.txt http://localhost:3701/api/client/ticket` — confirm it returns ONLY ticketA's thread (the session is ticket-scoped; there is no path to request ticketB).
 - Expect: the client session returns its own ticket (`M`+`R` only, never `N`) and there is no route by which it can read ticketB's thread; an attempt to reach a staff route with the client cookie is denied (401/403).
-- Status: [ ]
+- Status: [x]
 
 ## Checklist (children)
 

@@ -39,17 +39,17 @@ Only the create + append-thread-entry operations are in M1 scope.
 - Setup: migrations + seed applied to `osticket_dev`.
 - Request: `cargo test -p core create_ticket` — calls create_ticket with a sample input.
 - Expect: a persisted ticket with ticketID in 100000–999999, the seeded department, status `open`, and exactly one thread entry of type `M` holding the body; assert atomicity (a forced failure leaves NO partial ticket row).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-021 — append_thread_entry adds an R response entry visible in the thread, preserving order. [API-ONLY]
 - Request: `cargo test -p core append_thread_entry` — create a ticket, then append an `R` entry.
 - Expect: the thread returns `M` then `R` in chronological order.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: FS-091.2 — distinct ticket numbers across consecutive creates; recover from a number collision via retry-on-conflict (no SELECT-then-INSERT). [API-ONLY]
 - Request: `cargo test -p core ticket_number` — create several tickets and assert distinct numbers; a test forces a unique-violation (e.g. by pre-seeding a colliding number) and asserts the core regenerates + retries the INSERT (no SELECT-then-INSERT race).
 - Expect: all numbers distinct; collision path recovers without error.
-- Status: [ ]
+- Status: [x]
 
 ## Dependencies
 

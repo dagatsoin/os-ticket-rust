@@ -19,7 +19,7 @@ own browser-only E2E ACs) are moved by hand.
 
 | ID | Milestone | Specs | Status |
 |----|-----------|-------|--------|
-| M1 | First Ticket Round-Trip (vertical slice) | FS-091/003/001/002/010/011/021/020 subset, FS-040 stub | **In consolidation** |
+| M1 | First Ticket Round-Trip (vertical slice) | FS-091/003/001/002/010/011/021/020 subset, FS-040 stub | **DONE (2026-06-11)** |
 | M2 | Attachments, Canned Responses & Email Basics | FS-022, FS-040 | Backlog stub |
 | M3 | Full Staff Workflow & Queue | FS-021, FS-020 | Backlog stub |
 | M4 | Admin Configuration | FS-030/031/032/033 | Backlog stub |
@@ -27,11 +27,14 @@ own browser-only E2E ACs) are moved by hand.
 | M6 | External API & Cron | FS-043 | Backlog stub |
 | M7 | Knowledge Base & FAQ | FS-050 | Backlog stub |
 
-## M1 — First Ticket Round-Trip (current)
+## M1 — First Ticket Round-Trip (DONE — 2026-06-11)
+
+**Completed 2026-06-11.** 80 leaf ACs + 5 root E2E ACs + 11 playbook flows, all green; all 21
+M1 tickets (root + 2 epics + 3 US + 15 TS) shipped to `done/`.
 
 Vertical slice: *a client opens a ticket via the web form; a staff agent logs in, sees it in
-the queue, opens it, and replies; the client sees the reply.* All M1 leaf tickets are in
-`consolidation/` pending validation. M1 root + epics derive their column from children.
+the queue, opens it, and replies; the client sees the reply.* M1 root + epics derive their column
+from children.
 
 - **EPIC-M1-A — Foundation & Workspace Setup**: TS-A1 Cargo workspace + Axum skeleton + health;
   TS-A2 Postgres migrations (M1 schema subset); TS-A3 seed fixtures (dept/group/staff);

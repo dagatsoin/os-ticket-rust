@@ -37,27 +37,27 @@ for the legacy installer's default-data seeding (FS-060) and first-run admin boo
 - Setup: `cargo run -p tools --bin seed` (DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev).
 - Request: `psql ... -c 'select count(*) from department; select count(*) from groups; select count(*) from staff;'`.
 - Expect: 1 department, 1 group, 1 staff (username `agent`).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: The seeded staff argon2id hash verifies against the documented plaintext (Agent123!). [API-ONLY]
 - Request: covered by a Rust unit/integration test that loads the seeded hash and calls the TS-M1-A4a verify util with "Agent123!" → true, and with a wrong password → false. End-to-end equivalent: `curl -s -X POST http://localhost:3701/api/staff/login -d '{"username":"agent","password":"Agent123!"}' -H 'Content-Type: application/json'` succeeds (once C1 exists).
 - Expect: the hash verifies for the correct plaintext only.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: The seeded group grants can_create_tickets + can_post_reply + access to the seeded department. [API-ONLY]
 - Request: `psql ... -c 'select can_create_tickets, can_post_reply from groups;'` and inspect `group_dept_access` for the seeded dept.
 - Expect: both flags true and a group→department access row for the seeded "Support" dept.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: The seed task is idempotent (re-running upserts produces no duplicates and no error). [API-ONLY]
 - Request: run `cargo run -p tools --bin seed` a SECOND time, then re-count department/groups/staff.
 - Expect: exit 0, still exactly 1/1/1 (no duplicates).
-- Status: [ ]
+- Status: [x]
 
 ### AC-5: The seeded reference data uses the FS-091 literals open (status) and normal (priority). [API-ONLY]
 - Request: `psql ... ` to inspect the seeded status/priority reference rows / config defaults.
 - Expect: status literal `open`, priority literal `normal` (exact FS-091 spelling).
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

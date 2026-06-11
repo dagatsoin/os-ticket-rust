@@ -49,7 +49,7 @@ message, and I receive a ticket number confirming it was created.
 - Navigate: http://localhost:3702/open
 - Verify: the page renders an "Open a New Ticket" heading and four fields — Name, Email, Subject, Message (no help-topic / CAPTCHA / attachment fields in M1).
 - Verify: the public landing at http://localhost:3702/ exposes a link/route to /open.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: Submitting with a missing required field or invalid email shows an inline validation error and does not create a ticket. [BROWSER]
 - Navigate: http://localhost:3702/open
@@ -57,20 +57,20 @@ message, and I receive a ticket number confirming it was created.
 - Action: attempt to submit.
 - Verify: an inline validation error appears on the offending field and the submit is blocked / returns a 422 mapped to the field; no confirmation page is shown.
 - Verify (persistence): no new ticket appears in the staff queue — log in at /staff/login (agent / Agent123!), open the Open-tickets queue, confirm the invalid attempt produced no ticket. (Alternatively assert ticket count unchanged via GET /api/staff/tickets?status=open after a staff login.)
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: Submitting a valid form shows a confirmation page displaying a generated ticket number. [BROWSER]
 - Navigate: http://localhost:3702/open
 - Action: fill Name "Jane Doe", Email "jane@example.com", Subject "Printer broken", Message "My printer won't print.".
 - Action: submit the form.
 - Verify: a confirmation page renders a 6-digit ticket number (100000–999999). Record this number + email for downstream US-M1-3/US-M1-4 flows.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: The created ticket persists with status Open, the seeded department, and a thread message containing the submitted body. [API-ONLY]
 - Setup: create a ticket via the public route — `curl -s -X POST http://localhost:3701/api/tickets -H 'Content-Type: application/json' -d '{"name":"Jane Doe","email":"jane@example.com","subject":"Printer broken","message":"My printer won't print."}'` → capture the returned ticket number.
 - Request: authenticate as staff then read the ticket detail — `curl -s -c /tmp/c.txt -X POST http://localhost:3701/api/staff/login -H 'Content-Type: application/json' -d '{"username":"agent","password":"Agent123!"}'` then `curl -s -b /tmp/c.txt http://localhost:3701/api/staff/tickets?status=open` to find the ticket id, then `curl -s -b /tmp/c.txt http://localhost:3701/api/staff/tickets/{id}`.
 - Expect: 201 on create; the detail shows status `open`, the seeded "Support" department, and a first thread entry of type `M` containing the submitted message body.
-- Status: [ ]
+- Status: [x]
 
 ## Checklist (children)
 

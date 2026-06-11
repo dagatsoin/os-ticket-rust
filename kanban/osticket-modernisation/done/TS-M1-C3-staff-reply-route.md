@@ -35,22 +35,22 @@ client-notification email.
 - Setup: log in staff (`curl -c /tmp/c.txt ... /api/staff/login`, capture `XSRF-TOKEN-STAFF`); seed a ticket → capture id + note its current status.
 - Request: `curl -s -b /tmp/c.txt -H 'Content-Type: application/json' -H 'X-CSRFToken: <xsrf>' -X POST http://localhost:3701/api/staff/tickets/{id}/reply -d '{"body":"We are looking into it."}'`.
 - Expect: the response returns the updated thread with a new `R` entry appended; the ticket status is UNCHANGED (still `open` — no isanswered mutation in M1).
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: BS-021 — the response author is the authenticated staff account. [API-ONLY]
 - Request: read the ticket detail after AC-1 (`GET /api/staff/tickets/{id}`).
 - Expect: the new `R` entry is authored by the seeded `agent` staff account.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: FS-040 — an intended client notification is recorded by the stub mailer ONLY after the DB commit, retrievable via GET /api/dev/mailbox (not real mail). [API-ONLY]
 - Request: after the successful reply in AC-1, `curl -s -b /tmp/c.txt http://localhost:3701/api/dev/mailbox`.
 - Expect: a recorded intended notification for the reply (recorded only after commit); no real mail dispatched. (A reply that fails to commit records NO notification.)
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: It should be denied without a staff session / can_post_reply permission. [API-ONLY]
 - Request: `curl -s -o /dev/null -w "%{http_code}" -X POST http://localhost:3701/api/staff/tickets/1/reply -d '{"body":"x"}' -H 'Content-Type: application/json'` (no session).
 - Expect: 401; and a session lacking `can_post_reply` is denied 403.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

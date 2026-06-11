@@ -40,22 +40,22 @@ read-only ticket-thread view showing the agent's reply.
 ### AC-1: Component — login form posts ticket#/email, handles success/failure (mocked client). [API-ONLY]
 - Request: `npm test` — the client login component test posts ticket#/email; assert success routes to the thread view and failure shows a sensible error.
 - Expect: both paths handled.
-- Status: [ ]
+- Status: [x]
 
 ### AC-2: Component — thread view renders entries in chronological order and is read-only (no reply box) (mocked client). [API-ONLY]
 - Request: `npm test` — assert the thread renders `M`/`R` entries oldest-first and that NO reply box is rendered (read-only in M1).
 - Expect: ordered, read-only view.
-- Status: [ ]
+- Status: [x]
 
 ### AC-3: Component — the thread view never renders an internal note (N) — only M/R entries returned by the route are shown (mocked client). [API-ONLY]
 - Request: `npm test` — the mocked route returns only `M`/`R` (the route already excludes `N`); assert the view shows only those and renders no note affordance.
 - Expect: no `N` content rendered.
-- Status: [ ]
+- Status: [x]
 
 ### AC-4: The client store logic is covered by unit tests (TDD target). [API-ONLY]
 - Request: `npm test` — the MobX client store unit tests cover login state + thread loading + error handling.
 - Expect: client-store unit tests green.
-- Status: [ ]
+- Status: [x]
 
 ## Test Infrastructure
 

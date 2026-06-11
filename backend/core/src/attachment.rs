@@ -160,6 +160,57 @@ pub async fn insert_attachment(
     })
 }
 
+/// Bind an EXISTING `attachment_file` (by its id) to a ticket + thread entry,
+/// inside an existing transaction — no blob `put`, no `attachment_file` write.
+///
+/// Used by the canned-reply carry (D4): a canned response's attachments are
+/// already-stored `attachment_file` rows (seeded once, deduped by hash), so a
+/// reply that references them only writes a fresh `ticket_attachment` binding
+/// (`ref_type = R`) pointing at the new entry — no re-upload (D1 dedup).
+///
+/// Returns the §7 view for the bound file (the `id` is the new
+/// `ticket_attachment` binding id, like [`load_attachments_by_ref`], so the
+/// download route resolves it). `None` when `file_id` does not exist (the caller
+/// treats a vanished canned file defensively, though the seed keeps it alive).
+///
+/// @implements FS-022.14: carry a canned response's attachments onto the reply
+///   entry by file id (no re-upload).
+pub async fn bind_existing_file(
+    tx: &mut Transaction<'_, Postgres>,
+    ticket_id: i64,
+    ref_id: i64,
+    ref_type: &str,
+    file_id: i64,
+) -> Result<Option<AttachmentView>, sqlx::Error> {
+    let meta: Option<(String, i64, String)> =
+        sqlx::query_as("SELECT name, size, mime FROM attachment_file WHERE id = $1")
+            .bind(file_id)
+            .fetch_optional(&mut **tx)
+            .await?;
+    let Some((name, size, mime)) = meta else {
+        return Ok(None);
+    };
+
+    let binding_id: i64 = sqlx::query_scalar(
+        "INSERT INTO ticket_attachment (ticket_id, file_id, ref_id, ref_type)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id",
+    )
+    .bind(ticket_id)
+    .bind(file_id)
+    .bind(ref_id)
+    .bind(ref_type)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(Some(AttachmentView {
+        id: binding_id,
+        name,
+        size,
+        mime,
+    }))
+}
+
 /// Load every attachment bound to a ticket, grouped by the thread entry
 /// (`ref_id`) it hangs off. The map value is the §7 view list for that entry.
 ///

@@ -24,8 +24,8 @@ pub mod validation;
 pub mod variable;
 
 pub use attachment::{
-    insert_attachment, load_attachments_by_ref, load_download_file, AttachmentSpec, AttachmentView,
-    DownloadFile, DEFAULT_MIME,
+    bind_existing_file, insert_attachment, load_attachments_by_ref, load_download_file,
+    AttachmentSpec, AttachmentView, DownloadFile, DEFAULT_MIME,
 };
 pub use blob::{is_sha256_hex, sha256_hex, BlobError, BlobStore, BLOB_ROOT_ENV};
 pub use canned::{
@@ -45,9 +45,9 @@ pub use sanitize::{safe_html, sanitize};
 pub use session::{Realm, Session, SessionData, SessionError, SessionStore, SESSION_TTL_SECS};
 pub use ticket::{
     append_thread_entry, append_thread_entry_with_attachment, create_ticket,
-    create_ticket_with_attachment, create_ticket_with_numbers, load_thread, random_ticket_number,
-    NewThreadEntry, NewTicket, NewTicketInput, ThreadEntry, ThreadType, Ticket, TicketError,
-    TICKET_NUMBER_MAX, TICKET_NUMBER_MIN,
+    create_ticket_with_attachment, create_ticket_with_numbers, load_thread, post_staff_reply,
+    random_ticket_number, NewThreadEntry, NewTicket, NewTicketInput, ThreadEntry, ThreadType,
+    Ticket, TicketError, TICKET_NUMBER_MAX, TICKET_NUMBER_MIN,
 };
 pub use upload::{
     validate_upload, UploadError, UploadPolicy, ALLOW_ALL, ATTACHMENT_FIELD,

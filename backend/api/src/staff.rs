@@ -10,18 +10,24 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use ost_core::attachment::load_attachments_by_ref;
+use ost_core::canned::{load_offerable_response, load_ticket_vars};
 use ost_core::mailer::{Mailer, OutboundMail};
 use ost_core::permission::PERM_CAN_POST_REPLY;
-use ost_core::ticket::{
-    append_thread_entry, append_thread_entry_with_attachment, load_thread, NewThreadEntry,
-};
+use ost_core::ticket::{load_thread, post_staff_reply, NewThreadEntry};
+use ost_core::variable::VariableReplacer;
 use ost_core::{ApiError, AttachmentSpec, AttachmentView};
 
 use crate::attachments::{drain_multipart, load_upload_policy, validate_attachment};
 use crate::auth::gate::require_staff_permission;
 use crate::auth::realm::StaffSession;
 use crate::auth::StaffCsrf;
+use crate::canned::{CFG_HELPDESK_URL, DEFAULT_HELPDESK_URL};
+use crate::config_keys::read_config;
 use crate::state::AppState;
+
+/// A ticket header row as selected by the detail + reply routes:
+/// `(ticket_id, number, subject, email, name, status, created, isanswered)`.
+type TicketHeader = (i64, i64, String, String, String, String, String, bool);
 
 /// The authenticated staff profile returned by `GET /api/staff/me`.
 #[derive(Debug, Serialize)]
@@ -83,6 +89,9 @@ pub struct QueueItem {
     pub email: String,
     /// ISO-8601 creation timestamp.
     pub created: String,
+    /// Whether the ticket has been answered (any staff reply ⇒ true, §3). Drives
+    /// the queue's Answered / Unanswered badge.
+    pub isanswered: bool,
 }
 
 /// `GET /api/staff/tickets` — list **open** tickets, newest first.
@@ -104,9 +113,10 @@ pub async fn list_tickets(
     // created DESC, with id DESC as a stable tiebreaker for same-instant rows.
     // `created` is rendered to ISO-8601 text in SQL (the sqlx build excludes the
     // chrono/time features), so it decodes straight to a String.
-    let rows: Vec<(i64, i64, String, String, String)> = sqlx::query_as(
+    let rows: Vec<(i64, i64, String, String, String, bool)> = sqlx::query_as(
         r#"SELECT ticket_id, "ticketID", subject, email,
-                  to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created
+                  to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created,
+                  isanswered
            FROM ticket
            WHERE status = 'open'
            ORDER BY created DESC, ticket_id DESC"#,
@@ -117,12 +127,13 @@ pub async fn list_tickets(
 
     let items = rows
         .into_iter()
-        .map(|(id, number, subject, email, created)| QueueItem {
+        .map(|(id, number, subject, email, created, isanswered)| QueueItem {
             id,
             number,
             subject,
             email,
             created,
+            isanswered,
         })
         .collect();
     Ok(Json(items))
@@ -154,6 +165,9 @@ pub struct TicketDetail {
     pub name: String,
     pub status: String,
     pub created: String,
+    /// Whether the ticket has been answered (any staff reply ⇒ true, §3). Drives
+    /// the detail view's Answered / Unanswered badge.
+    pub isanswered: bool,
     /// Thread entries in chronological order (created ASC), **all** types.
     pub entries: Vec<ThreadEntryView>,
 }
@@ -175,10 +189,11 @@ pub async fn ticket_detail(
         .as_ref()
         .ok_or_else(|| ApiError::internal("Ticket detail is unavailable"))?;
 
-    let header: Option<(i64, i64, String, String, String, String, String)> =
+    let header: Option<TicketHeader> =
         sqlx::query_as(
             r#"SELECT ticket_id, "ticketID", subject, email, name, status,
-                      to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created
+                      to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created,
+                      isanswered
                FROM ticket WHERE ticket_id = $1"#,
         )
         .bind(id)
@@ -186,11 +201,11 @@ pub async fn ticket_detail(
         .await
         .map_err(|_| ApiError::internal("Ticket detail lookup failed"))?;
 
-    let (ticket_id, number, subject, email, name, status, created) =
+    let (ticket_id, number, subject, email, name, status, created, isanswered) =
         header.ok_or_else(|| ApiError::not_found("Ticket not found"))?;
 
     let detail = build_detail(
-        pool, ticket_id, number, subject, email, name, status, created,
+        pool, ticket_id, number, subject, email, name, status, created, isanswered,
     )
     .await?;
     Ok(Json(detail))
@@ -210,6 +225,7 @@ async fn build_detail(
     name: String,
     status: String,
     created: String,
+    isanswered: bool,
 ) -> Result<TicketDetail, ApiError> {
     // The shared core loads the thread in created ASC order, all M/R/N entries.
     let thread = load_thread(pool, ticket_id)
@@ -240,6 +256,7 @@ async fn build_detail(
         name,
         status,
         created,
+        isanswered,
         entries,
     })
 }
@@ -253,13 +270,13 @@ pub struct ReplyRequest {
 
 /// The reply's parsed inputs from either accepted shape.
 ///
-/// `canned_id` is accepted from the multipart form and IGNORED for now — D4
-/// wires the canned-response reuse. It is captured (not dropped on parse) so the
-/// D4 follow-up can read it without changing the wire contract.
+/// `canned_id` is the optional `cannedId` multipart form part — when present the
+/// reply re-renders that canned response's body server-side and carries its
+/// attachments onto the new `R` entry (D4).
 struct ReplyInput {
     body: String,
-    /// Optional `cannedId` form part — accepted + IGNORED in A5 (D4 consumes it).
-    _canned_id: Option<String>,
+    /// Optional `cannedId` form part (multipart only) — D4 canned-response reuse.
+    canned_id: Option<i32>,
     /// Optional `attachment` file part (already validated before binding).
     attachment: Option<AttachmentSpec>,
 }
@@ -268,19 +285,30 @@ struct ReplyInput {
 ///
 /// Gated by the staff realm + CSRF (the [`StaffCsrf`] extractor) and the
 /// `can_post_reply` named permission. **Dual-accepts by `Content-Type` (§2):**
-/// `application/json` `{body}` keeps the M1 contract (no attachment);
-/// `multipart/form-data` carries `body` (+ an optional `cannedId` part, accepted
-/// and IGNORED here — D4 wires it) plus an optional `attachment` file part bound
-/// to the new `R` entry (ref_type `R`). A rejected attachment ⇒ 422 (keyed on
-/// `attachment`) and posts NO reply.
+/// `application/json` `{body}` keeps the M1 contract (no attachment / no canned);
+/// `multipart/form-data` carries `body`, an optional `cannedId` part, and an
+/// optional own `attachment` file part.
 ///
-/// A **pure append** in M1: the ticket status is NOT mutated (isanswered
-/// semantics deferred). The intended client notification is recorded by the stub
-/// mailer **only after the DB append commits**. Returns the updated thread (the
-/// same shape as the detail route, including each entry's `attachments`).
+/// Canned reuse (D4): when `cannedId` references a canned response offerable for
+/// this ticket (enabled + dept 0/all or the ticket's dept), the posted body is
+/// re-rendered **server-side** from that canned response (substituted for this
+/// ticket + `helpdesk_url`, for integrity) and its attachments are carried onto
+/// the new `R` entry **by file id** (no re-upload, D1 dedup). An own uploaded
+/// file is validated/stored/bound alongside. A disabled / unknown / out-of-scope
+/// `cannedId` ⇒ 404; a rejected own attachment ⇒ 422 (keyed `attachment`); both
+/// post NO reply.
 ///
-/// @implements BS-021: append `R`, pure append (no status mutation).
-/// @implements FS-021.3 / FS-021.16: optional attachment bound to the `R` entry.
+/// isanswered (§3): ANY staff reply — plain, own-file, or canned-assisted —
+/// marks the ticket `isanswered = true` (the M1-faithful semantics), authored by
+/// the posting agent (documented divergence from legacy's SYSTEM actor). The
+/// intended client notification is recorded by the stub mailer only after the DB
+/// commit. Returns the updated thread (the detail shape, with `isanswered` + each
+/// entry's `attachments`).
+///
+/// @implements BS-021: append `R`.
+/// @implements FS-022.14: canned reuse — substituted body + carried attachments.
+/// @implements ROADMAP §3: any staff reply marks the ticket answered.
+/// @implements FS-021.3 / FS-021.16: optional own attachment bound to the entry.
 /// @implements FS-040: record the client notification only after commit.
 pub async fn reply(
     State(state): State<AppState>,
@@ -301,43 +329,65 @@ pub async fn reply(
 
     // Resolve the ticket header (404 when the id is unknown) + the acting agent's
     // display name (the response poster).
-    let header: Option<(i64, i64, String, String, String, String, String)> =
+    let header: Option<TicketHeader> =
         sqlx::query_as(
             r#"SELECT ticket_id, "ticketID", subject, email, name, status,
-                      to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created
+                      to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created,
+                      isanswered
                FROM ticket WHERE ticket_id = $1"#,
         )
         .bind(id)
         .fetch_optional(pool)
         .await
         .map_err(|_| ApiError::internal("Ticket lookup failed"))?;
-    let (ticket_id, number, subject, email, name, status, created) =
+    let (ticket_id, number, subject, email, name, status, created, _isanswered) =
         header.ok_or_else(|| ApiError::not_found("Ticket not found"))?;
 
-    // Validate the attachment (A2) BEFORE appending — a rejected file posts no
-    // reply (FS-021.16). 422 keyed on `attachment`.
+    // Validate the own attachment (A2) BEFORE appending — a rejected file posts
+    // no reply (FS-021.16). 422 keyed on `attachment`.
     if input.attachment.is_some() {
         let policy = load_upload_policy(pool).await?;
         validate_attachment(&input.attachment, &policy)?;
     }
 
+    // Resolve the canned response (if any): re-render its body server-side for
+    // this ticket and collect its attachment file ids to carry. A disabled /
+    // unknown / out-of-scope cannedId ⇒ 404 (BS-022.2), posting no reply.
+    let mut reply_body = input.body.clone();
+    let mut canned_file_ids: Vec<i64> = Vec::new();
+    if let Some(canned_id) = input.canned_id {
+        let vars = load_ticket_vars(pool, ticket_id)
+            .await
+            .map_err(|_| ApiError::internal("Ticket lookup failed"))?
+            .ok_or_else(|| ApiError::not_found("Ticket not found"))?;
+        let canned = load_offerable_response(pool, canned_id, vars.dept_id)
+            .await
+            .map_err(|_| ApiError::internal("Canned response lookup failed"))?
+            .ok_or_else(|| ApiError::not_found("Canned response not found"))?;
+        let base_url = read_config(pool, CFG_HELPDESK_URL)
+            .await?
+            .filter(|s| !s.trim().is_empty())
+            .unwrap_or_else(|| DEFAULT_HELPDESK_URL.to_string());
+        let replacer = VariableReplacer::new(vars.to_context(), base_url);
+        reply_body = replacer.render(&canned.body);
+        canned_file_ids = canned.file_ids;
+    }
+
     let agent = staff_display_name(pool, session.staff_id).await?;
 
-    // Append the R entry via the shared core (it commits on success). Only AFTER
-    // a successful commit do we record the mailer intent.
-    let entry = NewThreadEntry::response(agent, Some(session.staff_id), &input.body);
-    match input.attachment {
-        Some(spec) => {
-            append_thread_entry_with_attachment(pool, ticket_id, &entry, &state.store, &spec)
-                .await
-                .map_err(|_| ApiError::internal("Could not append the reply"))?;
-        }
-        None => {
-            append_thread_entry(pool, ticket_id, &entry)
-                .await
-                .map_err(|_| ApiError::internal("Could not append the reply"))?;
-        }
-    }
+    // Append the R entry + bind own/canned attachments + mark answered, all in
+    // one tx (post_staff_reply commits on success). Author stays the agent.
+    let entry = NewThreadEntry::response(agent, Some(session.staff_id), &reply_body);
+    post_staff_reply(
+        pool,
+        ticket_id,
+        &entry,
+        &state.store,
+        input.attachment.as_ref(),
+        &canned_file_ids,
+    )
+    .await
+    .map_err(|_| ApiError::internal("Could not append the reply"))?;
 
     // Mailer intent recorded post-commit (stub records, does not send).
     let mail = OutboundMail {
@@ -347,8 +397,9 @@ pub async fn reply(
     };
     let _ = state.mailer.send(mail);
 
+    // Re-read the detail (now isanswered = true) so the response reflects §3.
     let detail = build_detail(
-        pool, ticket_id, number, subject, email, name, status, created,
+        pool, ticket_id, number, subject, email, name, status, created, true,
     )
     .await?;
     Ok(Json(detail))
@@ -373,10 +424,18 @@ async fn parse_reply_input(request: Request, state: &AppState) -> Result<ReplyIn
             .await
             .map_err(|_| ApiError::validation("Malformed multipart request"))?;
         let form = drain_multipart(multipart).await?;
+        // Parse the optional `cannedId` (a blank/absent part ⇒ no canned). A
+        // present-but-non-numeric value is a malformed request (422).
+        let canned_id = match form.fields.get("cannedId").map(|s| s.trim()) {
+            Some(s) if !s.is_empty() => Some(
+                s.parse::<i32>()
+                    .map_err(|_| ApiError::validation("cannedId must be an integer"))?,
+            ),
+            _ => None,
+        };
         Ok(ReplyInput {
             body: form.field("body").to_string(),
-            // `cannedId` is accepted + IGNORED here (D4 wires the canned reuse).
-            _canned_id: form.fields.get("cannedId").cloned(),
+            canned_id,
             attachment: form.attachment,
         })
     } else {
@@ -385,7 +444,7 @@ async fn parse_reply_input(request: Request, state: &AppState) -> Result<ReplyIn
             .map_err(|_| ApiError::validation("Malformed JSON request"))?;
         Ok(ReplyInput {
             body: req.body,
-            _canned_id: None,
+            canned_id: None,
             attachment: None,
         })
     }

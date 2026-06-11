@@ -561,6 +561,99 @@ pub async fn append_thread_entry_with_attachment(
     Ok((new_entry, view))
 }
 
+/// Post a staff reply (`R`) atomically: insert the entry, bind an optional own
+/// uploaded attachment AND/OR a canned response's existing attachments (by file
+/// id), and mark the ticket **answered** (`isanswered = true`) — all in ONE
+/// transaction (TS-M2-D4).
+///
+/// isanswered semantics (ROADMAP §3 — pinned, legacy-faithful): ANY staff reply
+/// — plain, own-file, or canned-assisted — sets `isanswered = true`, exactly
+/// like an M1 reply. (BS-022.15's "mark UNANSWERED" applies to the filter-driven
+/// SYSTEM auto-reply path, DEFERRED to M5.)
+///
+/// Attachment carry (FS-022.14): `canned_file_ids` are already-stored
+/// `attachment_file` rows (the seeded canned blobs), so they are bound by id via
+/// fresh `ticket_attachment` rows (`ref_type = R`) — no blob re-upload (D1
+/// dedup). An optional own upload (`own`) is `put` into the store + bound too.
+/// The returned views are ordered own-first then canned, all under the §7 shape.
+///
+/// A failure anywhere rolls the whole thing back, so a rejected attachment (or a
+/// vanished canned file) posts NO reply and does NOT mark the ticket answered.
+///
+/// @implements BS-021: append `R`.
+/// @implements FS-022.14: a canned-assisted reply carries the canned attachments.
+/// @implements ROADMAP §3: any staff reply marks the ticket answered.
+pub async fn post_staff_reply(
+    pool: &PgPool,
+    ticket_id: i64,
+    entry: &NewThreadEntry,
+    store: &BlobStore,
+    own: Option<&AttachmentSpec>,
+    canned_file_ids: &[i64],
+) -> Result<(ThreadEntry, Vec<AttachmentView>), TicketError> {
+    let exists: Option<(i64,)> = sqlx::query_as("SELECT ticket_id FROM ticket WHERE ticket_id = $1")
+        .bind(ticket_id)
+        .fetch_optional(pool)
+        .await?;
+    if exists.is_none() {
+        return Err(TicketError::NotFound);
+    }
+
+    let mut tx = pool.begin().await?;
+
+    let row = sqlx::query(
+        "INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, ticket_id, thread_type, poster, body",
+    )
+    .bind(ticket_id)
+    .bind(entry.thread_type.as_db())
+    .bind(&entry.poster)
+    .bind(entry.staff_id)
+    .bind(&entry.body)
+    .fetch_one(&mut *tx)
+    .await?;
+    let new_entry = ThreadEntry {
+        id: row.get("id"),
+        ticket_id: row.get("ticket_id"),
+        thread_type: row.get("thread_type"),
+        poster: row.get("poster"),
+        body: row.get("body"),
+    };
+
+    let ref_type = entry.thread_type.as_db();
+    let mut views: Vec<AttachmentView> = Vec::new();
+
+    // Own uploaded file first (store the blob, then bind it).
+    if let Some(spec) = own {
+        store
+            .put(&spec.bytes)
+            .await
+            .map_err(|e| TicketError::Db(blob_io_to_sqlx(e)))?;
+        let view = insert_attachment(&mut tx, ticket_id, new_entry.id, ref_type, spec).await?;
+        views.push(view);
+    }
+
+    // Canned attachments: bind already-stored files by id (no re-upload, D1).
+    for &file_id in canned_file_ids {
+        if let Some(view) =
+            crate::attachment::bind_existing_file(&mut tx, ticket_id, new_entry.id, ref_type, file_id)
+                .await?
+        {
+            views.push(view);
+        }
+    }
+
+    // ROADMAP §3: any staff reply marks the ticket answered.
+    sqlx::query("UPDATE ticket SET isanswered = true, updated = now() WHERE ticket_id = $1")
+        .bind(ticket_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+    Ok((new_entry, views))
+}
+
 /// Load a ticket's thread entries in chronological order (oldest first).
 ///
 /// @implements BS-021: ordered thread retrieval (M then R …).

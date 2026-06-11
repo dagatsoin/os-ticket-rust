@@ -30,3 +30,7 @@ thiserror = "2"
 anyhow = "1"
 dotenvy = "0.15"
 http = "1"
+# TS-M1-A4a — pure-function utils (validation / sanitization / hashing).
+ammonia = "4"
+argon2 = "0.5"
+password-hash = { version = "0.5", features = ["rand_core", "std"] }

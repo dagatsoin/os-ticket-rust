@@ -10,6 +10,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { ApiClient } from "../api/apiClient";
 import { ApiError } from "../api/types";
+import type { Attachment } from "../utils/downloadAttachment";
 
 /** One row of the staff open-tickets queue (GET /api/staff/tickets). */
 export interface QueueItem {
@@ -18,6 +19,8 @@ export interface QueueItem {
   subject: string;
   email: string;
   created: string;
+  /** Answered / Unanswered flag shown as a queue badge (ROADMAP M2 §3). */
+  isanswered?: boolean;
 }
 
 /** One thread entry in a staff ticket detail. */
@@ -27,6 +30,8 @@ export interface StaffThreadEntry {
   threadType: "M" | "R" | "N";
   poster: string;
   body: string;
+  /** Attachments carried on this entry (§7); empty/absent when none. */
+  attachments?: Attachment[];
 }
 
 /** A staff ticket detail (GET /api/staff/tickets/:id; also the reply response). */
@@ -39,6 +44,8 @@ export interface TicketDetail {
   status: string;
   created: string;
   entries: StaffThreadEntry[];
+  /** Answered / Unanswered flag shown as a detail badge (ROADMAP M2 §3). */
+  isanswered?: boolean;
 }
 
 export class StaffTicketStore {

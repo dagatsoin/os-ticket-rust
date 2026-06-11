@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -104,5 +104,63 @@ describe("Client portal (TS-M1-D2)", () => {
     // The N note body must NOT appear anywhere.
     expect(screen.queryByText("SECRET internal note")).not.toBeInTheDocument();
     expect(screen.getAllByTestId("thread-entry")).toHaveLength(2);
+  });
+
+  // --- TS-M2-B2: clickable chips + session-bound download + inline error ---
+
+  it("B2: a thread entry attachment renders a clickable chip; click downloads via the client route", async () => {
+    let hitUrl: string | null = null;
+    server.use(
+      http.get("/api/client/ticket/attachments/77", ({ request }) => {
+        hitUrl = new URL(request.url).pathname;
+        return new HttpResponse("txt-bytes", { status: 200 });
+      }),
+    );
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    const store = new RootStore();
+    store.clientPortal.ticket = {
+      number: 123456, subject: "Login issue", status: "open",
+      created: "2026-06-01T10:00:00Z",
+      entries: [
+        {
+          id: 12, threadType: "R", poster: "Agent", body: "Here is the policy",
+          attachments: [{ id: 77, name: "policy.txt", size: 10, mime: "text/plain" }],
+        },
+      ],
+    };
+    renderWithProviders(<ClientRoutes />, { route: "/tickets", store });
+
+    const chip = await screen.findByTestId("attachment-chip");
+    expect(chip).toHaveTextContent("policy.txt");
+    await userEvent.click(chip);
+    // Session-bound client route, no ticketId param (§8).
+    await waitFor(() => expect(hitUrl).toBe("/api/client/ticket/attachments/77"));
+    clickSpy.mockRestore();
+  });
+
+  it("B2/AC-3: a 404 on download surfaces a visible inline error (cross-ticket negative)", async () => {
+    server.use(
+      http.get("/api/client/ticket/attachments/77", () =>
+        HttpResponse.json({ error: { message: "Not found" } }, { status: 404 }),
+      ),
+    );
+    const store = new RootStore();
+    store.clientPortal.ticket = {
+      number: 123456, subject: "Login issue", status: "open",
+      created: "2026-06-01T10:00:00Z",
+      entries: [
+        {
+          id: 12, threadType: "R", poster: "Agent", body: "Here is the policy",
+          attachments: [{ id: 77, name: "policy.txt", size: 10, mime: "text/plain" }],
+        },
+      ],
+    };
+    renderWithProviders(<ClientRoutes />, { route: "/tickets", store });
+
+    await userEvent.click(await screen.findByTestId("attachment-chip"));
+    expect(await screen.findByTestId("attachment-download-error")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router-dom";
@@ -114,6 +114,45 @@ describe("Staff UI (TS-M1-C4)", () => {
     // The new R entry appears, sourced from the reply response.
     expect(await screen.findByText("Try a reset")).toBeInTheDocument();
     expect(screen.getAllByTestId("thread-entry")).toHaveLength(3);
+  });
+
+  // --- TS-M2-B2: clickable chips + answered badge in staff detail ---
+
+  it("B2: a thread entry with an attachment renders a clickable chip that downloads via the staff route", async () => {
+    let hitUrl: string | null = null;
+    server.use(
+      http.get("/api/staff/tickets/1", () =>
+        HttpResponse.json({
+          id: 1, number: 100001, subject: "Login issue", email: "a@x.io", name: "Alice",
+          status: "open", created: "2026-06-01T10:00:00Z", isanswered: false,
+          entries: [
+            {
+              id: 10, threadType: "M", poster: "Alice", body: "Cannot log in",
+              attachments: [{ id: 99, name: "invoice.pdf", size: 100, mime: "application/pdf" }],
+            },
+          ],
+        }),
+      ),
+      http.get("/api/staff/tickets/1/attachments/99", ({ request }) => {
+        hitUrl = new URL(request.url).pathname;
+        return new HttpResponse("pdf-bytes", { status: 200 });
+      }),
+    );
+    // Suppress the synthetic anchor click's jsdom navigation no-op.
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    renderWithProviders(<StaffRoutes />, { route: "/staff/tickets/1" });
+
+    const chip = await screen.findByTestId("attachment-chip");
+    expect(chip).toHaveTextContent("invoice.pdf");
+    // The detail header shows the Unanswered badge.
+    expect(screen.getByText(/unanswered/i)).toBeInTheDocument();
+
+    await userEvent.click(chip);
+    await waitFor(() => expect(hitUrl).toBe("/api/staff/tickets/1/attachments/99"));
+    clickSpy.mockRestore();
   });
 
   it("AC-4: a 401 from the queue route redirects to /staff/login", async () => {

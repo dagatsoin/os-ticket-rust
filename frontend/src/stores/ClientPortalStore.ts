@@ -10,6 +10,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { ApiClient } from "../api/apiClient";
 import { ApiError } from "../api/types";
+import type { Attachment } from "../utils/downloadAttachment";
 
 /** One thread entry returned to a client (only `M` / `R` ever reach here). */
 export interface ClientThreadEntry {
@@ -18,6 +19,8 @@ export interface ClientThreadEntry {
   threadType: "M" | "R";
   poster: string;
   body: string;
+  /** Attachments carried on this entry (§7); empty/absent when none. */
+  attachments?: Attachment[];
 }
 
 /** The client's own ticket plus its (M/R-only) thread. */

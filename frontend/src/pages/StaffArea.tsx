@@ -31,6 +31,8 @@ import {
 import { useStores } from "../stores/StoreContext";
 import { CredentialForm, type CredentialField } from "../components/CredentialForm";
 import { ThreadView, type ThreadEntry } from "../components/ThreadView";
+import { AttachmentList } from "../components/AttachmentList";
+import { AnsweredBadge } from "../components/AnsweredBadge";
 import type { StaffThreadEntry } from "../stores/StaffTicketStore";
 
 const STAFF_LOGIN_FIELDS: CredentialField[] = [
@@ -38,11 +40,28 @@ const STAFF_LOGIN_FIELDS: CredentialField[] = [
   { name: "password", label: "Password", type: "password", required: true, autoComplete: "current-password" },
 ];
 
-/** Map a staff thread entry to the realm-agnostic ThreadView shape. */
-function toThreadEntry(e: StaffThreadEntry): ThreadEntry {
+/**
+ * Map a staff thread entry to the realm-agnostic ThreadView shape, composing the
+ * body text with clickable attachment chips (B2). Staff downloads are
+ * ticket-scoped, so the AttachmentList needs the ticket id.
+ */
+function toThreadEntry(e: StaffThreadEntry, ticketId: number): ThreadEntry {
   const kind = e.threadType === "R" ? "response" : e.threadType === "N" ? "note" : "message";
   const author = e.threadType === "N" ? `${e.poster} (internal note)` : e.poster;
-  return { id: e.id, author, timestamp: "", body: e.body, kind };
+  return {
+    id: e.id,
+    author,
+    timestamp: "",
+    kind,
+    body: (
+      <>
+        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+          {e.body}
+        </Typography>
+        <AttachmentList realm="staff" ticketId={ticketId} attachments={e.attachments} />
+      </>
+    ),
+  };
 }
 
 /** `/staff` index — route authenticated agents to the queue, else to login. */
@@ -111,12 +130,13 @@ export const StaffQueuePage = observer(function StaffQueuePage() {
               <TableCell>Subject</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Created</TableCell>
+              <TableCell>Status</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {staffTickets.queue.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   <Typography color="text.secondary">
                     {staffTickets.loadingQueue ? "Loading…" : "No open tickets."}
                   </Typography>
@@ -135,6 +155,9 @@ export const StaffQueuePage = observer(function StaffQueuePage() {
                   <TableCell>{t.subject}</TableCell>
                   <TableCell>{t.email}</TableCell>
                   <TableCell>{t.created}</TableCell>
+                  <TableCell>
+                    <AnsweredBadge answered={t.isanswered} />
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -213,13 +236,16 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
       {detail ? (
         <>
           <Box>
-            <Typography variant="h5">{detail.subject}</Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h5">{detail.subject}</Typography>
+              <AnsweredBadge answered={detail.isanswered} />
+            </Stack>
             <Typography color="text.secondary">
               Ticket #{detail.number} · {detail.name} · {detail.email}
             </Typography>
           </Box>
           <ThreadView
-            entries={detail.entries.map(toThreadEntry)}
+            entries={detail.entries.map((e) => toThreadEntry(e, ticketId))}
             replySlot={replySlot}
           />
         </>

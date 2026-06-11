@@ -26,8 +26,22 @@ async function installNativeMultipartGlobals(): Promise<void> {
   (globalThis as unknown as { Blob: typeof Blob }).Blob = NodeBlob as unknown as typeof Blob;
 }
 
+// jsdom does not implement URL.createObjectURL / revokeObjectURL. The B2
+// download path (fetch→blob→objectURL) calls them; provide inert stubs so the
+// page-level tests can drive a download without a real save (the download
+// hooks are unit-tested via the injectable seam in AttachmentList.test.tsx).
+function installObjectUrlStubs(): void {
+  const u = globalThis.URL as unknown as {
+    createObjectURL?: (b: Blob) => string;
+    revokeObjectURL?: (s: string) => void;
+  };
+  if (typeof u.createObjectURL !== "function") u.createObjectURL = () => "blob:stub";
+  if (typeof u.revokeObjectURL !== "function") u.revokeObjectURL = () => {};
+}
+
 beforeAll(async () => {
   await installNativeMultipartGlobals();
+  installObjectUrlStubs();
   server.listen({ onUnhandledRequest: "error" });
 });
 afterEach(() => {

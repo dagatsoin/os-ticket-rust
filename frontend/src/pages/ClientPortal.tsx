@@ -11,6 +11,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useStores } from "../stores/StoreContext";
 import { CredentialForm, type CredentialField } from "../components/CredentialForm";
 import { ThreadView, type ThreadEntry } from "../components/ThreadView";
+import { AttachmentList } from "../components/AttachmentList";
 import type { ClientThreadEntry } from "../stores/ClientPortalStore";
 
 const CLIENT_LOGIN_FIELDS: CredentialField[] = [
@@ -30,8 +31,16 @@ function toThreadEntries(entries: ClientThreadEntry[]): ThreadEntry[] {
       id: e.id,
       author: e.poster,
       timestamp: "",
-      body: e.body,
       kind: e.threadType === "R" ? "response" : "message",
+      body: (
+        <>
+          <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
+            {e.body}
+          </Typography>
+          {/* Client downloads use the session-bound route (no ticketId, §8). */}
+          <AttachmentList realm="client" attachments={e.attachments} />
+        </>
+      ),
     }));
 }
 

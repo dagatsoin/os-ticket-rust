@@ -6,13 +6,19 @@
 // @implements BS-002: staff login + authenticated profile.
 // @implements BS-020: open-tickets queue (number/subject/email/created).
 // @implements BS-021: ticket detail (full thread) + reply-then-refresh.
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { observer } from "mobx-react-lite";
 import {
   Alert,
   Box,
   Button,
+  Divider,
+  FormControl,
+  FormHelperText,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -32,8 +38,17 @@ import { useStores } from "../stores/StoreContext";
 import { CredentialForm, type CredentialField } from "../components/CredentialForm";
 import { ThreadView, type ThreadEntry } from "../components/ThreadView";
 import { AttachmentList } from "../components/AttachmentList";
+import { AttachmentChip } from "../components/AttachmentChip";
 import { AnsweredBadge } from "../components/AnsweredBadge";
+import {
+  ALLOWED_EXTENSIONS,
+  ALLOWED_EXTENSIONS_LABEL,
+  MAX_FILE_SIZE_LABEL,
+} from "../utils/validateAttachment";
 import type { StaffThreadEntry } from "../stores/StaffTicketStore";
+
+/** `accept` for the reply own-file input (seeded allow-list). */
+const REPLY_FILE_ACCEPT = ALLOWED_EXTENSIONS.join(",");
 
 const STAFF_LOGIN_FIELDS: CredentialField[] = [
   { name: "username", label: "Username", required: true, autoComplete: "username" },
@@ -173,11 +188,11 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
   const { staffTickets } = useStores();
   const { id } = useParams();
   const ticketId = Number(id);
-  const [replyText, setReplyText] = useState("");
 
   useEffect(() => {
     if (Number.isFinite(ticketId)) {
       void staffTickets.loadDetail(ticketId);
+      void staffTickets.loadCanned(ticketId);
     }
     return () => staffTickets.clearDetail();
   }, [staffTickets, ticketId]);
@@ -185,14 +200,20 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
   const detail = staffTickets.detail;
 
   async function handleReply() {
-    const body = replyText.trim();
-    if (!body) return;
+    if (!staffTickets.canReply) return;
     try {
-      await staffTickets.reply(ticketId, body);
-      setReplyText("");
+      await staffTickets.reply(ticketId);
     } catch {
       // Error surfaced via staffTickets.replyError.
     }
+  }
+
+  function handleCannedChange(value: string) {
+    if (value === "") {
+      staffTickets.clearCanned();
+      return;
+    }
+    void staffTickets.selectCanned(ticketId, Number(value));
   }
 
   const replySlot = (
@@ -202,19 +223,87 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
         {staffTickets.replyError ? (
           <Alert severity="error">{staffTickets.replyError}</Alert>
         ) : null}
+
+        {/* Canned-response dropdown: selecting one fills the textarea (D3 AC-1/2). */}
+        <FormControl fullWidth size="small" disabled={staffTickets.cannedList.length === 0}>
+          <InputLabel id="canned-response-label">Canned response</InputLabel>
+          <Select
+            labelId="canned-response-label"
+            label="Canned response"
+            value={staffTickets.selectedCannedId === null ? "" : String(staffTickets.selectedCannedId)}
+            onChange={(e) => handleCannedChange(e.target.value)}
+            data-testid="canned-select"
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {staffTickets.cannedList.map((c) => (
+              <MenuItem key={c.id} value={String(c.id)}>
+                {c.title}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
         <TextField
           label="Reply"
           multiline
           rows={4}
           fullWidth
-          value={replyText}
-          onChange={(e) => setReplyText(e.target.value)}
+          value={staffTickets.replyBody}
+          onChange={(e) => staffTickets.setReplyBody(e.target.value)}
+          inputProps={{ "data-testid": "reply-textarea" }}
         />
+
+        {/* Read-only chips carried by the selected canned response (D3 AC-3). */}
+        {staffTickets.cannedAttachments.length > 0 ? (
+          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+            {staffTickets.cannedAttachments.map((att) => (
+              <AttachmentChip
+                key={att.id}
+                label={att.name}
+                readOnlyMarker="from canned response"
+              />
+            ))}
+          </Stack>
+        ) : null}
+
+        {/* Own-file input (reuses validateAttachment via the store) (D3 AC-4). */}
+        <Box>
+          <Button variant="outlined" component="label" size="small" data-testid="reply-file-button">
+            {staffTickets.replyFile ? "Change file" : "Attach a file (optional)"}
+            <input
+              type="file"
+              hidden
+              accept={REPLY_FILE_ACCEPT}
+              data-testid="reply-file-input"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) staffTickets.setReplyFile(f);
+                e.target.value = "";
+              }}
+            />
+          </Button>
+          {staffTickets.replyFile ? (
+            <Box sx={{ mt: 1 }}>
+              <AttachmentChip
+                label={staffTickets.replyFile.name}
+                onClick={() => staffTickets.clearReplyFile()}
+              />
+            </Box>
+          ) : null}
+          <FormHelperText error={Boolean(staffTickets.replyFileError)} data-testid="reply-file-helper">
+            {staffTickets.replyFileError ??
+              `Allowed types: ${ALLOWED_EXTENSIONS_LABEL}. Max size: ${MAX_FILE_SIZE_LABEL}.`}
+          </FormHelperText>
+        </Box>
+
+        <Divider />
         <Box>
           <Button
             variant="contained"
             onClick={() => void handleReply()}
-            disabled={staffTickets.replying || replyText.trim() === ""}
+            disabled={!staffTickets.canReply}
           >
             {staffTickets.replying ? "Sending…" : "Send Reply"}
           </Button>

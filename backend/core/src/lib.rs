@@ -10,6 +10,7 @@
 
 pub mod attachment;
 pub mod blob;
+pub mod canned;
 pub mod csrf;
 pub mod error;
 pub mod hashing;
@@ -27,6 +28,10 @@ pub use attachment::{
     DownloadFile, DEFAULT_MIME,
 };
 pub use blob::{is_sha256_hex, sha256_hex, BlobError, BlobStore, BLOB_ROOT_ENV};
+pub use canned::{
+    list_offerable, load_offerable_response, load_ticket_vars, CannedListItem, CannedResponse,
+    TicketVars,
+};
 pub use csrf::{
     new_csrf_token, verify_double_submit, CLIENT_CSRF_COOKIE, CSRF_HEADER, STAFF_CSRF_COOKIE,
 };

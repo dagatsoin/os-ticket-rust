@@ -7,8 +7,10 @@
 
 pub mod attachments;
 pub mod auth;
+pub mod canned;
 pub mod client;
 pub mod config;
+pub mod config_keys;
 pub mod dev;
 pub mod downloads;
 pub mod health;
@@ -59,6 +61,12 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
         .route("/api/staff/tickets", get(staff::list_tickets))
         .route("/api/staff/tickets/:id", get(staff::ticket_detail))
         .route("/api/staff/tickets/:id/reply", post(staff::reply))
+        // Canned-response fetch (staff realm, read-only) — TS-M2-D2.
+        .route("/api/staff/tickets/:id/canned", get(canned::list_canned))
+        .route(
+            "/api/staff/tickets/:id/canned/:cannedId",
+            get(canned::get_canned),
+        )
         // Staff attachment download (parent-ticket gate, §8) — TS-M2-B1.
         .route(
             "/api/staff/tickets/:ticketId/attachments/:attachmentId",

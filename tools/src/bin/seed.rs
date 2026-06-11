@@ -15,7 +15,8 @@
 //! ```
 //!
 //! @implements BS-091: idempotent seed task.
-//! @implements TS-M2-prep: `--reset` ticket-data purge (truncation half).
+//! @implements TS-M2-prep: `--reset` ticket-data purge (truncation +
+//!   orphan-blob reclamation), preserving the seeded canned `policy.txt`.
 
 use anyhow::Context;
 
@@ -55,7 +56,8 @@ async fn main() -> anyhow::Result<()> {
             .await
             .context("resetting dev database")?;
         println!(
-            "reset ok: purged {} → reseeded department#{} group#{} staff#{} ({} / {})",
+            "reset ok: purged {} → reseeded department#{} group#{} staff#{} ({} / {}); \
+             orphan blobs reclaimed (seeded canned policy.txt preserved)",
             tools::RESET_TRUNCATE_TABLES.join(", "),
             r.dept_id,
             r.group_id,
@@ -63,12 +65,6 @@ async fn main() -> anyhow::Result<()> {
             tools::STAFF_USERNAME,
             tools::STAFF_PASSWORD,
         );
-        // TODO (TS-M2-prep, blob-reclamation half — DEFERRED to after D1):
-        // prune orphaned `attachment_file` rows + their on-disk blobs under
-        // BLOB_ROOT that are no longer referenced after the purge, preserving
-        // the seeded `policy.txt` canned blob (still referenced by the re-seeded
-        // canned response). Needs the D1 seeded canned responses to know what to
-        // keep; the ticket stays inProgress until that half lands.
         r
     } else {
         tools::seed(&pool).await.context("seeding fixtures")?

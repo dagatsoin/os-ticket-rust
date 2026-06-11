@@ -7,10 +7,12 @@
 //!   cargo test -p tools --test reset
 //! ```
 //!
-//! @implements TS-M2-prep: ticket-data truncation half of `--reset`
-//!   (AC-1 purge, AC-2 preserve baseline, AC-4 plain seed non-destructive) +
-//!   the production-safety dev-DB guard. AC-3 (blob reclamation) is DEFERRED.
+//! @implements TS-M2-prep: `--reset` (AC-1 purge, AC-2 preserve baseline,
+//!   AC-3 orphan-blob reclamation preserving the seeded canned blob, AC-4 plain
+//!   seed non-destructive) + the production-safety dev-DB guard.
 
+use ost_core::attachment::{insert_attachment, AttachmentSpec};
+use ost_core::BlobStore;
 use sqlx::postgres::PgPool;
 
 fn test_db_url() -> Option<String> {
@@ -22,13 +24,6 @@ async fn migrated_pool() -> Option<PgPool> {
     let pool = db::connect(&url).await.expect("connect");
     db::migrate(&pool).await.expect("migrate");
     Some(pool)
-}
-
-async fn count(pool: &PgPool, table: &str) -> i64 {
-    sqlx::query_scalar(&format!("SELECT count(*) FROM {table}"))
-        .fetch_one(pool)
-        .await
-        .unwrap()
 }
 
 async fn ticket_exists(pool: &PgPool, ticket_id: i64) -> bool {
@@ -215,10 +210,17 @@ async fn reset_purges_tickets_and_preserves_baseline() {
             .unwrap();
     assert!(agent_hash.is_some(), "seeded agent account preserved");
 
-    // attachment_file rows are intentionally left untouched by the truncation
-    // half — blob/file reclamation is the DEFERRED AC-3 (after D1). Documented
-    // here so the deferral is explicit, not an oversight.
-    let _orphans = count(&pool, "attachment_file").await; // not asserted (deferred)
+    // Orphan-blob reclamation (AC-3) is covered by its own test below; here we
+    // only assert the canned policy.txt file row survives the reset (it is bound
+    // by canned_attachment, so it is never an orphan).
+    let canned_files: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM attachment_file af
+         WHERE EXISTS (SELECT 1 FROM canned_attachment ca WHERE ca.file_id = af.id)",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert!(canned_files >= 1, "the seeded canned policy.txt file survives");
 }
 
 /// AC-4: plain `seed` (no flag) is non-destructive — it never purges tickets.
@@ -300,8 +302,8 @@ fn session_is_in_the_truncate_set() {
         "staff",
         "sla",
         "config",
-        "attachment_file", // file/blob reclamation is the DEFERRED half
-        "canned_response", // arrives in D1 — preserved by omission
+        "attachment_file", // pruned selectively (orphans only), never TRUNCATEd
+        "canned_response", // seeded canned samples — preserved by omission
         "canned_attachment",
     ] {
         assert!(
@@ -309,4 +311,121 @@ fn session_is_in_the_truncate_set() {
             "`{preserved}` must be preserved (not truncated)"
         );
     }
+}
+
+/// The blob store resolved the same way the reclamation + seed do (from
+/// `BLOB_ROOT`, default `<cwd>/var/blobs`), so the test agrees on locations.
+fn env_store() -> BlobStore {
+    BlobStore::from_env(std::env::current_dir().unwrap_or_else(|_| ".".into()))
+}
+
+/// Create a ticket whose `M` entry binds a freshly-stored unique blob (a real
+/// on-disk file + attachment_file row), so the reset has a ticket-only blob to
+/// reclaim. Returns (ticket_id, the blob hash).
+async fn make_ticket_with_stored_blob(pool: &PgPool, store: &BlobStore) -> (i64, String) {
+    let n = nonce();
+    let bytes = format!("ticket-only-blob-{n}").into_bytes();
+    let spec = AttachmentSpec::new(format!("doc-{n}.pdf"), "application/pdf", bytes.clone());
+    let hash = store.put(&bytes).await.unwrap();
+
+    let dept_id: i32 = sqlx::query_scalar("SELECT dept_id FROM department LIMIT 1")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let ticket_id: i64 = sqlx::query_scalar(
+        r#"INSERT INTO ticket ("ticketID", dept_id, email) VALUES ($1, $2, $3)
+           RETURNING ticket_id"#,
+    )
+    .bind((n % 900000) as i64 + 100000)
+    .bind(dept_id)
+    .bind(format!("blob-{n}@x.com"))
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    let thread_id: i64 = sqlx::query_scalar(
+        "INSERT INTO ticket_thread (ticket_id, thread_type, body) VALUES ($1, 'M', 'hi') RETURNING id",
+    )
+    .bind(ticket_id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+    insert_attachment(&mut tx, ticket_id, thread_id, "M", &spec)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    (ticket_id, hash)
+}
+
+/// AC-3: `--reset` reclaims orphaned blobs (ticket-only) but keeps referenced
+/// ones (the seeded canned policy.txt, bound by canned_attachment).
+#[tokio::test]
+async fn reset_reclaims_orphan_blobs_keeps_canned() {
+    let Some(pool) = migrated_pool().await else {
+        eprintln!("TEST_DATABASE_URL unset — skipping reset_reclaims_orphan_blobs_keeps_canned");
+        return;
+    };
+    // Serialize against the other ticket-mutating reset tests (they TRUNCATE).
+    let _lock = acquire_reset_lock(&pool).await;
+
+    let store = env_store();
+    // Seed first (so the canned policy.txt blob + binding exist).
+    tools::seed(&pool).await.expect("seed baseline + canned");
+
+    // The canned policy.txt blob: capture its hash (still referenced after reset).
+    let canned_hash: String = sqlx::query_scalar(
+        "SELECT af.hash FROM attachment_file af
+         JOIN canned_attachment ca ON ca.file_id = af.id
+         JOIN canned_response cr ON cr.canned_id = ca.canned_id
+         WHERE cr.title = $1
+         LIMIT 1",
+    )
+    .bind(tools::CANNED_TITLE_POLICY)
+    .fetch_one(&pool)
+    .await
+    .expect("seeded canned blob must exist");
+    assert!(
+        store.exists(&canned_hash).await.unwrap(),
+        "canned policy.txt blob is on disk before reset"
+    );
+
+    // Create a ticket-with-stored-blob → a ticket-only (orphan-after-purge) blob.
+    let (ticket_id, ticket_hash) = make_ticket_with_stored_blob(&pool, &store).await;
+    assert!(
+        store.exists(&ticket_hash).await.unwrap(),
+        "ticket-only blob is on disk before reset"
+    );
+    // (Distinct content ⇒ distinct hashes ⇒ no shared-blob confound.)
+    assert_ne!(ticket_hash, canned_hash);
+
+    // Reset: truncates the ticket bindings, re-seeds canned, then reclaims.
+    tools::reset(&pool).await.expect("reset");
+
+    // The ticket-only blob row + on-disk file are reclaimed.
+    assert!(!ticket_exists(&pool, ticket_id).await, "ticket purged");
+    let ticket_file_rows: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM attachment_file WHERE hash = $1")
+            .bind(&ticket_hash)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(ticket_file_rows, 0, "orphan attachment_file row reclaimed");
+    assert!(
+        !store.exists(&ticket_hash).await.unwrap(),
+        "orphan blob removed from disk"
+    );
+
+    // The canned policy.txt blob row + on-disk file survive (still referenced).
+    let canned_file_rows: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM attachment_file WHERE hash = $1")
+            .bind(&canned_hash)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(canned_file_rows, 1, "canned attachment_file row preserved");
+    assert!(
+        store.exists(&canned_hash).await.unwrap(),
+        "seeded canned policy.txt blob preserved on disk"
+    );
 }

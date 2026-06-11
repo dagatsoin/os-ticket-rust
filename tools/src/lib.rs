@@ -367,13 +367,16 @@ pub async fn assert_dev_database(pool: &PgPool) -> anyhow::Result<String> {
 /// `TRUNCATE ... CASCADE RESTART IDENTITY` resets the identity sequences too, so
 /// a fresh sweep starts ticket numbering from a clean slate.
 ///
-/// DEFERRED (after D1): blob reclamation under `BLOB_ROOT` — prune
-/// `attachment_file` rows + their on-disk blobs that are no longer referenced
-/// after the purge, preserving the seeded `policy.txt` canned blob. That half
-/// needs the D1 seeded canned responses to know what to preserve; it is NOT
-/// implemented here. See the ticket's AC-3 and the TODO in the binary.
+/// Blob reclamation (AC-3): after the re-seed (so the canned `policy.txt` binding
+/// is back in place), [`reclaim_orphan_blobs`] prunes every `attachment_file`
+/// that is no longer referenced by ANY `ticket_attachment` OR `canned_attachment`
+/// row, plus its on-disk blob under `BLOB_ROOT`. The truncation removed all
+/// `ticket_attachment` bindings, so the only surviving files are the canned ones
+/// — the seeded `policy.txt` is preserved (still bound by `canned_attachment`)
+/// while ticket-only blobs are reclaimed.
 ///
-/// @implements TS-M2-prep: ticket-data truncation half of `--reset`.
+/// @implements TS-M2-prep: ticket-data truncation + blob-reclamation halves of
+///   `--reset` (AC-1 purge, AC-2 preserve baseline, AC-3 reclaim orphan blobs).
 pub async fn reset(pool: &PgPool) -> anyhow::Result<SeedResult> {
     assert_dev_database(pool).await?;
 
@@ -388,8 +391,73 @@ pub async fn reset(pool: &PgPool) -> anyhow::Result<SeedResult> {
     sqlx::query(&stmt).execute(&mut *tx).await?;
     tx.commit().await?;
 
-    // Restore the baseline (dept/group/agent + reference + M2 config keys).
-    seed(pool).await
+    // Restore the baseline (dept/group/agent + reference + M2 config keys + the
+    // seeded canned responses, which re-establish the canned policy.txt binding).
+    let result = seed(pool).await?;
+
+    // Reclaim now-orphaned blobs (the canned policy.txt is preserved by its
+    // canned_attachment reference, re-created by the seed above).
+    reclaim_orphan_blobs(pool).await?;
+
+    Ok(result)
+}
+
+/// Prune every `attachment_file` no longer referenced by ANY `ticket_attachment`
+/// OR `canned_attachment` row, removing both the metadata row and its on-disk
+/// blob under `BLOB_ROOT`. Returns the number of files reclaimed.
+///
+/// Called by [`reset`] after the re-seed: a file is an orphan exactly when no
+/// binding of either kind points at it. The seeded canned `policy.txt` is never
+/// an orphan (the re-seeded `canned_attachment` binds it), so it survives; a
+/// ticket-only file (all of whose `ticket_attachment` bindings were truncated)
+/// is reclaimed.
+///
+/// Blob removal is idempotent ([`BlobStore::remove`] treats a missing file as
+/// success), and the DB row is deleted in the same pass; a blob shared by
+/// another still-referenced row is never touched because that row would not be
+/// in the orphan set. Resolved against `BLOB_ROOT` (§1) like every binary.
+///
+/// @implements TS-M2-prep (AC-3): blob/file reclamation after the purge,
+///   preserving still-referenced (canned) blobs.
+pub async fn reclaim_orphan_blobs(pool: &PgPool) -> anyhow::Result<u64> {
+    // Find orphan files: referenced by neither a ticket nor a canned binding.
+    let orphans: Vec<(i64, String)> = sqlx::query_as(
+        "SELECT af.id, af.hash
+         FROM attachment_file af
+         WHERE NOT EXISTS (SELECT 1 FROM ticket_attachment ta WHERE ta.file_id = af.id)
+           AND NOT EXISTS (SELECT 1 FROM canned_attachment ca WHERE ca.file_id = af.id)",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    if orphans.is_empty() {
+        return Ok(0);
+    }
+
+    let store = BlobStore::from_env(std::env::current_dir().unwrap_or_else(|_| ".".into()));
+    let mut reclaimed = 0u64;
+    for (id, hash) in orphans {
+        // Remove the on-disk blob first (idempotent), then the metadata row.
+        // Only remove the blob when no OTHER attachment_file row shares this hash
+        // (the hash is UNIQUE, so this orphan owns its blob exclusively — but the
+        // guard keeps the invariant explicit and safe if that ever changes).
+        let shared: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM attachment_file WHERE hash = $1 AND id <> $2",
+        )
+        .bind(&hash)
+        .bind(id)
+        .fetch_one(pool)
+        .await?;
+        if shared == 0 {
+            store.remove(&hash).await?;
+        }
+        sqlx::query("DELETE FROM attachment_file WHERE id = $1")
+            .bind(id)
+            .execute(pool)
+            .await?;
+        reclaimed += 1;
+    }
+    Ok(reclaimed)
 }
 
 /// Seed the four M2 config keys with their pinned defaults, idempotently.

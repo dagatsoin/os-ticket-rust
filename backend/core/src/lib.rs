@@ -20,6 +20,7 @@ pub mod session;
 pub mod ticket;
 pub mod upload;
 pub mod validation;
+pub mod variable;
 
 pub use attachment::{
     insert_attachment, load_attachments_by_ref, load_download_file, AttachmentSpec, AttachmentView,
@@ -50,3 +51,4 @@ pub use validation::{
     is_email, validate_email_field, validate_password, validate_required, FieldError,
     PASSWORD_MIN_LEN,
 };
+pub use variable::{VarContext, VariableReplacer, URL_TOKEN};

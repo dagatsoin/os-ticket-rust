@@ -5,6 +5,8 @@
 //    (POST/PUT/PATCH/DELETE). Reads XSRF-TOKEN-STAFF or XSRF-TOKEN-CLIENT per realm.
 //  - Parse the shared JSON error envelope into a normalised ApiError (top-level + fields).
 //  - On 401, invoke onUnauthorized(loginPath) so the host can redirect to the realm login.
+//  - Pass a FormData body through untouched (no JSON.stringify, no Content-Type) so the
+//    browser sets the multipart boundary, while keeping CSRF/envelope/401 intact (TS-M2-A0).
 import { ApiError, type ErrorEnvelope, type Realm } from "./types";
 
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
@@ -87,20 +89,29 @@ export class ApiClient {
       ...opts?.headers,
     };
 
-    if (body !== undefined) headers["Content-Type"] = "application/json";
+    // FormData bodies (multipart/form-data uploads — /open file input, reply
+    // composer) pass through untouched: NO JSON.stringify and NO Content-Type,
+    // so the browser sets the multipart boundary. See ROADMAP Decisions (M2) §13.
+    const isFormData = body instanceof FormData;
+
+    if (body !== undefined && !isFormData) headers["Content-Type"] = "application/json";
 
     // CSRF double-submit: reflect the realm XSRF cookie into X-CSRFToken on mutations.
+    // Preserved identically on the multipart path.
     if (MUTATING.has(method)) {
       const token = readCookie(XSRF_COOKIE[this.realm]);
       if (token) headers["X-CSRFToken"] = token;
     }
+
+    const requestBody: BodyInit | undefined =
+      body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body);
 
     const res = await fetch(path, {
       method,
       headers,
       credentials: "include",
       signal: opts?.signal,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: requestBody,
     });
 
     if (res.status === 401) {

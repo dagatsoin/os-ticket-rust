@@ -3,9 +3,33 @@
 import "@testing-library/jest-dom/vitest";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { cleanup } from "@testing-library/react";
+import { File as NodeFile, Blob as NodeBlob } from "node:buffer";
 import { server } from "./mockServer";
 
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+// --- multipart globals (TS-M2-A0; consumed by A4 / D3 upload tests) ---
+// The jsdom environment overrides FormData/File/Blob with its own classes.
+// When a jsdom FormData is passed to fetch() (undici, via MSW node
+// interception), serialization deadlocks `request.arrayBuffer()`/`formData()`.
+// Restore the platform FormData (recovered from a simple multipart Response —
+// undici did not clobber Response/Request/fetch) plus Node's File/Blob, so a
+// FormData body the apiClient sends serializes into a real, readable multipart
+// stream. The mock handlers parse that stream with readMultipart() (manual
+// parser) rather than undici's formData(), which is broken under jsdom.
+async function installNativeMultipartGlobals(): Promise<void> {
+  const form = await new Response(
+    '--b\r\nContent-Disposition: form-data; name="x"\r\n\r\n1\r\n--b--\r\n',
+    { headers: { "content-type": "multipart/form-data; boundary=b" } },
+  ).formData();
+  (globalThis as unknown as { FormData: typeof FormData }).FormData =
+    form.constructor as typeof FormData;
+  (globalThis as unknown as { File: typeof File }).File = NodeFile as unknown as typeof File;
+  (globalThis as unknown as { Blob: typeof Blob }).Blob = NodeBlob as unknown as typeof Blob;
+}
+
+beforeAll(async () => {
+  await installNativeMultipartGlobals();
+  server.listen({ onUnhandledRequest: "error" });
+});
 afterEach(() => {
   cleanup();
   server.resetHandlers();

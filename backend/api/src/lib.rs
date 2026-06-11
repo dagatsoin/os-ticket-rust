@@ -9,6 +9,7 @@ pub mod auth;
 pub mod config;
 pub mod dev;
 pub mod health;
+pub mod staff;
 pub mod state;
 pub mod tickets;
 
@@ -50,6 +51,8 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
         // Auth — both login POSTs are unauthenticated + CSRF-exempt (Decision 2).
         .route("/api/staff/login", post(auth::routes::staff_login))
         .route("/api/staff/logout", post(auth::routes::staff_logout))
+        // Staff realm — gated by the StaffSession extractor (401 without it).
+        .route("/api/staff/me", get(staff::me))
         .route("/api/client/login", post(auth::routes::client_login))
         .route("/api/client/logout", post(auth::routes::client_logout))
         // Env-gated dev endpoint (404 in production).

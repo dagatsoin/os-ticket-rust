@@ -183,6 +183,12 @@ tickets reference this section by number.
     and the 401 → realm-login redirect. The MSW harness gains multipart-capable handlers
     (`request.formData()`). This is **TS-M2-A0**, a blocker for A4, the D4 reply path (via D3), and D3.
 
+14. **Shared frontend primitives ownership** — the **AttachmentChip presentational shell**
+    (`{label, icon, onClick?, readOnlyMarker?}` — render-only, no fetch) + the client-side
+    **`validateAttachment(file)` pre-check helper** are OWNED by **TS-M2-A4**; **TS-M2-B2** injects the
+    download `onClick` (fetch→blob→objectURL per §9); **TS-M2-D3** injects the readOnly / "from canned
+    response" marker and reuses `validateAttachment` for its own-file input. (A4, B2, D3)
+
 ## Architecture / scope decisions
 
 1. **PostgreSQL replaces MySQL** — *DECISION POINT, confirm with user.* The legacy app is MySQL

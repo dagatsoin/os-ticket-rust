@@ -18,7 +18,7 @@ different surface; this is the composer.
 ## Impact
 
 - update(ui): the staff reply box gains a **"Canned response" dropdown** populated from the D2 list route (enabled + dept-scoped only).
-- update(ui): selecting a response calls the D2 detail route and **fills the reply textarea** with the substituted body; renders the carried attachments as **read-only AttachmentChips** marked "from canned response" (sourced from the D2 `attachments` array, §7).
+- update(ui): selecting a response calls the D2 detail route and **fills the reply textarea** with the substituted body; renders the carried attachments as **read-only AttachmentChips** marked "from canned response" (sourced from the D2 `attachments` array, §7). **Note:** reuses A4's AttachmentChip (readOnly + marker) and the `validateAttachment` helper for the own-file input (ROADMAP M2 Decisions §14).
 - update(ui): add an own-file `<input type=file>` to the reply box.
 - update(ui): submit the reply as `multipart/form-data` via the FormData-aware apiClient (TS-M2-A0), **retaining the selected `cannedId`** plus the own `attachment` part so the D4 route re-renders + binds server-side (§2, §10).
 

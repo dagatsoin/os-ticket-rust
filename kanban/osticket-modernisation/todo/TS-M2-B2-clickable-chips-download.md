@@ -22,7 +22,7 @@ object-URL download** (NOT a plain anchor) so a 403/404 surfaces a **visible inl
 
 ## Impact
 
-- add(ui): a reusable **AttachmentChip** rendered on every thread entry in BOTH the staff detail view AND the client portal thread, sourced from each entry's `attachments` array (§7).
+- add(ui): a reusable **AttachmentChip** rendered on every thread entry in BOTH the staff detail view AND the client portal thread, sourced from each entry's `attachments` array (§7). **Note:** does not re-create the chip shell; injects `onClick` into A4's AttachmentChip (ROADMAP M2 Decisions §14).
 - update(ui): clicking a chip **fetches with credentials**, turns the response into a blob + object-URL to trigger the browser download (§9); a 403/404 renders a visible inline error near the chip instead of navigating.
 - update(ui): the client portal uses the **session-bound client route** (§8); the staff detail uses the staff route.
 

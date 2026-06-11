@@ -10,6 +10,7 @@ pub mod auth;
 pub mod client;
 pub mod config;
 pub mod dev;
+pub mod downloads;
 pub mod health;
 pub mod staff;
 pub mod state;
@@ -58,10 +59,20 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
         .route("/api/staff/tickets", get(staff::list_tickets))
         .route("/api/staff/tickets/:id", get(staff::ticket_detail))
         .route("/api/staff/tickets/:id/reply", post(staff::reply))
+        // Staff attachment download (parent-ticket gate, §8) — TS-M2-B1.
+        .route(
+            "/api/staff/tickets/:ticketId/attachments/:attachmentId",
+            get(downloads::staff_download),
+        )
         .route("/api/client/login", post(auth::routes::client_login))
         .route("/api/client/logout", post(auth::routes::client_logout))
         // Client realm — gated by the ClientSession extractor (401 without it).
         .route("/api/client/ticket", get(client::ticket))
+        // Client attachment download (session-bound, NO ticketId param, §8) — B1.
+        .route(
+            "/api/client/ticket/attachments/:attachmentId",
+            get(downloads::client_download),
+        )
         // Env-gated dev endpoints (404 in production).
         .route("/api/dev/mailbox", get(dev::mailbox))
         .route("/api/dev/seed-ticket", post(dev::seed_ticket))

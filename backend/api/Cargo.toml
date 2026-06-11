@@ -29,6 +29,8 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 dotenvy = { workspace = true }
 anyhow = { workspace = true }
+# TS-M2-B1 — stream a stored blob back via ReaderStream + Body::from_stream (§4).
+tokio-util = { workspace = true }
 
 [dev-dependencies]
 tower = { workspace = true }

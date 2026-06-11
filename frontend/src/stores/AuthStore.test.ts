@@ -60,8 +60,8 @@ describe("Auth stores (staff + client)", () => {
 
   it("clears the user on logout", async () => {
     server.use(
-      http.post("/api/tickets/login", () => HttpResponse.json({ id: 3, email: "c@x.io" })),
-      http.post("/api/tickets/logout", () => HttpResponse.json({ ok: true })),
+      http.post("/api/client/login", () => HttpResponse.json({ id: 3, email: "c@x.io" })),
+      http.post("/api/client/logout", () => HttpResponse.json({ ok: true })),
     );
 
     await root.clientAuth.login({ email: "c@x.io", token: "t" });

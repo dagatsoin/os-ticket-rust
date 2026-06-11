@@ -11,6 +11,7 @@
 //!   the agent (AC-1/AC-2).
 //! @implements FS-040: notification recorded post-commit, via dev mailbox (AC-3).
 
+use api::state::MailerHandle;
 use api::{app, AppEnv, AppState};
 use axum::body::Body;
 use axum::Router;
@@ -36,7 +37,14 @@ async fn seeded_pool() -> Option<PgPool> {
 }
 
 fn dev_app(pool: PgPool) -> Router {
-    app(AppState::with_pool(pool).with_app_env(AppEnv::Development), ORIGIN)
+    // Force the stub mailer so the dev-mailbox assertions are deterministic
+    // regardless of an ambient SMTP_HOST in the test shell (TS-M2-E3).
+    app(
+        AppState::with_pool(pool)
+            .with_app_env(AppEnv::Development)
+            .with_mailer(MailerHandle::stub()),
+        ORIGIN,
+    )
 }
 
 fn set_cookie_value(resp: &http::Response<Body>, name: &str) -> Option<String> {
@@ -167,8 +175,11 @@ async fn reply_records_notification_after_commit() {
         eprintln!("TEST_DATABASE_URL unset — skipping reply_records_notification_after_commit");
         return;
     };
-    // A single app instance so the mailbox sees the same mailer store.
-    let state = AppState::with_pool(pool.clone()).with_app_env(AppEnv::Development);
+    // A single app instance so the mailbox sees the same mailer store. Force the
+    // stub mailer so the dev mailbox records intents (deterministic vs SMTP_HOST).
+    let state = AppState::with_pool(pool.clone())
+        .with_app_env(AppEnv::Development)
+        .with_mailer(MailerHandle::stub());
     let router = app(state, ORIGIN);
     let id = make_ticket(&pool, "mailbox@example.com").await;
 

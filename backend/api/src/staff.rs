@@ -11,7 +11,6 @@ use serde::{Deserialize, Serialize};
 
 use ost_core::attachment::load_attachments_by_ref;
 use ost_core::canned::{load_offerable_response, load_ticket_vars};
-use ost_core::mailer::OutboundMail;
 use ost_core::permission::PERM_CAN_POST_REPLY;
 use ost_core::ticket::{load_thread, post_staff_reply, NewThreadEntry};
 use ost_core::variable::VariableReplacer;
@@ -301,15 +300,15 @@ struct ReplyInput {
 /// isanswered (§3): ANY staff reply — plain, own-file, or canned-assisted —
 /// marks the ticket `isanswered = true` (the M1-faithful semantics), authored by
 /// the posting agent (documented divergence from legacy's SYSTEM actor). The
-/// intended client notification is recorded by the stub mailer only after the DB
-/// commit. Returns the updated thread (the detail shape, with `isanswered` + each
-/// entry's `attachments`).
+/// client reply notification (notice wrapper + packaged template, TS-M2-E3) is
+/// sent through the active mailer only after the DB commit. Returns the updated
+/// thread (the detail shape, with `isanswered` + each entry's `attachments`).
 ///
 /// @implements BS-021: append `R`.
 /// @implements FS-022.14: canned reuse — substituted body + carried attachments.
 /// @implements ROADMAP §3: any staff reply marks the ticket answered.
 /// @implements FS-021.3 / FS-021.16: optional own attachment bound to the entry.
-/// @implements FS-040: record the client notification only after commit.
+/// @implements FS-021.3: send the client reply notification only after commit.
 pub async fn reply(
     State(state): State<AppState>,
     StaffCsrf(session): StaffCsrf,
@@ -389,17 +388,10 @@ pub async fn reply(
     .await
     .map_err(|_| ApiError::internal("Could not append the reply"))?;
 
-    // Mailer intent recorded/delivered post-commit (TS-M2-E3 swaps in the notice
-    // wrapper + packaged template; E1 keeps a plain send through the active
-    // transport so the route compiles against the async port).
-    let mail = OutboundMail::new(
-        email.clone(),
-        format!("Ticket #{number} updated"),
-        entry.body.clone(),
-    );
-    if let Err(err) = state.mailer.active.send(mail).await {
-        tracing::warn!(error = %err, "reply notification send failed");
-    }
+    // After the commit, send the staff-reply notification to the requester via
+    // the notice wrapper + packaged template (always-send in M2, §12). Mail
+    // failure never fails the already-committed reply (TS-M2-E3).
+    crate::email_wiring::send_reply_notification(&state, pool, ticket_id).await;
 
     // Re-read the detail (now isanswered = true) so the response reflects §3.
     let detail = build_detail(

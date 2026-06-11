@@ -37,8 +37,8 @@ pub use csrf::{
     new_csrf_token, verify_double_submit, CLIENT_CSRF_COOKIE, CSRF_HEADER, STAFF_CSRF_COOKIE,
 };
 pub use email::{
-    send_autoreply, send_notice, EmailTemplate, AUTOREPLY_HEADERS, NEW_TICKET_AUTORESPONSE,
-    NOTICE_HEADERS, STAFF_REPLY_NOTIFICATION,
+    is_loop_suppressed_recipient, send_autoreply, send_notice, EmailTemplate, AUTOREPLY_HEADERS,
+    NEW_TICKET_AUTORESPONSE, NOTICE_HEADERS, STAFF_REPLY_NOTIFICATION,
 };
 pub use error::{ApiError, ErrorBody, ErrorEnvelope};
 pub use hashing::{hash_password, verify_password, HashError};

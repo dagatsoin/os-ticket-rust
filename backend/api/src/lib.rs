@@ -13,6 +13,7 @@ pub mod config;
 pub mod config_keys;
 pub mod dev;
 pub mod downloads;
+pub mod email_wiring;
 pub mod health;
 pub mod staff;
 pub mod state;

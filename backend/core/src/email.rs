@@ -63,6 +63,19 @@ pub async fn send_notice(mailer: &dyn Mailer, mail: OutboundMail) -> Result<(), 
     mailer.send(with_headers(mail, NOTICE_HEADERS)).await
 }
 
+/// Whether an autoresponse to `address` must be **suppressed** to prevent a mail
+/// loop (FS-011.12 basics): the requester address begins with `mailer-daemon@`
+/// or `postmaster@` (case-insensitive). The fuller legacy guards (the address is
+/// one of the system's own accounts, or the inbound message looks like an
+/// auto-response) belong to the M5 email source and are out of M2 scope.
+///
+/// @implements FS-011.12: autoresponse loop-prevention — daemon/postmaster guard.
+#[must_use]
+pub fn is_loop_suppressed_recipient(address: &str) -> bool {
+    let a = address.trim().to_ascii_lowercase();
+    a.starts_with("mailer-daemon@") || a.starts_with("postmaster@")
+}
+
 /// A packaged-default template: a `subject` + `body` pair carrying `%{...}`
 /// tokens, resolved through [`VariableReplacer`] (FS-040.10 / BS-040.13).
 #[derive(Debug, Clone, Copy)]
@@ -176,6 +189,15 @@ mod tests {
             !m.headers.iter().any(|(n, _)| n == "X-Autoreply"),
             "notice send carries no X-Autoreply header"
         );
+    }
+
+    #[test]
+    fn loop_suppression_matches_daemon_and_postmaster() {
+        assert!(is_loop_suppressed_recipient("mailer-daemon@example.com"));
+        assert!(is_loop_suppressed_recipient("Postmaster@Example.com"));
+        assert!(is_loop_suppressed_recipient("  postmaster@x.io "));
+        assert!(!is_loop_suppressed_recipient("mia@example.com"));
+        assert!(!is_loop_suppressed_recipient("daemon@example.com"));
     }
 
     /// AC-3 anchor: both packaged templates render with tokens substituted — the

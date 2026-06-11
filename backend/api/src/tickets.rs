@@ -58,10 +58,13 @@ pub struct CreateTicketRequest {
 /// validation failure returns **422** with the shared error envelope (file
 /// errors keyed on `attachment`); no ticket and no attachment rows are created.
 ///
-/// CSRF-exempt and unauthenticated (ROADMAP Decisions §2).
+/// CSRF-exempt and unauthenticated (ROADMAP Decisions §2). After a successful
+/// commit the new-ticket autoresponse is sent to the requester (TS-M2-E3,
+/// always-send in M2 §12; suppressed for daemon/postmaster addresses).
 ///
 /// @implements BS-011 / FS-011.8: public create + validation.
 /// @implements FS-011.7 / EC-011.5: optional attachment bound to the `M` entry.
+/// @implements FS-011.12: new-ticket autoresponse after commit.
 pub async fn create_public_ticket(
     State(state): State<AppState>,
     request: Request,
@@ -122,6 +125,11 @@ pub async fn create_public_ticket(
             (t, None)
         }
     };
+
+    // After a successful commit, send the new-ticket autoresponse to the
+    // requester (always-send in M2, §12; loop-suppression from FS-011.12). Mail
+    // failure never fails the already-committed create (TS-M2-E3).
+    crate::email_wiring::send_new_ticket_autoresponse(&state, pool, ticket.ticket_id).await;
 
     let body = Json(serde_json::json!({
         "ticketNumber": ticket.ticket_number,

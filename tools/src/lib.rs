@@ -31,6 +31,30 @@ pub const CFG_DEFAULT_STATUS: &str = "default_ticket_status";
 /// Config key holding the default priority literal.
 pub const CFG_DEFAULT_PRIORITY: &str = "default_priority";
 
+// --- TS-M2-A2: attachment + helpdesk config keys -------------------------
+//
+// @implements FS-022.13 / FS-032 (ref): the attachment config keys the upload
+//   gate (TS-M2-A2 `validate_upload`) and the create/reply paths read.
+// @implements ROADMAP M2 Decisions §6: `helpdesk_url` base URL for %{url}.
+
+/// Master switch for attachments (FS-022.13). Stored as `"true"`/`"false"`.
+pub const CFG_ALLOW_ATTACHMENTS: &str = "allow_attachments";
+/// Comma-separated extension allow-list (BS-022.13); `.*` allows all.
+pub const CFG_ALLOWED_FILETYPES: &str = "allowed_filetypes";
+/// Maximum accepted upload size in bytes (FS-022.13).
+pub const CFG_MAX_FILE_SIZE: &str = "max_file_size";
+/// Base helpdesk URL the substitution engine reads for `%{url}` (§6).
+pub const CFG_HELPDESK_URL: &str = "helpdesk_url";
+
+/// Pinned default: attachments enabled.
+pub const DEFAULT_ALLOW_ATTACHMENTS: &str = "true";
+/// Pinned default allow-list.
+pub const DEFAULT_ALLOWED_FILETYPES: &str = ".pdf,.png,.jpg,.txt,.doc";
+/// Pinned default max upload size: 1 MiB.
+pub const DEFAULT_MAX_FILE_SIZE: &str = "1048576";
+/// Pinned default helpdesk base URL (the Vite SPA origin).
+pub const DEFAULT_HELPDESK_URL: &str = "http://localhost:3702";
+
 /// What the seed produced/confirmed, returned for logging and tests.
 #[derive(Debug, Clone, Copy)]
 pub struct SeedResult {
@@ -129,6 +153,9 @@ pub async fn seed(pool: &PgPool) -> anyhow::Result<SeedResult> {
     upsert_config(&mut tx, CFG_DEFAULT_STATUS, STATUS_OPEN).await?;
     upsert_config(&mut tx, CFG_DEFAULT_PRIORITY, PRIORITY_NORMAL).await?;
 
+    // --- TS-M2-A2: attachment + helpdesk config keys (idempotent) ----------
+    seed_m2_config(&mut tx).await?;
+
     tx.commit().await?;
 
     Ok(SeedResult {
@@ -136,6 +163,35 @@ pub async fn seed(pool: &PgPool) -> anyhow::Result<SeedResult> {
         group_id,
         staff_id,
     })
+}
+
+/// Seed the four M2 config keys with their pinned defaults, idempotently.
+///
+/// `INSERT ... ON CONFLICT (key) DO NOTHING` so a re-run leaves the existing
+/// value untouched (and never duplicates a row) — these are admin-tunable
+/// defaults, not reference literals to overwrite. A fresh DB gets the pinned
+/// values; an existing DB keeps whatever an admin has since set.
+///
+/// @implements FS-022.13 / ROADMAP §6: attachment + helpdesk config seed (AC-5).
+pub async fn seed_m2_config(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+) -> anyhow::Result<()> {
+    for (key, value) in [
+        (CFG_ALLOW_ATTACHMENTS, DEFAULT_ALLOW_ATTACHMENTS),
+        (CFG_ALLOWED_FILETYPES, DEFAULT_ALLOWED_FILETYPES),
+        (CFG_MAX_FILE_SIZE, DEFAULT_MAX_FILE_SIZE),
+        (CFG_HELPDESK_URL, DEFAULT_HELPDESK_URL),
+    ] {
+        sqlx::query(
+            "INSERT INTO config (key, value) VALUES ($1, $2)
+             ON CONFLICT (key) DO NOTHING",
+        )
+        .bind(key)
+        .bind(value)
+        .execute(&mut **tx)
+        .await?;
+    }
+    Ok(())
 }
 
 /// Idempotently upsert a single config key/value pair.

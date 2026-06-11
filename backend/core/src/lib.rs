@@ -17,6 +17,7 @@ pub mod permission;
 pub mod sanitize;
 pub mod session;
 pub mod ticket;
+pub mod upload;
 pub mod validation;
 
 pub use blob::{is_sha256_hex, sha256_hex, BlobError, BlobStore, BLOB_ROOT_ENV};
@@ -35,6 +36,9 @@ pub use ticket::{
     append_thread_entry, create_ticket, create_ticket_with_numbers, load_thread,
     random_ticket_number, NewThreadEntry, NewTicket, NewTicketInput, ThreadEntry, ThreadType,
     Ticket, TicketError, TICKET_NUMBER_MAX, TICKET_NUMBER_MIN,
+};
+pub use upload::{
+    validate_upload, UploadError, UploadPolicy, ALLOW_ALL, ATTACHMENT_FIELD,
 };
 pub use validation::{
     is_email, validate_email_field, validate_password, validate_required, FieldError,

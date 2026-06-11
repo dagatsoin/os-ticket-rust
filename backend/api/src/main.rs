@@ -23,6 +23,12 @@ async fn main() -> anyhow::Result<()> {
         Some(url) => match db::connect(url).await {
             Ok(pool) => {
                 tracing::info!("connected to database");
+                // Apply pending migrations on boot. Idempotent: SQLx tracks
+                // applied migrations, so a re-run is a safe no-op (TS-M1-A2).
+                if let Err(err) = db::migrate(&pool).await {
+                    tracing::error!(error = %err, "database migration failed");
+                    return Err(err.into());
+                }
                 AppState::with_pool(pool)
             }
             Err(err) => {

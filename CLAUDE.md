@@ -68,7 +68,13 @@ container on **5432**.
 - **Container**: `backend-db-1` — image `postgres:16` — host port **5432** (maps to container
   5432). Same instance shared with other projects on this machine (ptidonjon, sandwich, brio_dev…).
 - **Superuser**: `postgres` / `pass123`.
-- **Dev database**: `osticket_dev` (created). **Staging database**: `osticket_staging` (later).
+- **Dev database**: `osticket_dev` (created). **Test database**: `osticket_test` (created — used
+  by the backend DB integration tests via `TEST_DATABASE_URL`). **Staging**: `osticket_staging` (later).
+- **Migrations** (TS-M1-A2): SQLx migrations live at the workspace-root `migrations/` directory
+  and are applied on app startup (`db::migrate`). Apply manually with
+  `DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev sqlx migrate run --source migrations`
+  (re-running is a safe no-op). Schema is the FS-091-aligned M1 subset (ticket/thread/staff/dept/
+  groups/session/config); enum-valued columns are `text` + `CHECK` (no native PG enum types).
 - **Connection string template**: `postgres://<user>:<password>@localhost:5432/<database>`
 - **`.env` example** (dev):
   ```env

@@ -13,11 +13,33 @@ use sqlx::postgres::{PgPool, PgPoolOptions};
 /// `GET /api/health` returns well under a second instead of hanging.
 pub const HEALTH_PING_TIMEOUT: Duration = Duration::from_millis(750);
 
+/// The embedded SQLx migrator for the M1 schema subset (TS-M1-A2).
+///
+/// Migrations live at the workspace-root `migrations/` directory and are baked
+/// into the binary at compile time, so the app and the seed task can apply them
+/// without shipping the `.sql` files.
+///
+/// @implements BS-091: PostgreSQL migrations for the M1 schema subset.
+pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../migrations");
+
 /// Errors that can occur while connecting to Postgres.
 #[derive(Debug, thiserror::Error)]
 pub enum DbError {
     #[error("failed to connect to the database: {0}")]
     Connect(#[from] sqlx::Error),
+    #[error("failed to run database migrations: {0}")]
+    Migrate(#[from] sqlx::migrate::MigrateError),
+}
+
+/// Apply all pending migrations against the given pool.
+///
+/// SQLx tracks applied migrations in `_sqlx_migrations`, so a second call is a
+/// safe no-op (nothing pending) — this backs the TS-M1-A2 idempotency AC.
+///
+/// @implements BS-091: idempotent `migrate` wiring (TS-M1-A2 AC-1 / AC-2).
+pub async fn migrate(pool: &PgPool) -> Result<(), DbError> {
+    MIGRATOR.run(pool).await?;
+    Ok(())
 }
 
 /// Build a Postgres connection pool from a connection string.

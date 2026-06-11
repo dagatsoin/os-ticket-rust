@@ -8,9 +8,11 @@
 //
 // @implements BS-011: public open-a-ticket submission (name/email/subject/message).
 // @implements FS-011.8: required-field + email validation at the web boundary.
+// @implements FS-011.7: optional attachment — client pre-check + multipart submit + 422 mapping (TS-M2-A4).
 import { makeAutoObservable, runInAction } from "mobx";
 import { ApiClient } from "../api/apiClient";
 import { ApiError } from "../api/types";
+import { validateAttachment } from "../utils/validateAttachment";
 
 /** The M1 open-ticket field set (no help topic / CAPTCHA / attachments). */
 export type TicketField = "name" | "email" | "subject" | "message";
@@ -44,6 +46,16 @@ export class OpenTicketStore {
   submitted = false;
   ticketNumber: string | null = null;
 
+  /**
+   * Optional attachment (TS-M2-A4). When present, submit switches to multipart.
+   * The confirmation chip label is the local `File.name` — no API echo (§11).
+   */
+  file: File | null = null;
+  /** Client-side pre-check error OR a backend 422 `attachment` field message. */
+  fileError: string | undefined = undefined;
+  /** True once a backend 422 stamped fileError (so editing the file clears it). */
+  private fileErrorFromServer = false;
+
   constructor(api: ApiClient) {
     this.api = api;
     makeAutoObservable(this, {}, { autoBind: true });
@@ -63,7 +75,30 @@ export class OpenTicketStore {
   }
 
   get canSubmit(): boolean {
-    return this.isValid && !this.submitting;
+    return this.isValid && this.fileError === undefined && !this.submitting;
+  }
+
+  /** Local filename for the confirmation chip (no API echo needed — §11). */
+  get fileName(): string | null {
+    return this.file?.name ?? null;
+  }
+
+  /**
+   * Select (or replace) the attachment, running the shared client-side pre-check
+   * (§14). A bad file is still stored so the input reflects the selection, but
+   * `fileError` is set and gates submit.
+   */
+  setFile(file: File): void {
+    this.file = file;
+    this.fileErrorFromServer = false;
+    this.fileError = validateAttachment(file);
+  }
+
+  /** Clear the selected attachment and any associated error. */
+  clearFile(): void {
+    this.file = null;
+    this.fileError = undefined;
+    this.fileErrorFromServer = false;
   }
 
   /**
@@ -114,16 +149,16 @@ export class OpenTicketStore {
     this.touchAll();
     this.serverFieldErrors = {};
     this.topError = null;
-    if (!this.isValid) return;
+    // A failed client-side pre-check (bad type / too big) blocks submit.
+    if (this.fileErrorFromServer) {
+      this.fileError = undefined;
+      this.fileErrorFromServer = false;
+    }
+    if (!this.isValid || this.fileError !== undefined) return;
 
     this.submitting = true;
     try {
-      const res = await this.api.post<CreateTicketResponse>("/api/tickets", {
-        name: this.values.name.trim(),
-        email: this.values.email.trim(),
-        subject: this.values.subject.trim(),
-        message: this.values.message.trim(),
-      });
+      const res = await this.api.post<CreateTicketResponse>("/api/tickets", this.buildBody());
       runInAction(() => {
         this.ticketNumber = String(res.ticketNumber);
         this.submitted = true;
@@ -131,7 +166,13 @@ export class OpenTicketStore {
     } catch (e) {
       runInAction(() => {
         if (e instanceof ApiError) {
-          this.serverFieldErrors = e.fields;
+          // The backend 422 `attachment` field error surfaces under the file input.
+          const { attachment, ...rest } = e.fields;
+          this.serverFieldErrors = rest;
+          if (attachment) {
+            this.fileError = attachment;
+            this.fileErrorFromServer = true;
+          }
           this.topError = e.message;
         } else {
           this.topError = e instanceof Error ? e.message : "Something went wrong.";
@@ -142,5 +183,27 @@ export class OpenTicketStore {
         this.submitting = false;
       });
     }
+  }
+
+  /**
+   * Build the request body. With a file selected → `multipart/form-data` (each
+   * field as its own part + an `attachment` file part), which the FormData-aware
+   * apiClient sends raw (§2, §13). Without a file → the M1 JSON object (unchanged).
+   */
+  private buildBody(): FormData | Record<string, string> {
+    const fields = {
+      name: this.values.name.trim(),
+      email: this.values.email.trim(),
+      subject: this.values.subject.trim(),
+      message: this.values.message.trim(),
+    };
+    if (!this.file) return fields;
+
+    const form = new FormData();
+    for (const [key, value] of Object.entries(fields)) form.append(key, value);
+    // 2-arg append: the File already carries its own name. (A 3-arg append with
+    // an explicit filename hangs undici's multipart serialize under jsdom.)
+    form.append("attachment", this.file);
+    return form;
   }
 }

@@ -13,6 +13,7 @@ import {
   Alert,
   Box,
   Button,
+  FormHelperText,
   Paper,
   Stack,
   TextField,
@@ -21,6 +22,15 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { useStores } from "../stores/StoreContext";
 import { OpenTicketStore, type TicketField } from "../stores/OpenTicketStore";
+import { AttachmentChip } from "../components/AttachmentChip";
+import {
+  ALLOWED_EXTENSIONS,
+  ALLOWED_EXTENSIONS_LABEL,
+  MAX_FILE_SIZE_LABEL,
+} from "../utils/validateAttachment";
+
+/** The `accept` attribute for the file input (seeded allow-list). */
+const FILE_ACCEPT = ALLOWED_EXTENSIONS.join(",");
 
 interface FieldSpec {
   name: TicketField;
@@ -51,6 +61,14 @@ export const OpenTicketPage = observer(function OpenTicketPage() {
           Your ticket <strong>{store.ticketNumber}</strong> has been created. A confirmation
           has been sent to your email address.
         </Alert>
+        {store.fileName ? (
+          <Box>
+            <Typography variant="subtitle2" gutterBottom>
+              Attached file
+            </Typography>
+            <AttachmentChip label={store.fileName} />
+          </Box>
+        ) : null}
         <Typography color="text.secondary">
           Reference this number when you sign in to the client portal to follow up.
         </Typography>
@@ -110,6 +128,42 @@ export const OpenTicketPage = observer(function OpenTicketPage() {
                 fullWidth
               />
             ))}
+
+            <Box>
+              <Button
+                variant="outlined"
+                component="label"
+                size="small"
+                data-testid="open-ticket-file-button"
+              >
+                {store.fileName ? "Change file" : "Attach a file (optional)"}
+                <input
+                  type="file"
+                  hidden
+                  accept={FILE_ACCEPT}
+                  data-testid="open-ticket-file-input"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) store.setFile(f);
+                    // Allow re-selecting the same filename later.
+                    e.target.value = "";
+                  }}
+                />
+              </Button>
+              {store.fileName ? (
+                <Box sx={{ mt: 1 }}>
+                  <AttachmentChip
+                    label={store.fileName}
+                    onClick={() => store.clearFile()}
+                  />
+                  <FormHelperText>Click the chip to remove the file.</FormHelperText>
+                </Box>
+              ) : null}
+              <FormHelperText error={Boolean(store.fileError)} data-testid="open-ticket-file-helper">
+                {store.fileError ??
+                  `Allowed types: ${ALLOWED_EXTENSIONS_LABEL}. Max size: ${MAX_FILE_SIZE_LABEL}.`}
+              </FormHelperText>
+            </Box>
 
             <Button
               type="submit"

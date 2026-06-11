@@ -20,7 +20,7 @@ own browser-only E2E ACs) are moved by hand.
 | ID | Milestone | Specs | Status |
 |----|-----------|-------|--------|
 | M1 | First Ticket Round-Trip (vertical slice) | FS-091/003/001/002/010/011/021/020 subset, FS-040 stub | **DONE (2026-06-11)** |
-| M2 | Attachments, Canned Responses & Email Basics | FS-022, FS-040 | Backlog stub |
+| M2 | Attachments, Canned Responses & Email Basics | FS-022, FS-040 | **Consolidation (2026-06-11)** |
 | M3 | Full Staff Workflow & Queue | FS-021, FS-020 | Backlog stub |
 | M4 | Admin Configuration | FS-030/031/032/033 | Backlog stub |
 | M5 | Email Pipeline | FS-041/042/040 | Backlog stub |
@@ -52,6 +52,73 @@ The web form (M1), staff UI (M1), email (M5), and API (M6) are all thin adapters
 the shared `ThreadView`/`CredentialForm` primitives first; B3 (form UI) and C4 (staff UI) can then
 proceed in parallel on top of them; D2 (client portal) follows, reusing the same primitives
 read-only.
+
+## M2 — Attachments, Canned Responses & Email Basics (CONSOLIDATION — 2026-06-11)
+
+Builds on M1's round-trip so a ticket can carry **attachments**, an agent can answer with a
+**canned response** whose body is personalised by a **`%{token}` engine**, and the M1 stub mailer is
+replaced by **real outbound email** (autoresponse + reply notification) delivered over SMTP and
+observable in **Mailpit**. Tickets live in `consolidation/` (1 root + 5 epics + 4 US + 16 TS).
+
+**Demo path (root E2E, browser-only):** *a client opens a ticket WITH an attachment → an agent
+replies USING a canned response → the client RECEIVES the reply email (Mailpit) and DOWNLOADS the
+attachment.*
+
+### Epic split & dependency order (A → B; C standalone; D needs A+C; E needs C)
+
+- **EPIC-M2-A — Attachment storage & upload**: TS-A1 SHA-256 filesystem blob store + `attachment_file`
+  / `ticket_attachment` schema; TS-A2 upload validation (extension allow-list + max size) + config
+  keys (`allow_attachments`, `allowed_filetypes` seed `.pdf,.png,.jpg,.txt,.doc`, `max_file_size`
+  1 MB); **US-M2-1** client attaches a file on `/open` (TS-A3 create-route hook, TS-A4 file input +
+  chips); TS-A5 staff-reply attachment hook + thread chips.
+- **EPIC-M2-B — Authorized attachment download**: TS-B1 client + staff download routes (stream blob,
+  `Content-Disposition`, parent-ticket session auth); **US-M2-3** client downloads the attachment
+  (TS-B2 clickable chips).
+- **EPIC-M2-C — Variable substitution engine**: TS-C1 `%{token}` engine in `ost_core` (TDD) + M2
+  token catalog.
+- **EPIC-M2-D — Canned response consumption**: TS-D1 `canned_response` / `canned_attachment` schema +
+  seed two samples (one with a variable, one carrying a seeded `.txt`); **US-M2-2** staff replies with
+  attachment + canned response (TS-D2 fetch route, TS-D3 dropdown UI, TS-D4 post wiring). **No CRUD UI
+  — deferred to M4.**
+- **EPIC-M2-E — Real outbound email basics**: TS-E1 SMTP mailer behind the mailer port + Mailpit;
+  TS-E2 auto-reply/notice wrappers (anti-loop headers) + packaged-default templates; **US-M2-4**
+  client receives the reply by email (TS-E3 wire autoresponse on create + notification on reply).
+- **TS-M2-prep** — `--reset` purge flag on the seed binary (test infra; done first for clean E2E
+  sweeps).
+
+### Deviations from legacy (pinned)
+
+- **D1 — Filesystem blob store, not chunked-DB.** Blobs written to `var/blobs/aa/bb/<sha256>` keyed by
+  content SHA-256 → **real byte-level dedup**; `attachment_file.storage_key` points at the blob; no
+  chunk table (obsoletes the legacy FS-022.12 chunk store + KL-022.4 time-salt non-dedup).
+- **D2 — Session-on-parent-ticket download auth, not session-bound MD5 hash.** BS-022.8's observable
+  behaviour (you can only download an attachment whose parent ticket your session can access) is
+  preserved via a plain parent-ticket session check; the legacy `md5(file_id+session_id+file_hash)`
+  scheme (KL-022.5) is dropped.
+- **D3 — Env-driven single SMTP transport, not per-account/template-set DB config.** One transport
+  from `SMTP_HOST/PORT/USER/PASS/FROM`; **SMTP active when `SMTP_HOST` is set**, otherwise the M1 stub
+  mailer + `GET /api/dev/mailbox` is retained. Packaged-default templates (FS-040.10) + one seeded
+  template set stand in for the template-set admin UI.
+- **Documented divergence (D-area):** a posted canned reply keeps the **posting agent** as author
+  (legacy BS-022.15 records "SYSTEM (Canned Reply)" — no SYSTEM actor in the M1 model yet); the
+  unanswered flag, substitution, and attachment-carry ARE preserved.
+
+### Deferrals out of M2
+
+- Canned-response **CRUD UI** → **M4** (admin); the two seeded responses stand in.
+- Per-email-account + template-set **admin UI**, email **filters/banlist** → **M4/M5**.
+- Inbound email **fetch/pipe/parse** (POP3/IMAP/MTA) → **M5** (email pipeline).
+- Inline image display, download-all, FAQ/logo file types, the chunked-DB store, HTML email → later.
+
+### Mailpit test infrastructure (ports)
+
+| Service | Dev | Staging |
+|---------|-----|---------|
+| Mailpit SMTP | 3704 | 3714 |
+| Mailpit web UI | 3705 | 3715 |
+
+Backend points at Mailpit via `SMTP_HOST=localhost SMTP_PORT=3704` to exercise D3; the Mailpit web UI
+(`http://localhost:3705`) is the in-browser oracle for the root E2E "client receives the email" step.
 
 ## Architecture / scope decisions
 
@@ -117,6 +184,8 @@ leads. They are binding for all M1 tickets; affected tickets reference this sect
 |---------|-----|---------|
 | Backend API (Rust/Axum) | 3701 | 3711 |
 | Frontend (Vite) | 3702 | 3712 |
+| Mailpit SMTP (M2 test infra) | 3704 | 3714 |
+| Mailpit web UI (M2 test infra) | 3705 | 3715 |
 | PostgreSQL | 5432 (shared `backend-db-1`) | 5432 (shared) |
 
 Registered in `~/.claude/port-registry.md` under `osticket-modernisation`. **3703/3713 are freed** —

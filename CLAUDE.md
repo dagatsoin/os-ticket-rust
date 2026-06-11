@@ -57,6 +57,8 @@ by the specs in [`specs/`](./specs/).
 |---------|-----|---------|-------|
 | Backend API (Rust/Axum) | **3701** | 3711 | REST API |
 | Frontend (Vite) | **3702** | 3712 | React dev server |
+| Mailpit SMTP (M2 test infra) | **3704** | 3714 | Mailpit container SMTP intake; backend `SMTP_HOST=localhost SMTP_PORT=3704` to exercise M2 deviation D3 |
+| Mailpit web UI (M2 test infra) | **3705** | 3715 | Mailpit web inbox (`http://localhost:3705`) — in-browser oracle for E2E email assertions |
 | PostgreSQL | **5432** (shared) | 5432 (shared) | **Existing shared container `backend-db-1`** (`postgres:16`); databases `osticket_dev` / `osticket_staging`. Not a project-owned port. |
 
 Registered in `~/.claude/port-registry.md` under `osticket-modernisation`. Ports **3703/3713

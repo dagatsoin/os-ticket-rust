@@ -6,6 +6,7 @@
 //! Decision 4.
 
 pub mod auth;
+pub mod client;
 pub mod config;
 pub mod dev;
 pub mod health;
@@ -58,8 +59,11 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
         .route("/api/staff/tickets/:id/reply", post(staff::reply))
         .route("/api/client/login", post(auth::routes::client_login))
         .route("/api/client/logout", post(auth::routes::client_logout))
-        // Env-gated dev endpoint (404 in production).
+        // Client realm — gated by the ClientSession extractor (401 without it).
+        .route("/api/client/ticket", get(client::ticket))
+        // Env-gated dev endpoints (404 in production).
         .route("/api/dev/mailbox", get(dev::mailbox))
+        .route("/api/dev/seed-ticket", post(dev::seed_ticket))
         .fallback(not_found)
         .layer(cors)
         .layer(TraceLayer::new_for_http())

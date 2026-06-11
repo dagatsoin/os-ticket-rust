@@ -100,11 +100,23 @@ pub async fn staff_login(
     Ok(login_success(Realm::Staff, &session.id, state.app_env.cookies_secure()))
 }
 
-/// `POST /api/client/login` — verify ticket# + email, establish a client session.
+/// `POST /api/client/login` — verify ticket# + email, establish a client session
+/// scoped to that one ticket.
 ///
-/// CSRF-exempt (unauthenticated public endpoint).
+/// CSRF-exempt (unauthenticated public endpoint). Implements the FS-010.3
+/// validation order:
 ///
-/// @implements BS-002 / FS-002.14: client login + session regeneration.
+/// 1. The email must be syntactically valid and the ticket number non-empty,
+///    otherwise the attempt fails **without a database lookup**.
+/// 2. The ticket is looked up by external number + email together; it must
+///    exist (the email match is **case-insensitive**, FS-010.3 step 3).
+///
+/// A single generic error is surfaced on any failure (no oracle on which of
+/// ticket-number / email was wrong).
+///
+/// @implements FS-010.3: interactive client login (validation order, case-
+///   insensitive email match).
+/// @implements BS-002 / FS-002.14: client session + session-id regeneration.
 pub async fn client_login(
     State(state): State<AppState>,
     Json(req): Json<ClientLoginRequest>,
@@ -115,30 +127,37 @@ pub async fn client_login(
         .zip(state.sessions.as_ref())
         .ok_or_else(|| ApiError::internal("Authentication is unavailable"))?;
 
-    let bad = || ApiError::unauthenticated("Invalid ticket number or email");
+    // Single generic error for every failure path (FS-010.3 — no field oracle).
+    let bad = || ApiError::unauthenticated("Authentication error - try again!");
 
-    // The external ticket number is numeric (FS-091.2). A non-numeric input is
-    // simply an auth failure (don't 422 — keep the public surface terse).
-    let ticket_number: i64 = req.ticket_number.trim().parse().map_err(|_| bad())?;
+    // FS-010.3 step 1: email must be syntactically valid AND ticket# non-empty,
+    // BEFORE any DB lookup.
     let email = req.email.trim().to_string();
+    let raw_number = req.ticket_number.trim();
+    if raw_number.is_empty() || !ost_core::is_email(&email) {
+        return Err(bad());
+    }
+    // The external ticket number is numeric (FS-091.2); a non-numeric value
+    // cannot match any ticket — still the generic error, no DB lookup needed.
+    let ticket_number: i64 = raw_number.parse().map_err(|_| bad())?;
 
-    // BS-091.1 composite identity: (ticketID, email) must match a ticket.
-    let exists: Option<(i64,)> = sqlx::query_as(
-        r#"SELECT "ticketID" FROM ticket WHERE "ticketID" = $1 AND email = $2"#,
+    // FS-010.3 step 2+3: look up by (external number, email) together; the email
+    // match is case-insensitive. Return the canonical stored email for the
+    // session payload (so the bound identity matches the persisted casing).
+    let matched: Option<(String,)> = sqlx::query_as(
+        r#"SELECT email FROM ticket WHERE "ticketID" = $1 AND lower(email) = lower($2)"#,
     )
     .bind(ticket_number)
     .bind(&email)
     .fetch_optional(pool)
     .await
     .map_err(|_| ApiError::internal("Login failed"))?;
-    if exists.is_none() {
-        return Err(bad());
-    }
+    let stored_email = matched.ok_or_else(bad)?.0;
 
     let session = store
         .create(&SessionData::Client {
             ticket_number,
-            email,
+            email: stored_email,
         })
         .await
         .map_err(|_| ApiError::internal("Could not establish a session"))?;

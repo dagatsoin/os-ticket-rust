@@ -38,9 +38,10 @@ pub use permission::{
 pub use sanitize::{safe_html, sanitize};
 pub use session::{Realm, Session, SessionData, SessionError, SessionStore, SESSION_TTL_SECS};
 pub use ticket::{
-    append_thread_entry, create_ticket, create_ticket_with_attachment, create_ticket_with_numbers,
-    load_thread, random_ticket_number, NewThreadEntry, NewTicket, NewTicketInput, ThreadEntry,
-    ThreadType, Ticket, TicketError, TICKET_NUMBER_MAX, TICKET_NUMBER_MIN,
+    append_thread_entry, append_thread_entry_with_attachment, create_ticket,
+    create_ticket_with_attachment, create_ticket_with_numbers, load_thread, random_ticket_number,
+    NewThreadEntry, NewTicket, NewTicketInput, ThreadEntry, ThreadType, Ticket, TicketError,
+    TICKET_NUMBER_MAX, TICKET_NUMBER_MIN,
 };
 pub use upload::{
     validate_upload, UploadError, UploadPolicy, ALLOW_ALL, ATTACHMENT_FIELD,

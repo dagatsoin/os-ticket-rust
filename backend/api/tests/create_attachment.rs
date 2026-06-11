@@ -43,7 +43,31 @@ async fn seeded_pool() -> Option<PgPool> {
     let pool = db::connect(&url).await.expect("connect");
     db::migrate(&pool).await.expect("migrate");
     tools::seed(&pool).await.expect("seed");
+    // The config-key seed is `ON CONFLICT DO NOTHING`, and a sibling test binary
+    // (`config_seed`) intentionally mutates `allowed_filetypes`. Force the policy
+    // these tests depend on so they are order-independent across the shared DB.
+    set_policy(&pool).await;
     Some(pool)
+}
+
+/// Upsert the attachment policy this suite asserts against (overwrite, unlike the
+/// seed's DO NOTHING), so cross-binary config pollution cannot flake the suite.
+async fn set_policy(pool: &PgPool) {
+    for (key, value) in [
+        ("allow_attachments", "true"),
+        ("allowed_filetypes", ".pdf,.png,.jpg,.txt,.doc"),
+        ("max_file_size", "1048576"),
+    ] {
+        sqlx::query(
+            "INSERT INTO config (key, value) VALUES ($1, $2)
+             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+        )
+        .bind(key)
+        .bind(value)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
 }
 
 fn dev_app(pool: PgPool, store: BlobStore) -> Router {

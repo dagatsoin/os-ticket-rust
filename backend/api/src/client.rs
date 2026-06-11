@@ -13,7 +13,8 @@ use axum::Json;
 use serde::Serialize;
 use sqlx::Row;
 
-use ost_core::ApiError;
+use ost_core::attachment::load_attachments_by_ref;
+use ost_core::{ApiError, AttachmentView};
 
 use crate::auth::realm::ClientSession;
 use crate::state::AppState;
@@ -27,6 +28,9 @@ pub struct ClientThreadEntry {
     pub thread_type: String,
     pub poster: String,
     pub body: String,
+    /// Attachments bound to this entry — `[{id, name, size, mime}]` (§7), empty
+    /// when none. The `id` is the download route's `attachmentId`.
+    pub attachments: Vec<AttachmentView>,
 }
 
 /// The client's own ticket plus its (M/R-only) thread.
@@ -88,13 +92,24 @@ pub async fn ticket(
     .await
     .map_err(|_| ApiError::internal("Thread lookup failed"))?;
 
+    // Per-entry attachments (§7), keyed by the entry id (= ticket_attachment.ref_id).
+    // Only M/R entries reach the client, so an N note's attachments are never
+    // surfaced (the SQL above already filtered N out of the entry set).
+    let mut by_ref = load_attachments_by_ref(pool, ticket_id)
+        .await
+        .map_err(|_| ApiError::internal("Attachment lookup failed"))?;
+
     let entries = rows
         .into_iter()
-        .map(|row| ClientThreadEntry {
-            id: row.get("id"),
-            thread_type: row.get("thread_type"),
-            poster: row.get("poster"),
-            body: row.get("body"),
+        .map(|row| {
+            let id: i64 = row.get("id");
+            ClientThreadEntry {
+                attachments: by_ref.remove(&id).unwrap_or_default(),
+                id,
+                thread_type: row.get("thread_type"),
+                poster: row.get("poster"),
+                body: row.get("body"),
+            }
         })
         .collect();
 

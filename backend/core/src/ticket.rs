@@ -493,6 +493,74 @@ pub async fn append_thread_entry(
     })
 }
 
+/// Append a thread entry AND bind one attachment to it, in ONE transaction
+/// (TS-M2-A5 staff reply).
+///
+/// The upload MUST already have passed [`crate::upload::validate_upload`]. The
+/// entry is inserted, the blob is `put` into `store` (content-addressed dedup),
+/// then `attachment_file` (upsert-by-hash) + `ticket_attachment` (`ref_type` =
+/// the entry type) are written — all before the single `commit`. A failure rolls
+/// the whole thing back, so a rejected attachment posts NO reply (FS-021.16).
+///
+/// Returns the new entry plus the bound attachment's §7 view.
+///
+/// @implements FS-021.3 / FS-021.16: staff reply binds an attachment to the new
+///   `R` entry atomically.
+pub async fn append_thread_entry_with_attachment(
+    pool: &PgPool,
+    ticket_id: i64,
+    entry: &NewThreadEntry,
+    store: &BlobStore,
+    attachment: &AttachmentSpec,
+) -> Result<(ThreadEntry, AttachmentView), TicketError> {
+    let exists: Option<(i64,)> = sqlx::query_as("SELECT ticket_id FROM ticket WHERE ticket_id = $1")
+        .bind(ticket_id)
+        .fetch_optional(pool)
+        .await?;
+    if exists.is_none() {
+        return Err(TicketError::NotFound);
+    }
+
+    let mut tx = pool.begin().await?;
+
+    let row = sqlx::query(
+        "INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, ticket_id, thread_type, poster, body",
+    )
+    .bind(ticket_id)
+    .bind(entry.thread_type.as_db())
+    .bind(&entry.poster)
+    .bind(entry.staff_id)
+    .bind(&entry.body)
+    .fetch_one(&mut *tx)
+    .await?;
+    let new_entry = ThreadEntry {
+        id: row.get("id"),
+        ticket_id: row.get("ticket_id"),
+        thread_type: row.get("thread_type"),
+        poster: row.get("poster"),
+        body: row.get("body"),
+    };
+
+    // Store the blob, then bind it to the new entry — all before commit.
+    store
+        .put(&attachment.bytes)
+        .await
+        .map_err(|e| TicketError::Db(blob_io_to_sqlx(e)))?;
+    let view = insert_attachment(
+        &mut tx,
+        ticket_id,
+        new_entry.id,
+        entry.thread_type.as_db(),
+        attachment,
+    )
+    .await?;
+
+    tx.commit().await?;
+    Ok((new_entry, view))
+}
+
 /// Load a ticket's thread entries in chronological order (oldest first).
 ///
 /// @implements BS-021: ordered thread retrieval (M then R …).

@@ -11,6 +11,8 @@
 //! the TS-M1-A4a util, which cannot run inside SQL. Every write is an idempotent
 //! upsert, so re-running is the M1 dev-reset mechanism (AC-4).
 
+use ost_core::blob::sha256_hex;
+use ost_core::BlobStore;
 use sqlx::postgres::PgPool;
 
 /// Seeded department name.
@@ -54,6 +56,43 @@ pub const DEFAULT_ALLOWED_FILETYPES: &str = ".pdf,.png,.jpg,.txt,.doc";
 pub const DEFAULT_MAX_FILE_SIZE: &str = "1048576";
 /// Pinned default helpdesk base URL (the Vite SPA origin).
 pub const DEFAULT_HELPDESK_URL: &str = "http://localhost:3702";
+
+// --- TS-M2-D1: seeded canned responses -----------------------------------
+//
+// @implements FS-022.14: the two enabled samples + one disabled sample that
+//   stand in for the M4 canned-response CRUD UI. One enabled sample carries
+//   `%{...}` variables (exercises the substitution engine, Epic C); one carries
+//   a seeded `policy.txt` attachment (exercises blob binding + download).
+// @implements BS-022.2: the disabled sample is a negative case for the
+//   enabled-only filter.
+
+/// Title of the enabled, variable-carrying canned sample (dept 0 = all).
+pub const CANNED_TITLE_ACK: &str = "Acknowledge receipt";
+/// Body of the "Acknowledge receipt" sample — carries `%{ticket.number}` and
+/// `%{url}` so a fetch substitutes them against the requesting ticket (D2).
+pub const CANNED_BODY_ACK: &str = "Hello %{ticket.name},\n\nThanks for contacting support. \
+We have received your request and opened ticket #%{ticket.number}. You can follow up at %{url}.\n\n\
+Regards,\nThe Support Team";
+
+/// Title of the enabled, attachment-carrying canned sample (dept 0 = all).
+pub const CANNED_TITLE_POLICY: &str = "Sample (with attachment)";
+/// Body of the attachment-carrying sample (also carries a variable so the
+/// substituted-body path is exercised on a response that has an attachment).
+pub const CANNED_BODY_POLICY: &str =
+    "Please review the attached support policy regarding ticket #%{ticket.number}.";
+
+/// Title of the DISABLED sample (negative case for the enabled-only filter).
+pub const CANNED_TITLE_DISABLED: &str = "Closed — disabled sample";
+/// Body of the disabled sample (never offered, so plain text is fine).
+pub const CANNED_BODY_DISABLED: &str = "This canned response is disabled and must not be offered.";
+
+/// The seeded canned attachment file name.
+pub const CANNED_FILE_NAME: &str = "policy.txt";
+/// The seeded canned attachment MIME type.
+pub const CANNED_FILE_MIME: &str = "text/plain";
+/// The seeded canned attachment bytes (stored once via the blob store).
+pub const CANNED_FILE_BYTES: &[u8] =
+    b"Support Policy\n\nResponses are provided on a best-effort basis during business hours.\n";
 
 /// What the seed produced/confirmed, returned for logging and tests.
 #[derive(Debug, Clone, Copy)]
@@ -158,11 +197,104 @@ pub async fn seed(pool: &PgPool) -> anyhow::Result<SeedResult> {
 
     tx.commit().await?;
 
+    // --- TS-M2-D1: seeded canned responses (idempotent) --------------------
+    // Done after the baseline commit: the attachment-carrying sample stores its
+    // `policy.txt` blob on disk (async filesystem work) before binding the
+    // relational rows, so it lives in its own step + transaction.
+    seed_canned(pool).await?;
+
     Ok(SeedResult {
         dept_id,
         group_id,
         staff_id,
     })
+}
+
+/// Seed (or re-confirm) the three canned-response samples, idempotently
+/// (TS-M2-D1). Upserts each `canned_response` by its unique `title`, stores the
+/// shared `policy.txt` blob once (content-addressed, dedup), upserts its
+/// `attachment_file` row by content hash, and binds it to the attachment sample.
+///
+/// Re-running yields the same three rows and the same single blob (the blob
+/// `put` and both upserts are idempotent), preserving the M1 seed contract.
+///
+/// @implements FS-022.14: the two enabled samples + one disabled sample.
+/// @implements BS-022.2: the disabled sample exists for the enabled-only filter.
+pub async fn seed_canned(pool: &PgPool) -> anyhow::Result<()> {
+    // 1) Store the policy.txt blob once (content-addressed; dedup-idempotent).
+    //    The blob root is resolved from BLOB_ROOT (default <cwd>/var/blobs), §1.
+    let store = BlobStore::from_env(std::env::current_dir().unwrap_or_else(|_| ".".into()));
+    let hash = store.put(CANNED_FILE_BYTES).await?;
+    let storage_key = format!("{}/{}/{}", &hash[0..2], &hash[2..4], hash);
+    debug_assert_eq!(hash, sha256_hex(CANNED_FILE_BYTES));
+
+    let mut tx = pool.begin().await?;
+
+    // 2) The two enabled samples (dept 0 = all departments) + the disabled one.
+    let ack_id = upsert_canned(&mut tx, CANNED_TITLE_ACK, CANNED_BODY_ACK, 0, true).await?;
+    let policy_id =
+        upsert_canned(&mut tx, CANNED_TITLE_POLICY, CANNED_BODY_POLICY, 0, true).await?;
+    let _disabled_id =
+        upsert_canned(&mut tx, CANNED_TITLE_DISABLED, CANNED_BODY_DISABLED, 0, false).await?;
+    let _ = ack_id; // (no attachment on the ack sample)
+
+    // 3) Upsert the attachment_file row by content hash (D1 dedup), then bind it
+    //    to the attachment-carrying sample (idempotent: unique (canned_id, file_id)).
+    let file_id: i64 = sqlx::query_scalar(
+        r#"INSERT INTO attachment_file (mime, size, hash, name, storage_key)
+           VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (hash) DO UPDATE SET name = attachment_file.name
+           RETURNING id"#,
+    )
+    .bind(CANNED_FILE_MIME)
+    .bind(CANNED_FILE_BYTES.len() as i64)
+    .bind(&hash)
+    .bind(CANNED_FILE_NAME)
+    .bind(&storage_key)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        "INSERT INTO canned_attachment (canned_id, file_id) VALUES ($1, $2)
+         ON CONFLICT (canned_id, file_id) DO NOTHING",
+    )
+    .bind(policy_id)
+    .bind(file_id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Upsert a single canned_response by its unique `title`, returning its id.
+///
+/// Idempotent: a re-run updates the body/scope/enabled flag in place (so an
+/// edited seed re-applies) and never duplicates a row.
+async fn upsert_canned(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    title: &str,
+    body: &str,
+    dept_id: i32,
+    isenabled: bool,
+) -> anyhow::Result<i32> {
+    let id: i32 = sqlx::query_scalar(
+        "INSERT INTO canned_response (title, response, dept_id, isenabled)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (title) DO UPDATE
+           SET response = EXCLUDED.response,
+               dept_id = EXCLUDED.dept_id,
+               isenabled = EXCLUDED.isenabled,
+               updated = now()
+         RETURNING canned_id",
+    )
+    .bind(title)
+    .bind(body)
+    .bind(dept_id)
+    .bind(isenabled)
+    .fetch_one(&mut **tx)
+    .await?;
+    Ok(id)
 }
 
 // --- TS-M2-prep: `--reset` dev purge (truncation half) -------------------

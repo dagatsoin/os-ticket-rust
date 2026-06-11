@@ -7,12 +7,16 @@
 
 use axum::extract::{Path, State};
 use axum::Json;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use ost_core::ticket::load_thread;
+use ost_core::mailer::{Mailer, OutboundMail};
+use ost_core::permission::PERM_CAN_POST_REPLY;
+use ost_core::ticket::{append_thread_entry, load_thread, NewThreadEntry};
 use ost_core::ApiError;
 
+use crate::auth::gate::require_staff_permission;
 use crate::auth::realm::StaffSession;
+use crate::auth::StaffCsrf;
 use crate::state::AppState;
 
 /// The authenticated staff profile returned by `GET /api/staff/me`.
@@ -177,6 +181,28 @@ pub async fn ticket_detail(
     let (ticket_id, number, subject, email, name, status, created) =
         header.ok_or_else(|| ApiError::not_found("Ticket not found"))?;
 
+    let detail = build_detail(
+        pool, ticket_id, number, subject, email, name, status, created,
+    )
+    .await?;
+    Ok(Json(detail))
+}
+
+/// Load a ticket's full thread and assemble a [`TicketDetail`] from a header row.
+///
+/// Shared by [`ticket_detail`] and [`reply`] so both return the identical shape
+/// (the staff thread: all M/R/N entries, created ASC).
+#[allow(clippy::too_many_arguments)]
+async fn build_detail(
+    pool: &sqlx::postgres::PgPool,
+    ticket_id: i64,
+    number: i64,
+    subject: String,
+    email: String,
+    name: String,
+    status: String,
+    created: String,
+) -> Result<TicketDetail, ApiError> {
     // The shared core loads the thread in created ASC order, all M/R/N entries.
     let entries = load_thread(pool, ticket_id)
         .await
@@ -190,7 +216,7 @@ pub async fn ticket_detail(
         })
         .collect();
 
-    Ok(Json(TicketDetail {
+    Ok(TicketDetail {
         id: ticket_id,
         number,
         subject,
@@ -199,7 +225,95 @@ pub async fn ticket_detail(
         status,
         created,
         entries,
-    }))
+    })
+}
+
+/// A staff reply request body.
+#[derive(Debug, Deserialize)]
+pub struct ReplyRequest {
+    /// The reply text (sanitised by the shared core before persist).
+    pub body: String,
+}
+
+/// `POST /api/staff/tickets/{id}/reply` — append a staff response (`R`).
+///
+/// Gated by the staff realm + CSRF (the [`StaffCsrf`] extractor) and the
+/// `can_post_reply` named permission. A **pure append** in M1: the ticket status
+/// is NOT mutated (isanswered semantics deferred). The intended client
+/// notification is recorded by the stub mailer **only after the DB append
+/// commits** — a failed append records no notification. Returns the updated
+/// thread (the same shape as the detail route) so the frontend refetches from
+/// this response.
+///
+/// @implements BS-021: append `R`, pure append (no status mutation).
+/// @implements FS-040: record the client notification only after commit.
+pub async fn reply(
+    State(state): State<AppState>,
+    StaffCsrf(session): StaffCsrf,
+    Path(id): Path<i64>,
+    Json(req): Json<ReplyRequest>,
+) -> Result<Json<TicketDetail>, ApiError> {
+    let pool = state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Reply is unavailable"))?;
+
+    // Permission gate: a session lacking can_post_reply is denied 403.
+    require_staff_permission(&state, &session, PERM_CAN_POST_REPLY).await?;
+
+    // Resolve the ticket header (404 when the id is unknown) + the acting agent's
+    // display name (the response poster).
+    let header: Option<(i64, i64, String, String, String, String, String)> =
+        sqlx::query_as(
+            r#"SELECT ticket_id, "ticketID", subject, email, name, status,
+                      to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created
+               FROM ticket WHERE ticket_id = $1"#,
+        )
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| ApiError::internal("Ticket lookup failed"))?;
+    let (ticket_id, number, subject, email, name, status, created) =
+        header.ok_or_else(|| ApiError::not_found("Ticket not found"))?;
+
+    let agent = staff_display_name(pool, session.staff_id).await?;
+
+    // Append the R entry via the shared core (it commits on success). Only AFTER
+    // a successful commit do we record the mailer intent.
+    let entry = NewThreadEntry::response(agent, Some(session.staff_id), &req.body);
+    append_thread_entry(pool, ticket_id, &entry)
+        .await
+        .map_err(|_| ApiError::internal("Could not append the reply"))?;
+
+    // Mailer intent recorded post-commit (stub records, does not send).
+    let mail = OutboundMail {
+        to: email.clone(),
+        subject: format!("Ticket #{number} updated"),
+        body: entry.body.clone(),
+    };
+    let _ = state.mailer.send(mail);
+
+    let detail = build_detail(
+        pool, ticket_id, number, subject, email, name, status, created,
+    )
+    .await?;
+    Ok(Json(detail))
+}
+
+/// Resolve a staff member's display name for use as a thread poster.
+async fn staff_display_name(
+    pool: &sqlx::postgres::PgPool,
+    staff_id: i32,
+) -> Result<String, ApiError> {
+    let row: Option<(String, String, String)> =
+        sqlx::query_as("SELECT username, firstname, lastname FROM staff WHERE staff_id = $1")
+            .bind(staff_id)
+            .fetch_optional(pool)
+            .await
+            .map_err(|_| ApiError::internal("Staff lookup failed"))?;
+    let (username, firstname, lastname) =
+        row.ok_or_else(|| ApiError::unauthenticated("Session expired or invalid"))?;
+    Ok(display_name(&firstname, &lastname, &username))
 }
 
 /// Compose a display name from first/last, falling back to the username when

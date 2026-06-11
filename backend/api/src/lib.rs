@@ -55,6 +55,7 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
         .route("/api/staff/me", get(staff::me))
         .route("/api/staff/tickets", get(staff::list_tickets))
         .route("/api/staff/tickets/:id", get(staff::ticket_detail))
+        .route("/api/staff/tickets/:id/reply", post(staff::reply))
         .route("/api/client/login", post(auth::routes::client_login))
         .route("/api/client/logout", post(auth::routes::client_logout))
         // Env-gated dev endpoint (404 in production).

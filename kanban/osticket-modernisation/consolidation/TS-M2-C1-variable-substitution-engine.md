@@ -15,7 +15,7 @@ a ticket.
 ## Impact
 
 - add(domain): `VariableReplacer` in `ost_core` — `render(text, context) -> String` resolving `%{name}` and `%{a.b.c}` dot-paths against a context of objects/scalars.
-- add(domain): an M2 token catalog: `%{ticket.number}`, `%{ticket.name}`, `%{ticket.subject}`, `%{ticket.email}`, `%{ticket.status}`, `%{ticket.create_date}`, `%{ticket.dept.name}`, and `%{url}` (always present, = configured base URL).
+- add(domain): an M2 token catalog: `%{ticket.number}`, `%{ticket.name}`, `%{ticket.subject}`, `%{ticket.email}`, `%{ticket.status}`, `%{ticket.create_date}`, `%{ticket.dept.name}`, and `%{url}` (always present). The engine takes the base URL as an **input argument**; the wiring (D2/E3) feeds it the seeded `helpdesk_url` config key (= `http://localhost:3702`, ROADMAP M2 Decisions §6).
 - Unknown tokens are left **verbatim** (`%{...}` preserved), not blanked.
 
 ## Regressions

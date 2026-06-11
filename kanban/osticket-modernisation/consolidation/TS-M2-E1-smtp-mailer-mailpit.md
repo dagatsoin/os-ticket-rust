@@ -14,9 +14,11 @@ when `SMTP_HOST` is set**, otherwise the M1 stub mailer + `GET /api/dev/mailbox`
 
 ## Impact
 
-- add(infra): an `SmtpMailer` implementing the M1 `Mailer` port (TS-M1-A4b), configured from `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
+- add(infra): an `SmtpMailer` implementing the M1 `Mailer` port (TS-M1-A4b), built on **`lettre`** (tokio1 + rustls, custom-header support — ROADMAP M2 Decisions §4), configured from `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
 - update(wiring): at startup, if `SMTP_HOST` is set → bind `SmtpMailer`; else bind the M1 stub mailer (dev mailbox preserved).
-- add(infra): a **Mailpit** service in docker-compose — SMTP **3704** / web UI **3705** (staging +10 → 3714/3715); document in CLAUDE.md + port registry.
+- add(infra): a **`docker-compose.yml` at the repo root** (ROADMAP M2 Decisions §5) with a `mailpit` service (image `axllent/mailpit`, ports `3704:1025` + `3705:8025`); document `docker compose up -d mailpit` in CLAUDE.md Quick Start + the port registry.
+- add(dev-dep): **`reqwest` as a DEV-dependency** for asserting on delivered messages via the Mailpit API (§4).
+- test gating: Mailpit-dependent cargo tests are **skip-pass when `MAILPIT_URL` is unset** (same pattern as `TEST_DATABASE_URL`, §5).
 - text-only send (KL-040.1): body decoded to plain text, single text MIME part.
 
 ## Regressions
@@ -39,7 +41,7 @@ when `SMTP_HOST` is set**, otherwise the M1 stub mailer + `GET /api/dev/mailbox`
 
 ## Test Infrastructure
 
-- **Mailpit** container, SMTP **3704** / web **3705** (staging 3714/3715). Compose service `mailpit`.
+- **Mailpit** via the repo-root `docker-compose.yml` (§5), SMTP **3704** / web **3705** (staging 3714/3715), service `mailpit`, started with `docker compose up -d mailpit`. Mailpit-dependent tests skip-pass when `MAILPIT_URL` is unset.
 
 ## Dependencies
 

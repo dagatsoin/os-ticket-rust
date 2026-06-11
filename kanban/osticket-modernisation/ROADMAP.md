@@ -120,6 +120,69 @@ attachment.*
 Backend points at Mailpit via `SMTP_HOST=localhost SMTP_PORT=3704` to exercise D3; the Mailpit web UI
 (`http://localhost:3705`) is the in-browser oracle for the root E2E "client receives the email" step.
 
+## Decisions (M2 cross-cutting — PINNED)
+
+Pinned during the M2 consolidation feasibility review. Binding for all M2 tickets; affected
+tickets reference this section by number.
+
+1. **Blob root** — env `BLOB_ROOT`, default `<workspace root>/var/blobs`, resolved to an absolute
+   path at startup; all binaries and tests honor it. (A1, A3, A5, B1, prep)
+
+2. **Multipart strategy** — enable the axum `multipart` feature. `POST /api/tickets` and
+   `POST /api/staff/tickets/:id/reply` **DUAL-ACCEPT by Content-Type**: `application/json` (the M1
+   contract, unchanged, no attachment) OR `multipart/form-data` (fields as individual form parts —
+   `name`/`email`/`subject`/`message` for create, `body`/`cannedId` for reply, plus an optional
+   `attachment` file part). The 422 field key for file errors is **`attachment`**. (A3, A5, D4, A4)
+
+3. **isanswered semantics (M2)** — legacy-faithful: a client message (create) → `isanswered=false`;
+   **ANY staff reply (plain or canned-assisted) → `isanswered=true`**. BS-022.15's "mark unanswered"
+   applies to the *filter-driven SYSTEM auto-reply path* → **DEFERRED to M5** (documented deviation).
+   The staff UI shows an Answered / Unanswered badge on both detail and queue. (D4, US-M2-2, C4-adjacent UI)
+
+4. **Crates** — SMTP = **`lettre`** (tokio1 + rustls, custom headers); new deps **`sha2`**, **`hex`**,
+   **`tokio-util`** (io feature); **`reqwest` as a DEV-dependency** for Mailpit API assertions in tests.
+   (A1, B1, E1, E2)
+
+5. **Mailpit lifecycle** — add a `docker-compose.yml` at the repo root (service `mailpit`, image
+   `axllent/mailpit`, ports `3704:1025` + `3705:8025`); document `docker compose up -d mailpit` in
+   CLAUDE.md Quick Start. Mailpit-dependent cargo tests are **skip-pass when `MAILPIT_URL` is unset**
+   (same pattern as `TEST_DATABASE_URL`). (E1, E2, E3)
+
+6. **helpdesk_url** — seed config key `helpdesk_url` = `http://localhost:3702`, seeded by **TS-M2-A2**
+   alongside the attachment config keys. The substitution engine takes the base URL as an input
+   argument; the wiring reads the `helpdesk_url` config key and feeds it in. (C1, E3, A2)
+
+7. **Attachment list JSON key** — `attachments: [{id, name, size, mime}]` — the **SAME shape** in
+   staff detail entries, client thread entries, and canned detail responses. (Resolves the prior
+   A5-vs-D2 `files` inconsistency.) (A5, D2, B2, D3)
+
+8. **Client download route** — session-bound, **no ticketId param**:
+   `GET /api/client/ticket/attachments/{attachmentId}` (the session already pins the ticket). Staff:
+   `GET /api/staff/tickets/{ticketId}/attachments/{attachmentId}`. Cross-ticket / unknown id → **404**
+   (no existence leak). (B1, B2)
+
+9. **Download UX** — chips use **fetch-with-credentials → blob → object-URL download** so a 403/404
+   surfaces a VISIBLE inline error (US-M2-3 AC-3); not plain anchors. (B2)
+
+10. **Reply-composer ownership de-dup** — **TS-M2-A5 = BACKEND only** (reply multipart hook +
+    attachments in thread payloads); **TS-M2-D3 = the ENTIRE reply composer UI** (canned dropdown +
+    file input + read-only carried chips + the retained `cannedId` in the multipart POST);
+    **TS-M2-B2 = chips rendering + click-to-download** in BOTH the client portal and staff detail.
+    (A5, D3, B2)
+
+11. **A4 specifics** — the confirmation chip label comes from the locally-selected `File.name` (no API
+    echo needed); client-side validation hard-codes the seeded allow-list / 1 MB as a UX pre-check
+    (the backend remains authoritative — noted as a KL on A4). (A4)
+
+12. **E3 always-send in M2** — the autoresponse + reply notification are **always sent** in M2;
+    department auto-response flags are honored in M5. (E3)
+
+13. **apiClient FormData support (A0)** — `frontend/src/api/apiClient.ts` is extended so that when
+    `body instanceof FormData` it skips `JSON.stringify` and omits the `Content-Type` header (the
+    browser sets the multipart boundary), while preserving the CSRF header, error-envelope parsing,
+    and the 401 → realm-login redirect. The MSW harness gains multipart-capable handlers
+    (`request.formData()`). This is **TS-M2-A0**, a blocker for A4, the D4 reply path (via D3), and D3.
+
 ## Architecture / scope decisions
 
 1. **PostgreSQL replaces MySQL** — *DECISION POINT, confirm with user.* The legacy app is MySQL

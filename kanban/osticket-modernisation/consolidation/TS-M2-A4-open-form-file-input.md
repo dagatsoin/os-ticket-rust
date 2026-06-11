@@ -14,8 +14,9 @@ validation surfaced inline, and an attachment chip on the confirmation page.
 ## Impact
 
 - update(ui): add an `<input type=file>` to the `/open` form (TS-M1-B3), shown only when `allow_attachments` is on, with helper text naming allowed types + the 1 MB cap.
-- update(ui): submit the form as `multipart/form-data` via apiClient; map a 422 `attachment` field error to an **inline error** under the input.
-- add(ui): a reusable **AttachmentChip** component (filename + icon); render it on the confirmation page for the uploaded file.
+- update(ui): submit the form as `multipart/form-data` via the FormData-aware apiClient (TS-M2-A0); map a 422 `attachment` field error to an **inline error** under the input.
+- add(ui): a reusable **AttachmentChip** component (filename + icon); render it on the confirmation page for the uploaded file — the chip label comes from the **locally-selected `File.name`** (no API echo needed) (ROADMAP M2 Decisions §11).
+- add(ui): a **client-side** allow-list / 1 MB pre-check that hard-codes the seeded allow-list + cap as a UX convenience (ROADMAP M2 Decisions §11). **KL:** the backend (A3 + A2) remains authoritative; this front-end check is a pre-flight only and may drift from config until M4 exposes it.
 
 ## Regressions
 
@@ -45,4 +46,4 @@ validation surfaced inline, and an attachment chip on the confirmation page.
 
 ## Dependencies
 
-- TS-M2-A3 (multipart create route + 422 field errors), TS-M1-B3 (open form), TS-M1-A5 (apiClient).
+- **TS-M2-A0 (apiClient FormData/multipart support — blocker)**, TS-M2-A3 (multipart create route + 422 field errors), TS-M1-B3 (open form), TS-M1-A5 (apiClient).

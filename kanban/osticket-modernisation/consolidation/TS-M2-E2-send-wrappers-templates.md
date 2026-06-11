@@ -9,7 +9,9 @@
 ## Context
 
 The message-class send wrappers (anti-loop headers) and the two packaged-default templates M2 needs,
-rendered through the Epic-C substitution engine.
+rendered through the Epic-C substitution engine. The anti-loop headers are set via `lettre`'s
+custom-header support (ROADMAP M2 Decisions §4); Mailpit-dependent assertions skip-pass when
+`MAILPIT_URL` is unset (§5).
 
 ## Impact
 

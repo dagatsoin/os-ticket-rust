@@ -13,13 +13,18 @@ attachment ticket (A3 create hook, A5 reply hook, B1 download, D1 canned attachm
 consumer of this.
 
 **DEVIATION D1 (pinned):** filesystem blob store keyed by **content SHA-256** at
-`var/blobs/<aa>/<bb>/<full-sha256>` (first two hex pairs as fan-out dirs), giving **real byte-level
+`<BLOB_ROOT>/<aa>/<bb>/<full-sha256>` (first two hex pairs as fan-out dirs), giving **real byte-level
 dedup**. No chunked-DB table; the legacy FS-022.12 chunk store is NOT reproduced (KL-022.4
 obsoleted — identical bytes share one blob).
 
+**Blob root (ROADMAP M2 Decisions §1):** env `BLOB_ROOT`, default `<workspace root>/var/blobs`,
+resolved to an absolute path at startup; all binaries and tests honor it.
+
+**Crates (ROADMAP M2 Decisions §4):** SHA-256 hashing via `sha2`; hex encoding of the digest via `hex`.
+
 ## Impact
 
-- add(store): a `BlobStore` in `ost_core` — `put(bytes) -> sha256` (idempotent: existing blob reused), `open(sha256) -> reader`, path `var/blobs/aa/bb/<sha256>`.
+- add(store): a `BlobStore` in `ost_core` — `put(bytes) -> sha256` (idempotent: existing blob reused), `open(sha256) -> reader`, path `<BLOB_ROOT>/aa/bb/<sha256>` (BLOB_ROOT resolved absolute at startup, default `<workspace root>/var/blobs`).
 - add(migration): `attachment_file` (`id`, `mime`, `size`, `hash` = sha256 unique, `name`, `storage_key`, `created`).
 - add(migration): `ticket_attachment` (`id`, `ticket_id`, `file_id` → attachment_file, `ref_id` = thread entry id, `ref_type` enum `M`/`R`/`N`).
 - update(.sqlx): regenerate the offline query cache per ROADMAP Decisions §5.
@@ -35,7 +40,7 @@ obsoleted — identical bytes share one blob).
 - Status: [ ]
 
 ### AC-2: FS-022.12 — a stored blob round-trips byte-for-byte via open(hash). [API-ONLY]
-- Test: `open(hash)` returns exactly the bytes written; the on-disk path matches `var/blobs/aa/bb/<sha256>`.
+- Test: `open(hash)` returns exactly the bytes written; the on-disk path matches `<BLOB_ROOT>/aa/bb/<sha256>`.
 - Status: [ ]
 
 ### AC-3: schema — a ticket_attachment binds a file to a ticket + thread entry with ref_type M/R/N. [API-ONLY]

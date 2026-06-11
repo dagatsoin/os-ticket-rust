@@ -38,7 +38,7 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 - BS-022.1: only the ticket's department (or "All Departments") canned responses are offered (dept-scoped).
 - BS-022.2: only **enabled** canned responses are offered; a disabled one is never listed.
 - FS-022.14: selecting a canned response returns its body with `%{...}` substituted for this ticket and its attachments pre-attached.
-- BS-022.15: a posted canned reply marks the ticket **unanswered**. (Divergence: author stays the posting agent, not "SYSTEM (Canned Reply)" — pinned in EPIC-M2-D.)
+- §3 (isanswered, ROADMAP M2 Decisions): **ANY staff reply — plain or canned-assisted — marks the ticket Answered (`isanswered=true`)**, like an M1 reply. Before any staff reply the ticket is Unanswered. BS-022.15's "mark unanswered" is the filter-driven SYSTEM auto-reply path → **DEFERRED to M5** (documented deviation). The staff UI shows an Answered / Unanswered badge on detail + queue. (Author divergence: stays the posting agent, not "SYSTEM (Canned Reply)" — pinned in EPIC-M2-D.)
 
 ## Regressions
 
@@ -61,9 +61,10 @@ with its attachment(s) and re-flags the ticket as awaiting customer response.
 - Verify: the reply textarea is populated with the canned body and the **`%{ticket.number}` token is substituted** to this ticket's number (no literal `%{...}`); a chip shows the canned response's seeded `policy.txt` attachment.
 - Status: [ ]
 
-### AC-4: Posting the canned reply appends an agent response carrying the substituted text + attachment, and marks the ticket unanswered. [BROWSER]
+### AC-4: Posting the canned reply appends an agent response carrying the substituted text + attachment, and the ticket shows Answered. [BROWSER]
+- Setup: before replying, the ticket's badge reads **Unanswered**.
 - Action: post the reply.
-- Verify: the thread shows a new agent `R` entry with the substituted body and a `policy.txt` chip; the ticket's status reflects **unanswered/awaiting-customer** (e.g. an "Open / awaiting reply" indicator).
+- Verify: the thread shows a new agent `R` entry with the substituted body and a `policy.txt` chip; the ticket's **Answered / Unanswered badge now reads "Answered"** (`isanswered=true`), like any staff reply (ROADMAP M2 Decisions §3). (BS-022.15's "mark unanswered" SYSTEM path is deferred to M5.)
 - Status: [ ]
 
 ### AC-5: The agent can additionally attach their own file on a reply. [BROWSER]

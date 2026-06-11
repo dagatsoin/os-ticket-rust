@@ -38,6 +38,7 @@ M2 demo (a client cannot download in B, nor a canned attachment ride along in D,
 
 ## Checklist (children)
 
+- [ ] TS-M2-A0 — apiClient FormData/multipart support + multipart MSW handlers (frontend enabler; blocks A4, D3)
 - [ ] TS-M2-A1 — Blob store + attachment_file / ticket_attachment schema (SHA-256 filesystem store)
 - [ ] TS-M2-A2 — Upload validation (extension allow-list + max size) + attachment config keys
 - [ ] US-M2-1 — Client attaches a file when opening a ticket (children: TS-M2-A3 create hook, TS-M2-A4 /open file input)

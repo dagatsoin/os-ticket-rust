@@ -11,9 +11,15 @@
 Extends the M1 public create route (TS-M1-B2) to accept a multipart upload, validate it (A2), store
 the blob (A1), and bind it to the new ticket's first `M` thread entry.
 
+**Multipart strategy (ROADMAP M2 Decisions §2):** enable the axum `multipart` feature. The route
+**DUAL-ACCEPTS by Content-Type** — `application/json` keeps the M1 contract unchanged (no attachment),
+`multipart/form-data` carries `name`/`email`/`subject`/`message` as individual form parts plus an
+optional `attachment` file part. The 422 field key for file errors is `attachment`. Blobs are stored
+under `BLOB_ROOT` (ROADMAP M2 Decisions §1).
+
 ## Impact
 
-- update(route): `POST /api/tickets` accepts `multipart/form-data` — the M1 JSON fields plus an optional `attachment` file part.
+- update(route): `POST /api/tickets` **dual-accepts by Content-Type** — `application/json` (M1 JSON fields, no attachment) OR `multipart/form-data` (the same fields as individual form parts plus an optional `attachment` file part).
 - update(core): on create, validate the upload (A2), `store.put` the bytes (A1), insert `attachment_file` (if new) + `ticket_attachment` (ref_type `M`, ref_id = the new `M` entry).
 - A failed upload validation returns 422 with a field error on `attachment`; the ticket is NOT created.
 

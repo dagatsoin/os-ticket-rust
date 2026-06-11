@@ -16,7 +16,8 @@ default-deny quirk.
 
 - add(domain): `validate_upload(name, size, mime)` in `ost_core` — extension allow-list check (BS-022.13) + max-size check (FS-022.13); returns a field error on failure.
 - add(config): seed config keys — `allow_attachments` (enabled), `allowed_filetypes` (`.pdf,.png,.jpg,.txt,.doc`), `max_file_size` (`1048576` = 1 MB).
-- update(migration/seed): persist the three keys into the config store seeded by TS-M1-A3.
+- add(config): seed `helpdesk_url` = `http://localhost:3702` (ROADMAP M2 Decisions §6) — the base URL the substitution engine (C1) and email wiring (E3) read for `%{url}`.
+- update(migration/seed): persist the four keys into the config store seeded by TS-M1-A3.
 
 ## Regressions
 

@@ -10,10 +10,15 @@
 
 Wires the E2 wrappers/templates into the two ticket events so the customer actually receives mail.
 
+**Always-send in M2 (ROADMAP M2 Decisions §12):** the autoresponse + reply notification are **always
+sent** in M2; per-department auto-response flags are honored in M5. **helpdesk_url (§6):** the wiring
+reads the seeded `helpdesk_url` config key and feeds it to the substitution engine as the `%{url}`
+base. Mailpit-dependent assertions skip-pass when `MAILPIT_URL` is unset (§5).
+
 ## Impact
 
-- update(core): on public ticket create, after commit, **send the new-ticket autoresponse** (auto-reply wrapper) to the requester (FS-011.12), rendered via Epic C.
-- update(core): on staff reply, after commit, **send the reply notification** (notice wrapper) to the requester (FS-021.3), rendered via Epic C.
+- update(core): on public ticket create, after commit, **always send the new-ticket autoresponse** (auto-reply wrapper) to the requester (FS-011.12), rendered via Epic C with `%{url}` = the `helpdesk_url` config key (§6, §12).
+- update(core): on staff reply, after commit, **always send the reply notification** (notice wrapper) to the requester (FS-021.3), rendered via Epic C (§12).
 - Sends go through whichever transport E1 selected (SMTP when `SMTP_HOST` set; stub mailbox otherwise).
 
 ## Regressions

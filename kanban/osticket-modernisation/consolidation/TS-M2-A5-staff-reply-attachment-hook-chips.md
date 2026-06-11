@@ -1,4 +1,4 @@
-# TS-M2-A5 — update(route+ui): FS-021.3 staff reply attachment hook + thread chips
+# TS-M2-A5 — update(route): FS-021.3 staff reply attachment hook + attachments in thread payloads (BACKEND)
 
 - **ID**: TS-M2-A5
 - **Type**: Technical Story
@@ -8,16 +8,22 @@
 
 ## Context
 
-Extends the M1 staff reply route (TS-M1-C3) + staff/client thread views so a reply can carry an
-attachment and every thread entry renders its bound attachments as chips. Shared by US-M2-2 (staff
-reply own-file) and US-M2-3 (download chips). Lives in Epic A (the upload/render half); the
-download/auth half is Epic B.
+Extends the M1 staff reply route (TS-M1-C3) so a reply can carry an attachment, and extends the
+staff-detail + client-thread response payloads so every thread entry exposes its bound attachments.
+**This ticket is BACKEND ONLY (ROADMAP M2 Decisions §10):** the reply multipart hook + the
+`attachments` array in thread payloads. Chip *rendering* + click-to-download is TS-M2-B2; the reply
+*composer* UI (canned dropdown + own-file input + carried chips) is TS-M2-D3.
+
+**Multipart strategy (ROADMAP M2 Decisions §2):** the reply route **dual-accepts by Content-Type** —
+`application/json` (the M1 contract, no attachment) OR `multipart/form-data` (`body`/`cannedId` as
+form parts plus an optional `attachment` file part); 422 file errors key on `attachment`. Blobs are
+stored under `BLOB_ROOT` (§1). Hashing via `sha2`/`hex` (§4).
 
 ## Impact
 
-- update(route): `POST /api/staff/tickets/{id}/reply` accepts an optional multipart `attachment`; validate (A2), store (A1), bind `ticket_attachment` (ref_type `R`, ref_id = the new `R` entry).
-- update(api): ticket-detail + client-thread responses include each entry's attachments (`id`, `name`, `size`, `mime`).
-- update(ui): render the **AttachmentChip** (TS-M2-A4) on every thread entry in the staff detail view AND the client portal thread (download wiring is TS-M2-B2).
+- update(route): `POST /api/staff/tickets/{id}/reply` dual-accepts by Content-Type; the multipart variant carries an optional `attachment` — validate (A2), store (A1), bind `ticket_attachment` (ref_type `R`, ref_id = the new `R` entry).
+- update(api): ticket-detail + client-thread responses include each entry's attachments under the key **`attachments: [{id, name, size, mime}]`** — the SAME shape used by canned detail (D2) and consumed by the chips (B2) (ROADMAP M2 Decisions §7).
+- **(no UI in this ticket)** — chip rendering/download is TS-M2-B2; the reply composer is TS-M2-D3.
 
 ## Regressions
 
@@ -33,14 +39,14 @@ download/auth half is Epic B.
 - Multipart reply with `evil.exe` → 422 field error; no `R` entry created.
 - Status: [ ]
 
-### AC-3: ticket-detail + client-thread responses expose each entry's attachments. [API-ONLY]
-- GET staff detail + client thread → entries list their attachment metadata.
+### AC-3: ticket-detail + client-thread responses expose each entry's attachments under `attachments: [{id,name,size,mime}]`. [API-ONLY]
+- GET staff detail + client thread → entries list their attachment metadata under the shared `attachments` key (§7), the same shape as canned detail (D2).
 - Status: [ ]
 
-### AC-4: thread entries render an AttachmentChip in both staff detail and the client portal. [BROWSER]
-- Open a ticket with attachments as staff and as the client → chips appear on the right entries.
+### AC-4: a JSON (no-attachment) reply still posts and returns an empty `attachments` array (M1 contract preserved). [API-ONLY]
+- POST a plain JSON reply → new `R` entry with `attachments: []`; the M1 reply behaviour is unchanged.
 - Status: [ ]
 
 ## Dependencies
 
-- TS-M2-A1, TS-M2-A2, TS-M2-A4 (chip component), TS-M1-C3 (reply route), TS-M1-C4/D2 (thread views).
+- TS-M2-A1, TS-M2-A2, TS-M1-C3 (reply route). (Chip rendering/download is B2; the reply composer is D3 — not dependencies of this backend ticket.)

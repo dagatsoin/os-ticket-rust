@@ -22,7 +22,7 @@ flag keeps one reset mechanism and needs no env-gated route surface.
 ## Impact
 
 - update(tooling): `cargo run -p tools --bin seed -- --reset` truncates (in FK-safe order) `ticket_attachment`, `ticket_thread`, `ticket`, and `canned_attachment`-derived ticket bindings, then re-seeds the dept/group/`agent` baseline (and the M2 seed config keys + seeded canned responses).
-- update(tooling): optionally prune orphaned `attachment_file` rows + their `var/blobs/**` blobs that are no longer referenced after the purge (keeps the blob dir clean across sweeps); the seeded `policy.txt` canned blob is preserved (still referenced by the re-seeded canned response).
+- update(tooling): prune orphaned `attachment_file` rows + their blobs under **`BLOB_ROOT`** (ROADMAP M2 Decisions §1) that are no longer referenced after the purge (keeps the blob dir clean across sweeps); the seeded `policy.txt` canned blob is preserved (still referenced by the re-seeded canned response). **Staging note:** the table-truncation half lands as soon as the schema exists (after A1); the **blob-reclamation half is staged after A1 + D1** (it needs the blob store and the seeded canned blob to know what to preserve).
 - The plain `cargo run -p tools --bin seed` (no flag) keeps its M1 idempotent, non-destructive behaviour.
 
 ## Regressions

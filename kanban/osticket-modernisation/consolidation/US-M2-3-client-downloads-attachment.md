@@ -30,9 +30,9 @@ only download attachments that belong to a ticket I'm logged into.
 
 ## Business Rules
 
-- BS-022.8 (behaviour preserved via D2): a requester may download an attachment **only** if their session can access the parent ticket.
-- FS-022.11: the download streams the blob with `Content-Disposition` filename and the stored MIME type (octet-stream fallback).
-- EC-022.7 / EC-022.8 / EC-022.9: bad/unknown id, cross-session replay, and unauthorized-ticket requests are all denied with no bytes served.
+- BS-022.8 (behaviour preserved via D2): a requester may download an attachment **only** if their session can access the parent ticket. The client route is **session-bound with no ticketId param** — `GET /api/client/ticket/attachments/{attachmentId}` (ROADMAP M2 Decisions §8).
+- FS-022.11: the download streams the blob with `Content-Disposition` filename and the stored MIME type (octet-stream fallback). Chips download via **fetch-with-credentials → blob → object-URL** so a denial surfaces a visible inline error (§9).
+- EC-022.7 / EC-022.8 / EC-022.9: bad/unknown id, cross-session replay, and unauthorized-ticket requests are all denied with **no bytes served (404, no existence leak §8)**.
 
 ## Regressions
 
@@ -56,13 +56,13 @@ only download attachments that belong to a ticket I'm logged into.
 
 ### AC-3: A client logged into a DIFFERENT ticket cannot download this ticket's attachment. [BROWSER]
 - Setup: open a SECOND ticket (different email); log into the client portal for that second ticket only.
-- Action: attempt the first ticket's attachment download URL/route in that session.
-- Verify: the request is **denied** (403/404, generic error) and no bytes are served (EC-022.9).
+- Action: attempt the first ticket's attachment id via the session-bound client route in that second session.
+- Verify: the request is **denied (404, no existence leak §8)**, a **visible inline error** is shown (§9), and no bytes are served (EC-022.9).
 - Status: [ ]
 
 ### AC-4: A bad / unknown attachment id is rejected. [API-ONLY]
 - Request: as an authenticated client of a ticket, request a download for a non-existent attachment id (and an attachment id belonging to another ticket).
-- Expect: 404 / 403 with the shared error envelope; no bytes. (EC-022.7 / EC-022.8 cross-session replay covered by the parent-ticket session gate, D2.)
+- Expect: **404** with the shared error envelope; no bytes (no existence leak §8). (EC-022.7 / EC-022.8 cross-session replay covered by the session-bound route, D2.)
 - Status: [ ]
 
 ## Checklist (children)

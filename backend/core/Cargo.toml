@@ -13,6 +13,13 @@ thiserror = { workspace = true }
 ammonia = { workspace = true }
 argon2 = { workspace = true }
 password-hash = { workspace = true }
+# TS-M1-A4b — DB-backed sessions + group-permission lookup (session/permission
+# modules) and structured logging for the stub mailer.
+sqlx = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+# TS-M1-A4b — DB-backed session integration tests (against TEST_DATABASE_URL).
+db = { path = "../db" }
+tokio = { workspace = true }

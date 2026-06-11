@@ -5,11 +5,13 @@
 //! shared error-envelope contract surfacing (404 fallback) per ROADMAP M1
 //! Decision 4.
 
+pub mod auth;
 pub mod config;
+pub mod dev;
 pub mod health;
 pub mod state;
 
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use http::{HeaderValue, Method};
 use tower_http::cors::CorsLayer;
@@ -17,7 +19,7 @@ use tower_http::trace::TraceLayer;
 
 use ost_core::ApiError;
 
-pub use config::Config;
+pub use config::{AppEnv, Config};
 pub use state::AppState;
 
 /// Fallback handler for unmatched routes — emits the shared error envelope with
@@ -42,6 +44,13 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
 
     Router::new()
         .route("/api/health", get(health::health))
+        // Auth — both login POSTs are unauthenticated + CSRF-exempt (Decision 2).
+        .route("/api/staff/login", post(auth::routes::staff_login))
+        .route("/api/staff/logout", post(auth::routes::staff_logout))
+        .route("/api/client/login", post(auth::routes::client_login))
+        .route("/api/client/logout", post(auth::routes::client_logout))
+        // Env-gated dev endpoint (404 in production).
+        .route("/api/dev/mailbox", get(dev::mailbox))
         .fallback(not_found)
         .layer(cors)
         .layer(TraceLayer::new_for_http())
@@ -53,6 +62,10 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
 ///
 /// @implements TS-M1-A1 — CORS for the Vite origin (`http://localhost:3702`).
 fn build_cors(frontend_origin: &str) -> CorsLayer {
+    // Cookie-based auth requires `allow_credentials(true)`. The CORS spec forbids
+    // pairing credentials with a wildcard origin/headers, so the origin is a
+    // single exact value and the allowed headers are enumerated (including the
+    // `X-CSRFToken` double-submit header — ROADMAP Decision 2).
     let layer = CorsLayer::new()
         .allow_methods([
             Method::GET,
@@ -62,8 +75,12 @@ fn build_cors(frontend_origin: &str) -> CorsLayer {
             Method::DELETE,
             Method::OPTIONS,
         ])
-        .allow_headers(tower_http::cors::Any)
-        .allow_credentials(false);
+        .allow_headers([
+            http::header::CONTENT_TYPE,
+            http::header::ACCEPT,
+            http::HeaderName::from_static("x-csrftoken"),
+        ])
+        .allow_credentials(true);
 
     match HeaderValue::from_str(frontend_origin) {
         Ok(origin) => layer.allow_origin(origin),

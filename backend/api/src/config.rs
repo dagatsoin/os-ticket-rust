@@ -10,6 +10,41 @@ pub const DEFAULT_PORT: u16 = 3701;
 /// Default Vite frontend origin allowed by CORS.
 pub const DEFAULT_FRONTEND_ORIGIN: &str = "http://localhost:3702";
 
+/// Default deployment environment when `APP_ENV` is unset.
+pub const DEFAULT_APP_ENV: &str = "development";
+
+/// Deployment environment. Drives cookie `Secure` (off in dev) and whether the
+/// dev mailbox endpoint is exposed (disabled in production).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AppEnv {
+    /// Local development (cookies not `Secure`, dev endpoints enabled).
+    Development,
+    /// Production (cookies `Secure`, dev endpoints disabled).
+    Production,
+}
+
+impl AppEnv {
+    /// Parse from the `APP_ENV` string. Anything other than `production`
+    /// (case-insensitive) is treated as development.
+    pub fn from_str_lossy(s: &str) -> Self {
+        if s.eq_ignore_ascii_case("production") {
+            AppEnv::Production
+        } else {
+            AppEnv::Development
+        }
+    }
+
+    /// Whether session/CSRF cookies should carry the `Secure` attribute.
+    pub fn cookies_secure(self) -> bool {
+        matches!(self, AppEnv::Production)
+    }
+
+    /// Whether env-gated dev endpoints (e.g. `GET /api/dev/mailbox`) are exposed.
+    pub fn dev_endpoints_enabled(self) -> bool {
+        matches!(self, AppEnv::Development)
+    }
+}
+
 /// Resolved server configuration.
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -21,6 +56,8 @@ pub struct Config {
     pub bind_addr: SocketAddr,
     /// Origin allowed by CORS (the Vite dev origin).
     pub frontend_origin: String,
+    /// Deployment environment (drives cookie `Secure` + dev endpoint gating).
+    pub app_env: AppEnv,
 }
 
 impl Config {
@@ -49,10 +86,17 @@ impl Config {
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| DEFAULT_FRONTEND_ORIGIN.to_string());
 
+        let app_env = std::env::var("APP_ENV")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .map(|s| AppEnv::from_str_lossy(&s))
+            .unwrap_or_else(|| AppEnv::from_str_lossy(DEFAULT_APP_ENV));
+
         Self {
             database_url,
             bind_addr: SocketAddr::new(host, port),
             frontend_origin,
+            app_env,
         }
     }
 }

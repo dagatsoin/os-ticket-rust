@@ -40,7 +40,8 @@ async fn main() -> anyhow::Result<()> {
             tracing::warn!("DATABASE_URL not set; serving with db: down");
             AppState::without_db()
         }
-    };
+    }
+    .with_app_env(config.app_env);
 
     let router = app(state, &config.frontend_origin);
 

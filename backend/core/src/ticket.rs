@@ -19,6 +19,8 @@ use serde::Serialize;
 use sqlx::postgres::PgPool;
 use sqlx::Row;
 
+use crate::attachment::{insert_attachment, AttachmentSpec, AttachmentView};
+use crate::blob::BlobStore;
 use crate::sanitize::{safe_html, sanitize};
 use crate::validation::{validate_email_field, validate_required, FieldError};
 
@@ -243,8 +245,49 @@ pub async fn create_ticket(pool: &PgPool, input: &NewTicket) -> Result<Ticket, T
 pub async fn create_ticket_with_numbers<F>(
     pool: &PgPool,
     input: &NewTicket,
-    mut next_number: F,
+    next_number: F,
 ) -> Result<Ticket, TicketError>
+where
+    F: FnMut() -> i64,
+{
+    let (ticket, _att) = create_ticket_inner(pool, input, next_number, None).await?;
+    Ok(ticket)
+}
+
+/// Create a ticket + its first `M` entry, optionally binding ONE attachment to
+/// that `M` entry — all in ONE transaction (TS-M2-A3).
+///
+/// The upload MUST already have passed [`crate::upload::validate_upload`]. Flow
+/// (the A3 PINNED order): the ticket row + `M` entry are inserted, the blob is
+/// `put` into `store` (content-addressed, dedup), then `attachment_file`
+/// (upsert-by-hash) + `ticket_attachment` (`ref_type = M`) are written — all
+/// before the single `commit`. Any failure rolls the whole thing back, so a
+/// failed attachment leaves NO ticket (and at worst an orphan blob, which D1
+/// dedup reclaims).
+///
+/// Returns the ticket plus the bound attachment's §7 view when one was supplied.
+///
+/// @implements FS-011.7 / EC-011.5: public create binds an attachment atomically.
+pub async fn create_ticket_with_attachment(
+    pool: &PgPool,
+    input: &NewTicket,
+    store: &BlobStore,
+    attachment: &AttachmentSpec,
+) -> Result<(Ticket, AttachmentView), TicketError> {
+    let (ticket, att) =
+        create_ticket_inner(pool, input, random_ticket_number, Some((store, attachment))).await?;
+    // `att` is `Some` exactly when an attachment was supplied.
+    Ok((ticket, att.expect("attachment supplied ⇒ view returned")))
+}
+
+/// The shared create implementation: atomic ticket + `M` entry, with an optional
+/// attachment bound to that `M` entry inside the same transaction.
+async fn create_ticket_inner<F>(
+    pool: &PgPool,
+    input: &NewTicket,
+    mut next_number: F,
+    attachment: Option<(&BlobStore, &AttachmentSpec)>,
+) -> Result<(Ticket, Option<AttachmentView>), TicketError>
 where
     F: FnMut() -> i64,
 {
@@ -316,27 +359,60 @@ where
     };
 
     // The first thread entry is always a client message (`M`), holding the body.
-    sqlx::query(
+    // Capture its id so an attachment (A3) can bind to it in the same tx.
+    let m_entry_id: i64 = sqlx::query_scalar(
         "INSERT INTO ticket_thread (ticket_id, thread_type, poster, source, title, body)
-         VALUES ($1, 'M', $2, $3, $4, $5)",
+         VALUES ($1, 'M', $2, $3, $4, $5)
+         RETURNING id",
     )
     .bind(ticket_id)
     .bind(&input.name)
     .bind(&input.source)
     .bind(&input.subject)
     .bind(&input.body)
-    .execute(&mut *tx)
+    .fetch_one(&mut *tx)
     .await?;
+
+    // Optionally bind ONE attachment to the M entry (A3). Store the blob, then
+    // write the relational rows — all before the commit so a failure rolls the
+    // whole ticket back (EC-011.5: no ticket on a failed attachment).
+    let att_view = match attachment {
+        Some((store, spec)) => {
+            store
+                .put(&spec.bytes)
+                .await
+                .map_err(|e| TicketError::Db(blob_io_to_sqlx(e)))?;
+            let view =
+                insert_attachment(&mut tx, ticket_id, m_entry_id, ThreadType::Message.as_db(), spec)
+                    .await?;
+            Some(view)
+        }
+        None => None,
+    };
 
     tx.commit().await?;
 
-    Ok(Ticket {
-        ticket_id,
-        ticket_number,
-        dept_id,
-        status: STATUS_OPEN.to_string(),
-        email: input.email.clone(),
-        subject: input.subject.clone(),
+    Ok((
+        Ticket {
+            ticket_id,
+            ticket_number,
+            dept_id,
+            status: STATUS_OPEN.to_string(),
+            email: input.email.clone(),
+            subject: input.subject.clone(),
+        },
+        att_view,
+    ))
+}
+
+/// Adapt a blob-store I/O error into a `sqlx::Error` so it flows through
+/// [`TicketError::Db`] (the create path's single error channel). The blob `put`
+/// is a non-DB failure but it must abort the surrounding transaction the same
+/// way a DB error would.
+fn blob_io_to_sqlx(e: crate::blob::BlobError) -> sqlx::Error {
+    sqlx::Error::Io(match e {
+        crate::blob::BlobError::Io(io) => io,
+        other => std::io::Error::other(other.to_string()),
     })
 }
 

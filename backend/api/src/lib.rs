@@ -5,6 +5,7 @@
 //! shared error-envelope contract surfacing (404 fallback) per ROADMAP M1
 //! Decision 4.
 
+pub mod attachments;
 pub mod auth;
 pub mod client;
 pub mod config;

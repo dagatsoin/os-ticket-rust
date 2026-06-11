@@ -9,17 +9,27 @@
 //! * `topicId` is NOT required (deferred to M4).
 //! * No CSRF on this route — it is a public, unauthenticated endpoint.
 
-use axum::extract::State;
+use axum::extract::{FromRequest, Multipart, Request, State};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 use http::StatusCode;
 use serde::Deserialize;
 
-use ost_core::ticket::{create_ticket, NewTicket, NewTicketInput};
+use ost_core::ticket::{create_ticket, create_ticket_with_attachment, NewTicket, NewTicketInput};
 use ost_core::validation::FieldError;
-use ost_core::ApiError;
+use ost_core::{ApiError, AttachmentSpec, AttachmentView};
 
+use crate::attachments::{drain_multipart, load_upload_policy, validate_attachment};
 use crate::state::AppState;
+
+/// Whether a request's `Content-Type` is `multipart/form-data` (§2 dual-accept).
+fn is_multipart(req: &Request) -> bool {
+    req.headers()
+        .get(http::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|ct| ct.trim_start().to_ascii_lowercase().starts_with("multipart/form-data"))
+        .unwrap_or(false)
+}
 
 /// Public create-ticket request body. The external contract uses `message` for
 /// the first message body (the core models it as `body`); the field name is
@@ -39,43 +49,96 @@ pub struct CreateTicketRequest {
 
 /// `POST /api/tickets` — create a ticket from a public web submission.
 ///
-/// Validates and sanitises the payload (FS-011.8 minus `topicId`), then creates
-/// the ticket + its first `M` thread entry atomically via the shared core. On
-/// success returns **201** with the generated 6-digit ticket number. On a
-/// validation failure returns **422** with the shared error envelope and a
-/// per-field map (no ticket is created).
+/// **Dual-accepts by `Content-Type` (ROADMAP §2):** `application/json` keeps the
+/// M1 contract unchanged (no attachment); `multipart/form-data` carries
+/// `name`/`email`/`subject`/`message` as individual parts plus an optional
+/// `attachment` file part. Fields are validated first (FS-011.8 minus `topicId`),
+/// then the attachment against the seeded config policy (A2). On success returns
+/// **201** with the generated 6-digit ticket number. A field or attachment
+/// validation failure returns **422** with the shared error envelope (file
+/// errors keyed on `attachment`); no ticket and no attachment rows are created.
 ///
 /// CSRF-exempt and unauthenticated (ROADMAP Decisions §2).
 ///
 /// @implements BS-011 / FS-011.8: public create + validation.
+/// @implements FS-011.7 / EC-011.5: optional attachment bound to the `M` entry.
 pub async fn create_public_ticket(
     State(state): State<AppState>,
-    Json(req): Json<CreateTicketRequest>,
+    request: Request,
 ) -> Result<Response, ApiError> {
     let pool = state
         .pool
         .as_ref()
         .ok_or_else(|| ApiError::internal("Ticket creation is unavailable"))?;
 
-    let input = NewTicketInput {
-        email: req.email,
-        name: req.name,
-        subject: req.subject,
-        body: req.message,
-        source: Some("Web".to_string()),
-        dept_id: None,
+    // Parse the two accepted shapes into the same (input, optional attachment).
+    let (input, attachment) = if is_multipart(&request) {
+        let multipart = Multipart::from_request(request, &state)
+            .await
+            .map_err(|_| ApiError::validation("Malformed multipart request"))?;
+        let form = drain_multipart(multipart).await?;
+        let input = NewTicketInput {
+            email: form.field("email").to_string(),
+            name: form.field("name").to_string(),
+            subject: form.field("subject").to_string(),
+            body: form.field("message").to_string(),
+            source: Some("Web".to_string()),
+            dept_id: None,
+        };
+        (input, form.attachment)
+    } else {
+        let Json(req) = Json::<CreateTicketRequest>::from_request(request, &state)
+            .await
+            .map_err(|_| ApiError::validation("Malformed JSON request"))?;
+        let input = NewTicketInput {
+            email: req.email,
+            name: req.name,
+            subject: req.subject,
+            body: req.message,
+            source: Some("Web".to_string()),
+            dept_id: None,
+        };
+        (input, None)
     };
 
+    // Validate fields FIRST, then the attachment (A2) — so a bad field surfaces a
+    // field error and we never store a blob for a request that fails validation.
     let new_ticket = NewTicket::validated(input).map_err(map_field_errors)?;
 
-    let ticket = create_ticket(pool, &new_ticket)
-        .await
-        .map_err(|_| ApiError::internal("Could not create the ticket"))?;
+    if attachment.is_some() {
+        let policy = load_upload_policy(pool).await?;
+        validate_attachment(&attachment, &policy)?;
+    }
+
+    let (ticket, _att): (_, Option<AttachmentView>) = match attachment {
+        Some(spec) => {
+            let (t, view) = create_with_attachment(pool, &state, &new_ticket, spec).await?;
+            (t, Some(view))
+        }
+        None => {
+            let t = create_ticket(pool, &new_ticket)
+                .await
+                .map_err(|_| ApiError::internal("Could not create the ticket"))?;
+            (t, None)
+        }
+    };
 
     let body = Json(serde_json::json!({
         "ticketNumber": ticket.ticket_number,
     }));
     Ok((StatusCode::CREATED, body).into_response())
+}
+
+/// Create a ticket binding the validated attachment to its `M` entry (A3).
+async fn create_with_attachment(
+    pool: &sqlx::postgres::PgPool,
+    state: &AppState,
+    new_ticket: &NewTicket,
+    spec: AttachmentSpec,
+) -> Result<(ost_core::Ticket, AttachmentView), ApiError> {
+    create_ticket_with_attachment(pool, new_ticket, &state.store, &spec)
+        .await
+        .map_err(|_| ApiError::internal("Could not create the ticket"))
 }
 
 /// Map the core's per-field validation errors into a 422 [`ApiError`] envelope.

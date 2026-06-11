@@ -5,9 +5,17 @@ use std::sync::Arc;
 use sqlx::postgres::PgPool;
 
 use ost_core::session::SessionStore;
-use ost_core::StubMailer;
+use ost_core::{BlobStore, StubMailer};
 
 use crate::config::AppEnv;
+
+/// Resolve the workspace root for the default blob location: the binary runs
+/// from the workspace root (`cargo run`/the deployed CWD), so the current dir is
+/// used. `BlobStore::from_env` honours `BLOB_ROOT` over this default (§1).
+fn default_blob_store() -> BlobStore {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+    BlobStore::from_env(cwd)
+}
 
 /// Application state. The pool is optional so the server boots (and the health
 /// endpoint / error contract stay testable) even with no live DB.
@@ -23,6 +31,10 @@ pub struct AppState {
     pub mailer: Arc<StubMailer>,
     /// Deployment environment — drives cookie `Secure` + dev endpoint gating.
     pub app_env: AppEnv,
+    /// Content-addressed blob store for attachments (TS-M2-A1, §1). Resolved from
+    /// `BLOB_ROOT` (default `<cwd>/var/blobs`) at boot; shared by the upload
+    /// (A3/A5) and download (B1) routes.
+    pub store: BlobStore,
 }
 
 impl AppState {
@@ -33,6 +45,7 @@ impl AppState {
             pool: Some(pool),
             mailer: Arc::new(StubMailer::new()),
             app_env: AppEnv::Development,
+            store: default_blob_store(),
         }
     }
 
@@ -43,7 +56,16 @@ impl AppState {
             sessions: None,
             mailer: Arc::new(StubMailer::new()),
             app_env: AppEnv::Development,
+            store: default_blob_store(),
         }
+    }
+
+    /// Override the blob store (chainable). Used by integration tests to point
+    /// the store at an isolated temp dir.
+    #[must_use]
+    pub fn with_store(mut self, store: BlobStore) -> Self {
+        self.store = store;
+        self
     }
 
     /// Override the deployment environment (chainable). Used at boot and in

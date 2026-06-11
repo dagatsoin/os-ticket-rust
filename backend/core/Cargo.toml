@@ -17,6 +17,10 @@ password-hash = { workspace = true }
 # modules) and structured logging for the stub mailer.
 sqlx = { workspace = true }
 tracing = { workspace = true }
+# TS-M2-A1 — SHA-256 filesystem blob store (content addressing + async file I/O).
+sha2 = { workspace = true }
+hex = { workspace = true }
+tokio = { workspace = true, features = ["fs", "io-util"] }
 
 [dev-dependencies]
 serde_json = { workspace = true }

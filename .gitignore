@@ -17,5 +17,11 @@ stage
 /backend/.env
 .env
 
+# TS-M2-A1 — SHA-256 filesystem blob store root (BLOB_ROOT, default
+# <workspace>/var/blobs). Stored file bytes are local runtime state, never
+# committed.
+/var/blobs
+/var/
+
 # NOTE: the committed `.sqlx/` query cache (cargo sqlx prepare) is intentionally
 # tracked so CI builds in SQLx offline mode without a live DB — do NOT ignore it.

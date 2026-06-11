@@ -8,6 +8,7 @@
 //! realms), [`csrf`] double-submit verification, the generic [`permission`]
 //! gate, and the stub [`mailer`] port.
 
+pub mod blob;
 pub mod csrf;
 pub mod error;
 pub mod hashing;
@@ -18,6 +19,7 @@ pub mod session;
 pub mod ticket;
 pub mod validation;
 
+pub use blob::{is_sha256_hex, sha256_hex, BlobError, BlobStore, BLOB_ROOT_ENV};
 pub use csrf::{
     new_csrf_token, verify_double_submit, CLIENT_CSRF_COOKIE, CSRF_HEADER, STAFF_CSRF_COOKIE,
 };

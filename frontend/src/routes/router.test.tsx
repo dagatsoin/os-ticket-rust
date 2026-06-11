@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../test/renderWithProviders";
+import { server, http, HttpResponse } from "../test/mockServer";
+import { RootStore } from "../stores/RootStore";
 import { AppRoutes } from "./router";
 
 /**
@@ -29,14 +31,20 @@ describe("AppRoutes — three branches", () => {
     expect(screen.getByText("Staff Sign In")).toBeInTheDocument();
   });
 
-  it("resolves the client portal branch at /tickets", () => {
-    renderWithProviders(<AppRoutes />, { route: "/tickets" });
-    expect(screen.getByText("My Tickets")).toBeInTheDocument();
+  it("redirects /tickets to the client login when there is no session", async () => {
+    server.use(
+      http.get("/api/client/ticket", () =>
+        HttpResponse.json({ error: { message: "unauthenticated" } }, { status: 401 }),
+      ),
+    );
+    const store = new RootStore({ onUnauthorized: () => {} });
+    renderWithProviders(<AppRoutes />, { route: "/tickets", store });
+    expect(await screen.findByText("View Your Ticket")).toBeInTheDocument();
   });
 
   it("resolves the client login at /tickets/login", () => {
     renderWithProviders(<AppRoutes />, { route: "/tickets/login" });
-    expect(screen.getByText("Client Sign In")).toBeInTheDocument();
+    expect(screen.getByText("View Your Ticket")).toBeInTheDocument();
   });
 
   it("renders the not-found page for an unknown route (no blank screen)", () => {

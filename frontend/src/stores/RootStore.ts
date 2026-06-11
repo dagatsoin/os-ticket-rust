@@ -7,6 +7,7 @@ import { AuthStore } from "./AuthStore";
 import { HealthStore } from "./HealthStore";
 import { OpenTicketStore } from "./OpenTicketStore";
 import { StaffTicketStore } from "./StaffTicketStore";
+import { ClientPortalStore } from "./ClientPortalStore";
 
 /** Optional redirect hook so 401s navigate via react-router instead of a hard reload. */
 export interface RootStoreOptions {
@@ -23,6 +24,8 @@ export class RootStore {
   readonly openTicket: OpenTicketStore;
   /** Staff queue + ticket-detail/reply store (TS-M1-C4). */
   readonly staffTickets: StaffTicketStore;
+  /** Client portal session + read-only thread store (TS-M1-D2). */
+  readonly clientPortal: ClientPortalStore;
 
   constructor(opts: RootStoreOptions = {}) {
     this.staffApi = new ApiClient({ realm: "staff", onUnauthorized: opts.onUnauthorized });
@@ -45,6 +48,7 @@ export class RootStore {
     // Public open-ticket form rides the unauthenticated client apiClient.
     this.openTicket = new OpenTicketStore(this.clientApi);
     this.staffTickets = new StaffTicketStore(this.staffApi);
+    this.clientPortal = new ClientPortalStore(this.clientApi);
   }
 }
 

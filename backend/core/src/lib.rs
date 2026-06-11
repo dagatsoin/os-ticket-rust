@@ -15,6 +15,7 @@ pub mod mailer;
 pub mod permission;
 pub mod sanitize;
 pub mod session;
+pub mod ticket;
 pub mod validation;
 
 pub use csrf::{
@@ -28,6 +29,11 @@ pub use permission::{
 };
 pub use sanitize::{safe_html, sanitize};
 pub use session::{Realm, Session, SessionData, SessionError, SessionStore, SESSION_TTL_SECS};
+pub use ticket::{
+    append_thread_entry, create_ticket, create_ticket_with_numbers, load_thread,
+    random_ticket_number, NewThreadEntry, NewTicket, NewTicketInput, ThreadEntry, ThreadType,
+    Ticket, TicketError, TICKET_NUMBER_MAX, TICKET_NUMBER_MIN,
+};
 pub use validation::{
     is_email, validate_email_field, validate_password, validate_required, FieldError,
     PASSWORD_MIN_LEN,

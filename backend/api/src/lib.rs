@@ -10,6 +10,7 @@ pub mod config;
 pub mod dev;
 pub mod health;
 pub mod state;
+pub mod tickets;
 
 use axum::routing::{get, post};
 use axum::Router;
@@ -44,6 +45,8 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
 
     Router::new()
         .route("/api/health", get(health::health))
+        // Public create-ticket — unauthenticated + CSRF-exempt (Decision 2).
+        .route("/api/tickets", post(tickets::create_public_ticket))
         // Auth — both login POSTs are unauthenticated + CSRF-exempt (Decision 2).
         .route("/api/staff/login", post(auth::routes::staff_login))
         .route("/api/staff/logout", post(auth::routes::staff_logout))

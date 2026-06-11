@@ -8,3 +8,14 @@ Vagrantfile
 
 # Staging directory used for packaging script
 stage
+
+# --- Rust backend (Cargo workspace at repo root) ---
+/target
+**/*.rs.bk
+
+# Local environment files (the committed .env.example is the template).
+/backend/.env
+.env
+
+# NOTE: the committed `.sqlx/` query cache (cargo sqlx prepare) is intentionally
+# tracked so CI builds in SQLx offline mode without a live DB — do NOT ignore it.

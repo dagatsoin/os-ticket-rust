@@ -62,7 +62,7 @@ osTicket-1.7/
 | FS-031 | `FS-031-admin-staff-groups-directory.md` | Admin CRUD for staff accounts and permission groups, the staff directory browse/search, and each staff member's self-service profile editing. | 11 | 27 | 12 | 6 | Final (Phase 4 de-duplicated) |
 | FS-032 | `FS-032-admin-system-settings-sla-priorities-categories.md` | Seven-tab system settings (~110 config keys), SLA plans, ticket priorities, and FAQ-category CRUD. | 16 | 16 | 12 | 7 | Final (Phase 4 de-duplicated) |
 | FS-033 | `FS-033-admin-logs-pages-content.md` | Admin system-log viewer (filter/sort/paginate `syslog`) plus the read-only content/configuration AJAX endpoints serving the control panel. | 10 | 7 | 10 | 5 | Final (Phase 4 de-duplicated) |
-| FS-040 | `FS-040-email-accounts-templates-outbound-mail.md` | Email-account configuration, email-template sets, the `%{token}` variable-substitution grammar, and outbound mail composition/dispatch. | 13 | 24 | 11 | 7 | Final (Phase 4 de-duplicated) |
+| FS-040 | `FS-040-email-accounts-templates-outbound-mail.md` | Email-account configuration, email-template sets, the `%{token}` variable-substitution grammar, and outbound mail composition/dispatch. | 13 | 25 | 12 | 8 | Final (Phase 4 de-duplicated) |
 | FS-041 | `FS-041-inbound-email-pipeline-fetch-pipe-parse.md` | Inbound email-to-ticket pipeline: IMAP/POP3 poll, local MTA pipe, and HTTP email-post intake converging on parse → threading → create/append. | 12 | 16 | 13 | 7 | Final (Phase 4 de-duplicated) |
 | FS-042 | `FS-042-ticket-filters-banlist-inbound-routing.md` | Ordered ticket-filter rule engine (reject/mutate inbound tickets across all channels) and the reserved `SYSTEM BAN LIST` filter + ban/unban actions. | 12 | 19 | 12 | 7 | Final (Phase 4 de-duplicated) |
 | FS-043 | `FS-043-external-api-cron-scheduler.md` | IP-bound API-key management, the HTTP API dispatcher (ticket-create + remote cron routes), and the scheduled-maintenance cron subsystem. | 13 | 9 | 17 | 8 | Final (Phase 4 de-duplicated) |
@@ -72,15 +72,16 @@ osTicket-1.7/
 | FS-090 | `FS-090-shared-ui-navigation-data-export.md` | Cross-cutting presentation infra: navigation assembly, page chrome (header/footer/message bars), pagination, and the CSV/JSON/DB export pipeline. | 27 | 14 | 11 | 8 | Final (Phase 4 de-duplicated) |
 | FS-091 | `FS-091-reference-data-enums-data-model.md` | Canonical logical data model (34 tables), every enum/reference set, seeded reference rows, and all configuration keys with installed defaults. | 14 | 12 | 10 | 8 | Final (Phase 4 de-duplicated) |
 | FS-092 | `FS-092-cli-management-deployment-packaging.md` | Shell-only CLI tooling subsystem (`setup/cli/**`): action-dispatch + argparse framework, deployment/unpack with `INCLUDE_DIR` rewrite, release packager (version stamp + `display_errors` hardening + tar/zip), and the backup import/restore pipeline (counterpart to FS-090.27's exporter). | 16 | 13 | 13 | 7 | Final (Phase 4 de-duplicated) |
-| **Totals (authoritative, heading-counted)** | **22 specs** | **13,469 lines** | **365** | **415** | **354** | **224** | **Final (Phase 4 de-duplicated)** |
+| **Totals (authoritative, heading-counted)** | **22 specs** | **13,469 lines** | **365** | **416** | **355** | **225** | **Final (Phase 4 de-duplicated)** |
 
 > **Counting note:** the per-spec FR/BS/EC/KL columns above are the interim Phase-1 + gap-close
 > estimates carried forward from earlier passes (they sum to ~334/354/274/162). The **Totals row
 > is the authoritative figure** — recomputed by the careful definition-heading method (counting
 > `### FS/BS/EC/KL-…:` headings and `**FS/BS/EC/KL-… — …**` bold-bullet definitions, not raw token
 > mentions) after the Phase-2 gap-close additions, the Phase-4 dedupe trims/corrections, and
-> the 2026-06-10 re-crawl closure round (FS-010 +2 BS/+1 EC/+2 KL, FS-040 +1 KL):
-> **365 FR · 415 BS · 354 EC · 224 KL** across **13,469 lines**. See
+> the 2026-06-10 re-crawl closure round (FS-010 +2 BS/+1 EC/+2 KL, FS-040 +1 KL), and the
+> modernisation SMTP transport-security update (FS-040 +1 BS/+1 EC/+1 KL — BS-040.30 / EC-040.15 / KL-040.12):
+> **365 FR · 416 BS · 355 EC · 225 KL** across **13,469 lines**. See
 > `../retro-spec/FINAL_CONVERGENCE_REPORT.md` for the method and per-spec line counts.
 
 ## Source Reference

@@ -181,6 +181,7 @@ It owns the behavior of three control-panel pages — the Email Addresses manage
 
 **Acceptance Criteria** (delivery & fallback — BS-040.23):
 - When SMTP is selected, the SMTP connection is established (and cached per host:port:username within the request for reuse); the message is sent over it; success returns the generated Message-ID.
+- **Transport security mode**: The established SMTP connection uses one of three transport-security modes — **None** (plaintext), **implicit SSL/TLS** (encrypted from the first byte, typically port 465), or **STARTTLS** (a plaintext connection opportunistically upgraded to TLS before authentication, typically port 587) — selected by configuration with a sensible port-based default when unset (465 ⇒ implicit SSL/TLS, 587 ⇒ STARTTLS, otherwise None) (BS-040.30). A mode the target relay does not accept fails the connection/handshake and triggers the native-mail fallback below (EC-040.15).
 - If the SMTP send fails, the cached connection is dropped, the error is logged (without itself emailing an alert, to avoid loops), and the system falls back to the native mail transport.
 - When no SMTP is configured (or after SMTP failure), the message is sent via the native transport; success returns the Message-ID, failure returns a false/failure result.
 
@@ -320,6 +321,20 @@ It owns the behavior of three control-panel pages — the Email Addresses manage
 **Rule**: SMTP transports are created with persistence requested and cached within the request, keyed by host + port + username; subsequent sends reusing the same key reuse the cached connection. A send failure evicts that cache entry so the next send reconnects.
 **Rationale**: Avoids re-establishing an SMTP session for every message in a batch while ensuring a failed connection is not reused.
 
+### BS-040.30: Outbound SMTP Transport Security Mode
+**Rule**: Outbound SMTP delivery supports three transport-security modes, selected by configuration:
+- **None** — a plaintext connection (no transport encryption).
+- **Implicit SSL/TLS** — the socket is encrypted from the first byte (an implicit-TLS submission, conventionally port 465).
+- **STARTTLS** — a connection opened in plaintext and then opportunistically upgraded to TLS (via the STARTTLS extension) before any authentication or message exchange (conventionally the submission port 587).
+When no mode is explicitly configured, the effective mode is defaulted from the SMTP port: **465 ⇒ implicit SSL/TLS**, **587 ⇒ STARTTLS**, any other port ⇒ **None** (plaintext — e.g. a local test relay). A configured mode always overrides the port default.
+**Rationale**: Real mail-submission endpoints require transport encryption; a plaintext-only transport cannot deliver to any TLS-required relay (465/587). Supporting all three modes with a port-based default lets the same account configuration reach production submission endpoints (implicit TLS on 465, STARTTLS on 587) and local/test relays (plaintext) without extra configuration.
+**Legacy grounding**: In the legacy transport the mode is realized by the SMTP host descriptor and the underlying SMTP client — an `ssl://` / `tls://` host prefix opens an implicit-TLS socket (the client's documented `ssl://mail.host:465` form), while STARTTLS is negotiated opportunistically during authentication when the server advertises the STARTTLS extension and the connection is not already implicitly secured; absent both, delivery is plaintext. This is the outbound counterpart of the per-account inbound-fetch **Encryption** setting (`NONE` / `SSL`) that FS-040.2 documents on the Mail Account block.
+**Modernised realization**: The reimplementation makes the mode a first-class configuration value — `implicit` | `starttls` | `none` (the `SMTP_TLS` setting) — with the port-based default above applied when it is unset; production uses `implicit` on port 465, and the local test relay uses `none` on a plaintext port. This supersedes an interim plaintext-only transport (KL-040.12).
+**Examples**:
+- Port 465 with no explicit mode ⇒ implicit SSL/TLS handshake before the SMTP greeting.
+- Port 587 with no explicit mode ⇒ plaintext connect, then STARTTLS upgrade, then authenticate.
+- A local test relay on a plaintext port with mode `none` ⇒ no transport encryption.
+
 ---
 
 ## Data Requirements
@@ -331,7 +346,7 @@ It owns the behavior of three control-panel pages — the Email Addresses manage
 - **Routing defaults**: new-ticket priority id, new-ticket department id, auto-response-disabled flag.
 - **Credentials**: username, encrypted password (encrypted with a server secret keyed by the username).
 - **Mailbox fetch**: active flag, host, protocol (`POP` | `IMAP`, default `POP`), encryption (`NONE` | `SSL`), port, fetch frequency (minutes, default 5), max emails per fetch (default 30), archive-folder, delete-after-fetch flag, plus operational fields (error count, last error, last fetch) maintained by the fetch pipeline (FS-041).
-- **SMTP**: active flag, host, port, auth-required flag, header-spoofing-allowed flag.
+- **SMTP**: active flag, host, port, auth-required flag, header-spoofing-allowed flag, and a transport-security mode (None / implicit SSL/TLS / STARTTLS) applied to the outbound connection — realized in the legacy transport by the host descriptor + opportunistic STARTTLS, and in the modernised implementation by a configuration value defaulted from the port (BS-040.30).
 - **Timestamps**: created, updated.
 
 ### Template Set (`EmailTemplateGroup`, per set)
@@ -397,7 +412,7 @@ It owns the behavior of three control-panel pages — the Email Addresses manage
 ### Flow 6: A System Message Is Sent
 1. A ticket event occurs (e.g., new ticket). The system resolves the relevant message type from the active template set (or packaged default).
 2. `%{...}` tokens in subject and body are substituted from the ticket and context; `%{recipient}` is personalized per staff recipient.
-3. The mailer selects the sending account/transport (per-account SMTP → global SMTP → default email), composes the MIME message with anti-loop headers, and sends via SMTP (falling back to native mail on failure).
+3. The mailer selects the sending account/transport (per-account SMTP → global SMTP → default email), composes the MIME message with anti-loop headers, and sends via SMTP over the configured transport-security mode (None / implicit SSL/TLS / STARTTLS, defaulted from the port — BS-040.30), falling back to native mail on failure.
 
 ---
 
@@ -458,6 +473,10 @@ It owns the behavior of three control-panel pages — the Email Addresses manage
 ### EC-040.14: Attachment Source Unavailable at Send Time
 **Scenario**: An outbound message references a stored file id that no longer resolves, or a file path that is missing or unreadable.
 **Expected**: That attachment is silently skipped; the message is still composed and sent without it (FS-040.12).
+
+### EC-040.15: SMTP Transport Security Mode Mismatch
+**Scenario**: The configured (or port-defaulted) transport-security mode does not match what the relay accepts — e.g. a plaintext/None connection to an implicit-TLS-only port 465, an implicit-TLS handshake attempted against a plaintext-only listener, or a STARTTLS upgrade requested from a server that does not advertise the STARTTLS extension.
+**Expected**: The SMTP connection or TLS handshake fails; at **send time** the failure is logged without emailing an alert, the cached connection is evicted, and delivery falls back to the native mail transport (BS-040.23, BS-040.30). At **account save time** the analogous live-SMTP check (FS-040.3) surfaces "Unable to log in. Check SMTP settings." with the underlying message and aborts the save.
 
 ---
 
@@ -523,6 +542,10 @@ It owns the behavior of three control-panel pages — the Email Addresses manage
 ### KL-040.11: Template-Set "In-Use" Column Header Is a Dead Sort Link
 **Limitation**: In the template-set listing (`include/staff/templates.inc.php`), the **In-Use** column header emits a `sort=inuse` link, but `inuse` is not among the recognized sort keys (the sort map is `name`/`status`/`created`/`updated` only) and `$inuse_sort` is never assigned, so the click silently reverts to the default `name` sort. In-Use is a derived display-only value (BS-040.6) and is not a sortable column despite the header rendering as a link.
 **Impact**: Clicking the In-Use header appears interactive but does nothing useful — it re-renders the list in the default Name order rather than grouping by usage. Mirrors the analogous team "Last Updated" dead-sort-link quirk (KL-030-12).
+
+### KL-040.12: Modernisation Note — Interim Plaintext-Only SMTP Was Test-Only, Now Resolved
+**Modernisation note**: An early milestone of the modernised backend hardcoded the outbound SMTP transport to plaintext so it could target a local test relay (a Mailpit-only deviation). That plaintext-only behavior was a **temporary, test-only limitation** and has been **resolved**: outbound SMTP now selects a transport-security mode — None / implicit SSL/TLS / STARTTLS — from configuration (the `SMTP_TLS` setting) with a port-based default (BS-040.30), matching the legacy transport's SSL / STARTTLS capability.
+**Impact**: None outstanding. Production can deliver to TLS-required submission endpoints (implicit TLS on port 465, STARTTLS on port 587); the plaintext path remains available only for local/test relays. This note documents the deviation and its resolution for traceability, not an open limitation.
 
 ---
 

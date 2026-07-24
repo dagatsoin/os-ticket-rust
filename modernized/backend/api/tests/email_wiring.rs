@@ -25,7 +25,7 @@ use axum::Router;
 use http::header::{COOKIE, SET_COOKIE};
 use http::{Request, StatusCode};
 use http_body_util::BodyExt;
-use ost_core::{SmtpConfig, SmtpMailer, StubMailer};
+use ost_core::{SmtpConfig, SmtpMailer, SmtpTls, StubMailer};
 use sqlx::postgres::PgPool;
 use tower::ServiceExt;
 
@@ -68,6 +68,7 @@ fn smtp_app(pool: PgPool) -> Router {
         from_name: None,
         user: None,
         pass: None,
+        tls: SmtpTls::None,
     })
     .expect("build SmtpMailer");
     let handle = MailerHandle::from_parts(Arc::new(smtp), Arc::new(StubMailer::new()));

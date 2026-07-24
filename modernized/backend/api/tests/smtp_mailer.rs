@@ -13,7 +13,7 @@
 //! @implements FS-040.12 / §D3: SMTP transport delivers via the mailer port.
 //! @implements KL-040.1: text-only message (a `text/plain` part, no HTML).
 
-use ost_core::{Mailer, OutboundMail, SmtpConfig, SmtpMailer};
+use ost_core::{Mailer, OutboundMail, SmtpConfig, SmtpMailer, SmtpTls};
 
 /// The Mailpit REST base, or `None` ⇒ skip-pass (§5). Derives the SMTP port from
 /// the web port by the fixed `3705 → 3704` (web → smtp) offset of the dev relay.
@@ -34,6 +34,8 @@ fn smtp_mailer() -> SmtpMailer {
         from_name: None,
         user: None,
         pass: None,
+        // Mailpit is plaintext (port 3704); no TLS.
+        tls: SmtpTls::None,
     })
     .expect("build SmtpMailer")
 }

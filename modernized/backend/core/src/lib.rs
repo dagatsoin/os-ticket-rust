@@ -49,7 +49,7 @@ pub use log::{
     is_known_log_level, log, note_failed_login, parse_graceperiod_months, parse_log_level,
     purge_logs, LogType, LOG_LEVEL_LABELS,
 };
-pub use mailer::{MailError, Mailer, OutboundMail, SmtpConfig, SmtpMailer, StubMailer};
+pub use mailer::{MailError, Mailer, OutboundMail, SmtpConfig, SmtpMailer, SmtpTls, StubMailer};
 pub use permission::{
     GroupPermissions, PermissionDenied, PERM_CAN_ASSIGN_TICKETS, PERM_CAN_BAN_EMAILS,
     PERM_CAN_CLOSE_TICKETS, PERM_CAN_CREATE_TICKETS, PERM_CAN_DELETE_TICKETS,

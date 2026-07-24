@@ -16,7 +16,7 @@
 
 use ost_core::email::{send_autoreply, send_notice, NEW_TICKET_AUTORESPONSE, STAFF_REPLY_NOTIFICATION};
 use ost_core::variable::{VarContext, VariableReplacer};
-use ost_core::{OutboundMail, SmtpConfig, SmtpMailer};
+use ost_core::{OutboundMail, SmtpConfig, SmtpMailer, SmtpTls};
 
 const SMTP_HOST: &str = "localhost";
 const SMTP_PORT: u16 = 3704;
@@ -34,6 +34,7 @@ fn smtp_mailer() -> SmtpMailer {
         from_name: None,
         user: None,
         pass: None,
+        tls: SmtpTls::None,
     })
     .expect("build SmtpMailer")
 }

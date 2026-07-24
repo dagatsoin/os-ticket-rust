@@ -128,11 +128,61 @@ impl Mailer for StubMailer {
     }
 }
 
+/// TLS mode for the SMTP transport connection.
+///
+/// - `Implicit` — implicit TLS / SMTPS: the whole connection is wrapped in TLS
+///   from the first byte (the standard for port **465**).
+/// - `StartTls` — connect in plaintext then upgrade to TLS via the `STARTTLS`
+///   command (the standard for port **587**).
+/// - `None` — no TLS, plaintext throughout (the local **Mailpit** relay on 3704,
+///   or bare port 25).
+///
+/// @implements FS-040.12 / §D3: SMTP transport TLS selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SmtpTls {
+    /// Implicit TLS / SMTPS (port 465).
+    Implicit,
+    /// STARTTLS upgrade (port 587).
+    StartTls,
+    /// Plaintext, no TLS (Mailpit / port 25).
+    None,
+}
+
+impl SmtpTls {
+    /// Resolve the effective TLS mode from an optional explicit `SMTP_TLS` value
+    /// and the SMTP port.
+    ///
+    /// An explicit `SMTP_TLS` (`implicit` | `starttls` | `none`, case-insensitive,
+    /// surrounding whitespace ignored) **wins**. When it is absent (or an
+    /// unrecognised value), the mode is inferred from the port: `465 → Implicit`,
+    /// `587 → StartTls`, everything else (25, 3704 Mailpit, …) `→ None`. This keeps
+    /// dev/Mailpit plaintext by default while making a `465` relay use TLS.
+    ///
+    /// Pure — no environment or network access; unit-tested.
+    ///
+    /// @implements FS-040.12 / §D3: SMTP transport TLS selection.
+    #[must_use]
+    pub fn resolve(tls_env: Option<&str>, port: u16) -> Self {
+        match tls_env.map(|s| s.trim().to_ascii_lowercase()).as_deref() {
+            Some("implicit") => SmtpTls::Implicit,
+            Some("starttls") => SmtpTls::StartTls,
+            Some("none") => SmtpTls::None,
+            // Unset or unrecognised ⇒ infer from the port.
+            _ => match port {
+                465 => SmtpTls::Implicit,
+                587 => SmtpTls::StartTls,
+                _ => SmtpTls::None,
+            },
+        }
+    }
+}
+
 /// Env-driven SMTP configuration for the real transport (DEVIATION D3, §D3).
 ///
 /// `auth` (user+pass) is **optional** — Mailpit accepts unauthenticated SMTP, so
 /// dev runs may set only host/port/from. `from_name` is an optional display name
-/// for the `From` header.
+/// for the `From` header. `tls` selects the connection security (implicit / STARTTLS
+/// / none), resolved from `SMTP_TLS` with a port-based default.
 #[derive(Debug, Clone)]
 pub struct SmtpConfig {
     pub host: String,
@@ -141,6 +191,7 @@ pub struct SmtpConfig {
     pub from_name: Option<String>,
     pub user: Option<String>,
     pub pass: Option<String>,
+    pub tls: SmtpTls,
 }
 
 impl SmtpConfig {
@@ -149,7 +200,10 @@ impl SmtpConfig {
     ///
     /// - `SMTP_HOST` (required to activate), `SMTP_PORT` (default 25),
     /// - `SMTP_FROM` (required when active; falls back to `support@localhost`),
-    /// - optional `SMTP_FROM_NAME`, `SMTP_USER`, `SMTP_PASS` (auth optional).
+    /// - optional `SMTP_FROM_NAME`, `SMTP_USER`, `SMTP_PASS` (auth optional),
+    /// - optional `SMTP_TLS` (`implicit` | `starttls` | `none`); when unset the
+    ///   TLS mode is inferred from the port (465 → implicit, 587 → starttls,
+    ///   else none) via [`SmtpTls::resolve`].
     ///
     /// @implements FS-040.12 / §D3: env-driven single SMTP transport.
     pub fn from_env() -> Option<Self> {
@@ -165,6 +219,8 @@ impl SmtpConfig {
         let from_name = std::env::var("SMTP_FROM_NAME").ok().filter(|s| !s.trim().is_empty());
         let user = std::env::var("SMTP_USER").ok().filter(|s| !s.trim().is_empty());
         let pass = std::env::var("SMTP_PASS").ok().filter(|s| !s.trim().is_empty());
+        let tls_env = std::env::var("SMTP_TLS").ok();
+        let tls = SmtpTls::resolve(tls_env.as_deref(), port);
         Some(Self {
             host,
             port,
@@ -172,6 +228,7 @@ impl SmtpConfig {
             from_name,
             user,
             pass,
+            tls,
         })
     }
 }
@@ -191,17 +248,35 @@ pub struct SmtpMailer {
 }
 
 impl SmtpMailer {
-    /// Build the transport from [`SmtpConfig`]. Uses a plaintext SMTP connection
-    /// (no TLS) suited to the local Mailpit relay; credentials are attached only
-    /// when both user and pass are present (Mailpit needs none).
+    /// Build the transport from [`SmtpConfig`], honouring [`SmtpConfig::tls`]:
+    ///
+    /// - [`SmtpTls::Implicit`] — `relay()` (implicit TLS / SMTPS, rustls via the
+    ///   `tokio1-rustls-tls` feature), for a prod relay on port 465.
+    /// - [`SmtpTls::StartTls`] — `starttls_relay()` (plaintext → STARTTLS upgrade),
+    ///   for a submission relay on port 587.
+    /// - [`SmtpTls::None`] — `builder_dangerous()` + `Tls::None` (plaintext), for
+    ///   the local Mailpit relay (the M1 behaviour, unchanged).
+    ///
+    /// Credentials are attached only when both user and pass are present (Mailpit
+    /// needs none; a prod relay typically sets `SMTP_USER`/`SMTP_PASS`).
+    ///
+    /// @implements FS-040.12 / §D3: SMTP transport built per TLS mode.
     pub fn new(config: SmtpConfig) -> Result<Self, MailError> {
         use lettre::transport::smtp::authentication::Credentials;
         use lettre::transport::smtp::client::Tls;
+        use lettre::{AsyncSmtpTransport, Tokio1Executor};
 
-        let mut builder =
-            lettre::AsyncSmtpTransport::<lettre::Tokio1Executor>::builder_dangerous(&config.host)
+        let mut builder = match config.tls {
+            SmtpTls::Implicit => AsyncSmtpTransport::<Tokio1Executor>::relay(&config.host)
+                .map_err(|e| MailError::Transport(format!("smtp implicit-TLS relay init: {e}")))?
+                .port(config.port),
+            SmtpTls::StartTls => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&config.host)
+                .map_err(|e| MailError::Transport(format!("smtp STARTTLS relay init: {e}")))?
+                .port(config.port),
+            SmtpTls::None => AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&config.host)
                 .port(config.port)
-                .tls(Tls::None);
+                .tls(Tls::None),
+        };
 
         if let (Some(user), Some(pass)) = (config.user.clone(), config.pass.clone()) {
             builder = builder.credentials(Credentials::new(user, pass));
@@ -321,6 +396,41 @@ mod tests {
             return; // skip when the env is configured (e.g. live E2E shell)
         }
         assert!(SmtpConfig::from_env().is_none());
+    }
+
+    /// §D3 TLS: with `SMTP_TLS` unset, the mode is inferred from the port —
+    /// 465 → implicit, 587 → starttls, everything else (25, 3704 Mailpit) → none.
+    #[test]
+    fn smtp_tls_port_default_inference() {
+        assert_eq!(SmtpTls::resolve(None, 465), SmtpTls::Implicit);
+        assert_eq!(SmtpTls::resolve(None, 587), SmtpTls::StartTls);
+        assert_eq!(SmtpTls::resolve(None, 3704), SmtpTls::None); // Mailpit
+        assert_eq!(SmtpTls::resolve(None, 25), SmtpTls::None);
+        assert_eq!(SmtpTls::resolve(None, 2525), SmtpTls::None);
+    }
+
+    /// §D3 TLS: an explicit `SMTP_TLS` overrides the port-based default, and is
+    /// case-insensitive / whitespace-trimmed.
+    #[test]
+    fn smtp_tls_explicit_overrides_port_default() {
+        // Explicit `none` on 465 (which would otherwise infer implicit).
+        assert_eq!(SmtpTls::resolve(Some("none"), 465), SmtpTls::None);
+        // Explicit `implicit` on 3704 (which would otherwise infer none).
+        assert_eq!(SmtpTls::resolve(Some("implicit"), 3704), SmtpTls::Implicit);
+        // Explicit `starttls` on 465 (override the implicit default).
+        assert_eq!(SmtpTls::resolve(Some("starttls"), 465), SmtpTls::StartTls);
+        // Case-insensitive + surrounding whitespace tolerated.
+        assert_eq!(SmtpTls::resolve(Some(" Implicit "), 25), SmtpTls::Implicit);
+        assert_eq!(SmtpTls::resolve(Some("STARTTLS"), 25), SmtpTls::StartTls);
+    }
+
+    /// §D3 TLS: an empty / unrecognised `SMTP_TLS` falls back to the port default
+    /// rather than erroring.
+    #[test]
+    fn smtp_tls_unrecognised_falls_back_to_port() {
+        assert_eq!(SmtpTls::resolve(Some(""), 465), SmtpTls::Implicit);
+        assert_eq!(SmtpTls::resolve(Some("garbage"), 587), SmtpTls::StartTls);
+        assert_eq!(SmtpTls::resolve(Some("ssl"), 3704), SmtpTls::None);
     }
 
     #[test]

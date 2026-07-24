@@ -9,12 +9,14 @@ Vagrantfile
 # Staging directory used for packaging script
 stage
 
-# --- Rust backend (Cargo workspace at repo root) ---
+# --- Rust backend (Cargo workspace under modernized/) ---
 /target
+/modernized/target
 **/*.rs.bk
 
 # Local environment files (the committed .env.example is the template).
 /backend/.env
+/modernized/.env
 .env
 
 # TS-M2-A1 — SHA-256 filesystem blob store root (BLOB_ROOT, default
@@ -22,6 +24,7 @@ stage
 # committed.
 /var/blobs
 /var/
+/modernized/var/
 # Blob store roots created when a test/binary runs with a non-root CWD
 # (e.g. `cargo test -p api` resolves BLOB_ROOT relative to backend/api).
 **/var/blobs

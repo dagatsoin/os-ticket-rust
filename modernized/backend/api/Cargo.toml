@@ -1,0 +1,47 @@
+[package]
+name = "api"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+name = "api"
+path = "src/lib.rs"
+
+[[bin]]
+name = "api"
+path = "src/main.rs"
+
+[dependencies]
+ost_core = { path = "../core" }
+db = { path = "../db" }
+# TS-M4-PREP — dev endpoints reuse the seed crate's config-restore + defaults.
+tools = { path = "../../tools" }
+
+# TS-M2-A3 — enable the `multipart` feature for the dual-accept upload routes (§2).
+axum = { workspace = true, features = ["multipart"] }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tower-http = { workspace = true }
+http = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy = { workspace = true }
+anyhow = { workspace = true }
+# TS-M2-B1 — stream a stored blob back via ReaderStream + Body::from_stream (§4).
+tokio-util = { workspace = true }
+
+[dev-dependencies]
+tower = { workspace = true }
+http-body-util = "0.1"
+hyper = { workspace = true }
+# TS-M1-A4b — auth integration tests seed a staff fixture via the seed task.
+tools = { path = "../../tools" }
+sqlx = { workspace = true }
+tokio = { workspace = true }
+# TS-M2-E1 (ROADMAP M2 §4/§5) — Mailpit REST API assertions; skip-pass when
+# MAILPIT_URL is unset.
+reqwest = { workspace = true }

@@ -15,15 +15,18 @@ functional specifications reverse-engineered from the original source.
   reverse-engineered from the legacy PHP source. Start with
   [`specs/CLAUDE.md`](./specs/CLAUDE.md) for the index and conventions. These specs are the
   contract that the new implementation must satisfy.
-- **`work/`** — process artifacts from the spec reverse-engineering run (plan, trackers,
+- **`retro-spec/`** — process artifacts from the spec reverse-engineering run (plan, trackers,
   gap / coverage / dedupe reports).
+- **`modernized/`** — the runnable modern app: the Rust Cargo workspace (`Cargo.toml`,
+  `backend/`, `tools/`, `migrations/`, `.sqlx/`) and the React frontend (`frontend/`), plus
+  `docker-compose.yml`. All backend/frontend commands run from this directory.
 
 ## What we are building
 
 A clean reimplementation of osTicket's functionality:
 
-- **Backend** — **Rust** (a Cargo workspace, to be created at the repo root).
-- **Frontend** — **React + TypeScript**.
+- **Backend** — **Rust** (a Cargo workspace under `modernized/`).
+- **Frontend** — **React + TypeScript** (`modernized/frontend/`).
 
 The functional specifications in `specs/` define the behaviour to be reproduced. The legacy
 PHP under `legacy/` is the authoritative reference whenever a spec is ambiguous.

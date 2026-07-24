@@ -12,7 +12,7 @@ osTicket-1.7/
     CLAUDE.md                              # This file — specs index / conventions
     FS-0XX-*.md … FS-09X-*.md              # The functional specs (see list below)
 
-  work/                                    # Process artifacts (NOT specs)
+  retro-spec/                                    # Process artifacts (NOT specs)
     SPEC_REVERSE_ENGINEER_PLAN.md          # Reverse-engineering plan & resume point
     REVERSE_ENGINEER_PROGRESS.md           # Pass tracker
     GAP_REPORT.md                          # Phase 2 gap-closing report
@@ -21,7 +21,7 @@ osTicket-1.7/
     FINAL_CONVERGENCE_REPORT.md            # Convergence summary
 ```
 
-> This `specs/` folder contains only the functional specifications and this index. The reverse-engineering process artifacts live in `../work/`.
+> This `specs/` folder contains only the functional specifications and this index. The reverse-engineering process artifacts live in `../retro-spec/`.
 
 ## Specification Numbering Scheme
 
@@ -81,7 +81,7 @@ osTicket-1.7/
 > mentions) after the Phase-2 gap-close additions, the Phase-4 dedupe trims/corrections, and
 > the 2026-06-10 re-crawl closure round (FS-010 +2 BS/+1 EC/+2 KL, FS-040 +1 KL):
 > **365 FR · 415 BS · 354 EC · 224 KL** across **13,469 lines**. See
-> `../work/FINAL_CONVERGENCE_REPORT.md` for the method and per-spec line counts.
+> `../retro-spec/FINAL_CONVERGENCE_REPORT.md` for the method and per-spec line counts.
 
 ## Source Reference
 
@@ -112,11 +112,11 @@ They do NOT prescribe:
 
 ## Creating New Specifications
 
-1. Check `../work/REVERSE_ENGINEER_PROGRESS.md` for the next available FS number and current phase.
+1. Check `../retro-spec/REVERSE_ENGINEER_PROGRESS.md` for the next available FS number and current phase.
 2. Create the file in `specs/` following the naming convention.
 3. Use the standard structure: Overview → Functional Requirements → Business Rules → Data Requirements → User Interactions → Edge Cases → Dependencies → Known Limitations → Future Considerations.
-4. Update the progress tracker in `../work/`.
+4. Update the progress tracker in `../retro-spec/`.
 
 ## Reverse Engineering Status
 
-**STATUS: ALL 4 PHASES COMPLETE — RUN COMPLETE (2026-06-10).** 22 functional specs (21 from Phase 1 + FS-092 added in Phase 3 round-2), all **Final (Phase 4 de-duplicated)**. Authoritative totals (heading-counted, post gap-close + dedupe): **13,426 lines · 365 FRs · 413 BS rules · 353 ECs · 221 KLs**. Phase 2 (GAP-CLOSE): 249 gaps found / 249 fixed / 0 open. Phase 3 (COVERAGE): declaration-level coverage **100% of in-scope units, DRY after round 2**; **229 files / 2293 additive `@implements` comment tags / 2189 ids (FS 1709 + BS 399 + EC 44 + KL 37); 0 bracket tags remain** (TAG_VERIFICATION.md Round 3) — tags use the requirement-level form `@implements FS-XXX.N: <Title> — <note>`, one id per line, BS/EC/KL first-class (normalized from bracketed `[FS-XXX]` in Round 3) — see `../work/UNCOVERED_CODE_REPORT.md`. **Phase 4 (DEDUPE): COMPLETE** — 107 raw findings → 38 distinct → 24-item worklist across 14 specs; the single SLA-precedence contradiction resolved; **adversarial verification CLEAN after 4 post-verification fixes** (incl. the `FS-042.137` dangling ref → FS-042.14). Out of scope: 46 vendored third-party files, 11 self-test harness files, 2 bare redirect stubs. See `../work/FINAL_CONVERGENCE_REPORT.md` for the convergence summary, `../work/DUPLICATE-ANALYSIS-REPORT.md` + `../work/dedupe/ADVERSARIAL-VERIFICATION.md` for the dedupe pass, and `../work/SPEC_REVERSE_ENGINEER_PLAN.md` for the verified domain map and 4-phase workflow.
+**STATUS: ALL 4 PHASES COMPLETE — RUN COMPLETE (2026-06-10).** 22 functional specs (21 from Phase 1 + FS-092 added in Phase 3 round-2), all **Final (Phase 4 de-duplicated)**. Authoritative totals (heading-counted, post gap-close + dedupe): **13,426 lines · 365 FRs · 413 BS rules · 353 ECs · 221 KLs**. Phase 2 (GAP-CLOSE): 249 gaps found / 249 fixed / 0 open. Phase 3 (COVERAGE): declaration-level coverage **100% of in-scope units, DRY after round 2**; **229 files / 2293 additive `@implements` comment tags / 2189 ids (FS 1709 + BS 399 + EC 44 + KL 37); 0 bracket tags remain** (TAG_VERIFICATION.md Round 3) — tags use the requirement-level form `@implements FS-XXX.N: <Title> — <note>`, one id per line, BS/EC/KL first-class (normalized from bracketed `[FS-XXX]` in Round 3) — see `../retro-spec/UNCOVERED_CODE_REPORT.md`. **Phase 4 (DEDUPE): COMPLETE** — 107 raw findings → 38 distinct → 24-item worklist across 14 specs; the single SLA-precedence contradiction resolved; **adversarial verification CLEAN after 4 post-verification fixes** (incl. the `FS-042.137` dangling ref → FS-042.14). Out of scope: 46 vendored third-party files, 11 self-test harness files, 2 bare redirect stubs. See `../retro-spec/FINAL_CONVERGENCE_REPORT.md` for the convergence summary, `../retro-spec/DUPLICATE-ANALYSIS-REPORT.md` + `../retro-spec/dedupe/ADVERSARIAL-VERIFICATION.md` for the dedupe pass, and `../retro-spec/SPEC_REVERSE_ENGINEER_PLAN.md` for the verified domain map and 4-phase workflow.

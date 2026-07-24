@@ -20,12 +20,20 @@ own browser-only E2E ACs) are moved by hand.
 | ID | Milestone | Specs | Status |
 |----|-----------|-------|--------|
 | M1 | First Ticket Round-Trip (vertical slice) | FS-091/003/001/002/010/011/021/020 subset, FS-040 stub | **DONE (2026-06-11)** |
-| M2 | Attachments, Canned Responses & Email Basics | FS-022, FS-040 | **Consolidation (2026-06-11)** |
-| M3 | Full Staff Workflow & Queue | FS-021, FS-020 | Backlog stub |
-| M4 | Admin Configuration | FS-030/031/032/033 | Backlog stub |
+| M2 | Attachments, Canned Responses & Email Basics | FS-022, FS-040 | **DONE (2026-07-24)** |
+| M3 | Full Staff Workflow & Queue | FS-021, FS-020 | **DONE (2026-07-24)** |
+| M4 | Admin Configuration | FS-030/031/032/033, FS-022 admin | **DONE (2026-07-24)** |
 | M5 | Email Pipeline | FS-041/042/040 | Backlog stub |
 | M6 | External API & Cron | FS-043 | Backlog stub |
 | M7 | Knowledge Base & FAQ | FS-050 | Backlog stub |
+
+> **Status note (2026-07-24):** M1, M2, M3 and M4 are all **DONE**. The M2 root E2E (5/5 root ACs
+> `[x]`), the M3 root E2E (11/11 root ACs `[x]`) and the M4 root E2E (8/8 Integration ACs `[x]`,
+> AC-7 re-tested green after the `log_level` fix) were all **verified green on 2026-07-24**;
+> every M1–M4 ticket (roots, epics, user stories, technical stories) is now in `done/`. The M4
+> deviations M4-D1 (minimal email_account/template_group model), M4-D2 (minimal write-side logging)
+> and M4-D3 (M3 runtime carry-overs deferred to M5) were delivered as planned. **M5, M6 and M7
+> remain in the backlog.**
 
 ## M1 — First Ticket Round-Trip (DONE — 2026-06-11)
 
@@ -53,12 +61,15 @@ the shared `ThreadView`/`CredentialForm` primitives first; B3 (form UI) and C4 (
 proceed in parallel on top of them; D2 (client portal) follows, reusing the same primitives
 read-only.
 
-## M2 — Attachments, Canned Responses & Email Basics (CONSOLIDATION — 2026-06-11)
+## M2 — Attachments, Canned Responses & Email Basics (DONE — 2026-07-24)
+
+**Completed 2026-07-24.** Root E2E verified green (5/5 root ACs `[x]`); all 27 M2 tickets
+(1 root + 5 epics + 4 US + 16 TS) shipped to `done/`.
 
 Builds on M1's round-trip so a ticket can carry **attachments**, an agent can answer with a
 **canned response** whose body is personalised by a **`%{token}` engine**, and the M1 stub mailer is
 replaced by **real outbound email** (autoresponse + reply notification) delivered over SMTP and
-observable in **Mailpit**. Tickets live in `consolidation/` (1 root + 5 epics + 4 US + 16 TS).
+observable in **Mailpit**.
 
 **Demo path (root E2E, browser-only):** *a client opens a ticket WITH an attachment → an agent
 replies USING a canned response → the client RECEIVES the reply email (Mailpit) and DOWNLOADS the
@@ -119,6 +130,156 @@ attachment.*
 
 Backend points at Mailpit via `SMTP_HOST=localhost SMTP_PORT=3704` to exercise D3; the Mailpit web UI
 (`http://localhost:3705`) is the in-browser oracle for the root E2E "client receives the email" step.
+
+## M3 — Full Staff Workflow & Queue (DONE — 2026-07-24)
+
+**Completed 2026-07-24.** Root E2E verified green (11/11 root ACs `[x]`); the entire M3 tree
+(1 root + 8 epics + 9 US + seed prep + TS) shipped to `done/`.
+
+Transforms the M1 proof-of-concept staff panel into a production-ready agent workspace. Covers the
+**full queue experience** (status tabs, visibility scoping, sort/pagination, search, bulk actions)
+and the **complete single-ticket workflow** (assign/claim/release/transfer, close/reopen, internal
+notes, SLA/overdue, edit/delete, collaborative locking).
+
+**Demo path (root E2E, browser-only):** *an agent navigates queue tabs, searches, claims a ticket,
+transfers it, adds an internal note, closes it, bulk-reopens multiple tickets, and observes locking
+when another session views the same ticket.*
+
+### Epic split & dependency order
+
+- **EPIC-M3-A — Queue Tabs + Visibility** (FS-020.1-4, 11): status param, Open/Answered/My Tickets/Overdue/Closed
+  tabs with counts, department+assignment visibility scoping, rightmost column logic.
+- **EPIC-M3-B — Sorting + Pagination** (FS-020.5-6): sortable columns, sticky per-queue sort, pagination with
+  limit param. Depends on A.
+- **EPIC-M3-C — Close/Reopen/Assign Workflow** (FS-021.7-12): assign/claim/release/transfer, close/reopen.
+  Depends on A (visibility), D (SLA for transfer).
+- **EPIC-M3-D — SLA + Overdue** (FS-021.13): seed SLA plans, due-date computation, overdue flag + tab.
+  Should land early as C/I reference it.
+- **EPIC-M3-E — Internal Notes** (FS-021.4): post note endpoint, note with state change. Depends on C
+  (close/reopen via note).
+- **EPIC-M3-F — Search** (FS-020.7-8): basic keyword search, advanced search dialog. Depends on A, B.
+- **EPIC-M3-G — Bulk Actions** (FS-020.9, FS-021.21): mass close/reopen/delete. Depends on A, C.
+- **EPIC-M3-I — Edit + Delete + Lock** (FS-021.15, 18, 19): edit properties, delete ticket, collaborative
+  locking. Standalone / parallel with D.
+- **TS-M3-prep** — seed data expansion: second department (Sales), team (Tier 2), SLA plans (Standard 24h,
+  Urgent 4h), help topics (General, Billing), group-dept access, config keys. Blocker for all epics.
+
+### Deferrals out of M3
+
+- Staff-initiated (phone) ticket creation (FS-021.20) -> M4
+- PDF print (FS-021.17) -> M4
+- Ban/unban requester email (FS-021.14) -> M4 (needs banlist infra)
+- Dashboard activity chart and statistics (FS-020.12-13) -> M4
+- CSV export (FS-020.10) -> M4
+- Manager-only state flags (mark overdue/answered/release) -> M4 (needs dept-manager status)
+
+### Decisions (M3)
+
+1. **Lock time default** — seed `ticket_lock_time = 2` (minutes). The lock table exists in M1 schema.
+
+2. **Visibility model** — department-based (FS-020.4). Agent sees tickets in accessible departments +
+   direct assignments + team assignments (open tickets). The `showAssignedOnly` staff flag is M4.
+
+3. **Manager gate deferral** — department-manager status is not implemented in M3; the manual mark-overdue,
+   mark-answered, and release-via-note actions are hidden or fail permission. Close/reopen work via the
+   `can_close_tickets` group flag.
+
+## M4 — Admin Configuration (DONE — 2026-07-24)
+
+**Completed 2026-07-24.** The M4 root E2E passed — all **8 Integration ACs** (`[BROWSER]`) are
+`[x]` (AC-7 re-tested green after the `log_level` fix). All 9 epics and every leaf (14 user stories +
+32 technical stories) are in `done/`; the milestone root is now in `done/`. The deviations
+**M4-D1** (minimal email_account/template_group model), **M4-D2** (minimal write-side logging) and
+**M4-D3** (M3 runtime carry-overs deferred to M5) were delivered as planned. M5/M6/M7 remain backlog.
+
+**Planned 2026-07-24.** Full tree created: **1 root + 9 epics + 14 user stories + 32 technical
+stories** — all shipped through `done/`.
+
+Replaces M1's seed-only configuration with a real admin control panel: CRUD for departments, teams,
+help topics, staff accounts and permission groups; the seven-tab system settings; SLA plans and
+priorities; FAQ categories; site pages; a system-log viewer; and the M2-deferred canned-response
+CRUD UI. This is the milestone that makes the product operator-configurable from the browser instead
+of via seed SQL.
+
+**Demo path (root E2E, browser-only):** *an admin creates a department that selects an SLA and a
+priority, provisions a staff account and a permission group, authors a landing and a thank-you page
+and binds them, delegates FAQ-category management to a non-admin via a group flag, and changes a
+global setting that visibly takes effect in staff pagination and password aging — while the default
+department/SLA and bound pages stay protected from deletion.*
+
+### Epic split & dependency / build order
+
+**Build order: PREP → A → (B ∥ D ∥ F ∥ G ∥ H) → C → E.** C is last among the routing objects
+(consumes A, B, D, F); E follows B's `can_manage_faq` gate. The shared admin-panel FE shell
+(TS-M4-A0, owned by EPIC-M4-A) is a dependency for every admin screen.
+
+- **EPIC-M4-PREP — Schema & seed expansion** (blocker for all): additive admin columns on
+  department/groups/staff; net-new tables `faq_category`, `page`, `syslog`, `timezone`,
+  `email_account`, `template_group`; SLA transient-trump key; ~110 config keys seeded to FS-032
+  defaults; `default_dept_id`/`default_sla_id`/`*_page_id` bindings. (TS PREP-A/B/C/D)
+- **EPIC-M4-A — System Settings** (FS-032.1–.7): admin shell + nav + gate (TS-A0); settings
+  GET/PUT + per-tab validation (TS-A1); System/Ticket tabs UI (TS-A2); Email/Pages/Autoresponder/
+  Alerts/Attachments tabs UI (TS-A3). US-A1, US-A2.
+- **EPIC-M4-B — Staff, Groups & Permissions** (FS-031): staff CRUD + last-admin/self protection +
+  add-to-team; group CRUD + 11-flag set (incl. net-new `can_manage_faq`/`can_manage_premade`/
+  `can_ban_emails`/`can_view_staff_stats`) + dept-access matrix; own-profile + directory. US-B1/B2/B3.
+- **EPIC-M4-C — Departments, Teams & Help Topics** (FS-030): most cross-linked; consumes A, B, D, F.
+  Department CRUD + delete re-home + default protection; team CRUD (members-from-profile);
+  help-topic routing + one-level nesting + delete-promote. US-C1/C2/C3.
+- **EPIC-M4-D — SLA Plans & Priorities** (FS-032.8–.12): SLA CRUD + deletion constraints; priorities
+  read-only. US-D1/D2.
+- **EPIC-M4-E — FAQ Categories** (FS-032.13–.16): gated by `can_manage_faq` (NOT admin); category
+  CRUD + deletion cascade. US-E1.
+- **EPIC-M4-F — Site Pages & Content** (FS-033.9–.16): page CRUD + in-use protection + content/config
+  AJAX read endpoints. US-F1.
+- **EPIC-M4-G — System Logs** (FS-033.1–.8): minimal write-side logging (M4-D2) + viewer
+  (filter/sort/paginate/detail/bulk-delete) + purge sweep function (dev/manual trigger). US-G1.
+- **EPIC-M4-H — Canned Response CRUD UI** (FS-022 admin surface): gated by `can_manage_premade`;
+  model reused from M2. US-H1.
+
+### Cross-epic Integration ACs (at the M4 milestone root — all [BROWSER])
+
+1. **A→C/D**: a department can select an SLA (D) and priority; default dept/SLA delete-protected.
+2. **B→C**: staff from B usable as dept manager / team lead / topic auto-assign; B's group appears in the dept access matrix.
+3. **B↔C**: team member added from B's staff profile; removing staff clears membership.
+4. **A↔F**: a page from F is bindable as landing/offline/thank-you in A; binding makes it in-use-protected in F.
+5. **F→C**: a thank-you page is selectable on a help topic.
+6. **B→E**: `can_manage_faq` on a non-admin group grants FAQ-category access without settings access.
+7. **A→wide**: page-size/login-window/default keys written in A take effect in B pagination & password aging.
+8. **D1 gate**: department Email/Template selects resolve against the minimal email_account/template_group model.
+
+### Deviations from legacy (pinned — M4)
+
+- **M4-D1 (RISK-1) — Minimal email_account + template_group model forward-ported into EPIC-M4-PREP.**
+  The department Email/Template required selects (FS-030.4, BS-030-02/03) and the FS-032 Emails tab
+  resolve against **real rows**, not system-default stubs. M5/FS-040 extends this model. (PREP-B/C/D)
+- **M4-D2 (RISK-3) — Minimal write-side logging facility built in EPIC-M4-G.** An
+  `osTicket::log()`-equivalent records `syslog` rows on notable admin/system events so the FS-033
+  viewer shows real data. Full FS-003 logging is NOT required. The purge sweep **function** lands in
+  M4-G (dev/manual trigger); the cron purge **trigger** is a noted **M6** forward-dependency. (G1/G2)
+- **M4-D3 — M3 runtime carry-overs deferred to M5, NOT M4**: PDF print (FS-021.17), CSV export
+  (FS-020.10), dashboard stats/activity chart (FS-020.12/.13), phone/staff-initiated ticket create
+  (FS-021.20), ban/unban (FS-021.14). Dept-manager status IS included in M4-B (isadmin + dept
+  manager pointer + effective-access rule), unblocking the M3-deferred manager-gated flags for M5.
+
+### KL treatment (M4)
+
+- **Modernised** (correct behaviour, each a deliberate deviation): KL-030-11 (no-change dept/team
+  update guard), KL-030-12 (team "Last Updated" sort), KL-031-002, KL-032.3 (`send_sys_errors`
+  stored value), KL-032.4 (SLA error text), KL-032.9 (transfer-alert error), KL-032.10 (SLA "Date
+  Added" sort), KL-032.11 (`Category::lookup` row check), KL-033.2, KL-033.7 (purge).
+- **Preserved** (faithful 1.7): one-level topic nesting (KL-030-02), single-group-per-staff
+  (KL-031-001), fixed priority set / no priority CRUD (KL-032.1), no page versioning (KL-033.1).
+
+### Decisions (M4) — to be firmed during consolidation
+
+1. **Admin FE shell** — a single `/staff/admin/*` branch + `AdminLayout` + capability-aware nav
+   (TS-M4-A0), owned by EPIC-M4-A and reused by every admin screen. Delegated screens (FAQ, Canned)
+   declare a capability gate instead of the admin gate.
+2. **`admin` seed account** — `admin` / `Admin123!` (isadmin) added by the M4 seed for browser E2E,
+   alongside the existing `agent`. Supersedes the M1 seed as the source of dept/group/staff once M4 ships.
+3. **Dept-manager status** — included in EPIC-M4-B (small); may be trimmed to the manager pointer if
+   non-trivial (decision recorded on EPIC-M4-B).
 
 ## Decisions (M2 cross-cutting — PINNED)
 

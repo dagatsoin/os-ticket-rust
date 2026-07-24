@@ -1,0 +1,55 @@
+[workspace]
+resolver = "2"
+members = [
+    "backend/api",
+    "backend/core",
+    "backend/db",
+    "tools",
+]
+
+# Shared dependency versions for the osTicket modernisation backend workspace.
+# Pinned to the Rust 1.87 stable toolchain (sqlx 0.8.x line).
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.87"
+license = "GPL-2.0"
+repository = "local"
+
+[workspace.dependencies]
+axum = "0.7"
+# axum 0.7 / axum-core 0.4 declare extractor traits with #[async_trait]; custom
+# FromRequestParts impls (the TS-M1-A4b realm gates) use the same attribute.
+async-trait = "0.1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "signal", "time"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+hyper = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "macros", "migrate"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+thiserror = "2"
+anyhow = "1"
+dotenvy = "0.15"
+http = "1"
+# TS-M1-A4a — pure-function utils (validation / sanitization / hashing).
+ammonia = "4"
+argon2 = "0.5"
+password-hash = { version = "0.5", features = ["rand_core", "std"] }
+# TS-M2-A1 (ROADMAP M2 Decisions §4) — SHA-256 content addressing for the blob
+# store (`sha2`), lowercase-hex digest encoding (`hex`), and async file I/O
+# adapters (`tokio-util` io feature) for streaming uploads/downloads.
+sha2 = "0.10"
+hex = "0.4"
+tokio-util = { version = "0.7", features = ["io"] }
+# TS-M2-E1 (ROADMAP M2 Decisions §4) — SMTP transport for real outbound mail.
+# tokio1 async executor + rustls TLS (no native OpenSSL); `builder` enables the
+# typed message builder with custom-header support for the anti-loop headers
+# (E2 / BS-040.22). STARTTLS is off for the plaintext Mailpit dev transport.
+lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls-tls", "hostname"] }
+# TS-M2-E1 — DEV-only Mailpit REST API client for delivery assertions (§4/§5).
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# TS-M3-I1 — Date/time parsing for due date validation.
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }

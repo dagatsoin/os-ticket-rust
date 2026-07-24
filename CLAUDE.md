@@ -20,16 +20,19 @@ by the specs in [`specs/`](./specs/).
 - **`specs/`** — technology-agnostic functional specifications (FS-XXX docs with embedded
   BS-XXX business rules, EC-XXX edge cases, KL-XXX known limitations). Start with
   [`specs/CLAUDE.md`](./specs/CLAUDE.md) for the index and conventions.
-- **`work/`** — process artifacts from the reverse-engineering run (plan, trackers,
+- **`retro-spec/`** — process artifacts from the reverse-engineering run (plan, trackers,
   gap / coverage / dedupe reports). The method is
-  [`work/SPEC_REVERSE_ENGINEER_PLAN.md`](./work/SPEC_REVERSE_ENGINEER_PLAN.md).
+  [`retro-spec/SPEC_REVERSE_ENGINEER_PLAN.md`](./retro-spec/SPEC_REVERSE_ENGINEER_PLAN.md).
 - **`kanban/`** — modernisation planning (to be created by planning).
-- **Rust backend** — a Cargo workspace at the repo root (to be created).
-- **React/TypeScript frontend** — (to be created).
+- **`modernized/`** — the runnable modern app: the Rust Cargo workspace (`Cargo.toml`,
+  `backend/`, `tools/`, `migrations/`, `.sqlx/`) and the React frontend (`frontend/`),
+  plus `docker-compose.yml`. All backend/frontend commands run from here.
+- **Rust backend** — a Cargo workspace under `modernized/`.
+- **React/TypeScript frontend** — `modernized/frontend/`.
 
 ## The new implementation
 
-- **Backend**: **Rust** — a Cargo workspace at the repo root (to be created).
+- **Backend**: **Rust** — a Cargo workspace under `modernized/`.
 - **Frontend**: **React + TypeScript**.
 - **Source of truth**: the functional specifications under `specs/` define the behaviour to
   reproduce. The frozen PHP under `legacy/` is the authoritative reference whenever a spec
@@ -40,7 +43,7 @@ by the specs in [`specs/`](./specs/).
 > Marked as a proposal; awaiting user confirmation. Tracked in
 > `kanban/osticket-modernisation/ROADMAP.md` under "Architecture / scope decisions".
 
-- **Backend**: Rust — **Axum** (HTTP) + **SQLx** (DB), Cargo workspace at the repo root.
+- **Backend**: Rust — **Axum** (HTTP) + **SQLx** (DB), Cargo workspace under `modernized/`.
 - **Database**: **PostgreSQL** (the legacy app used **MySQL** — modernisation switches to
   PostgreSQL, **confirmed**). The project does **not** run its own Postgres: it uses the
   **existing shared Docker container `backend-db-1`** (`postgres:16`) already running on this
@@ -72,10 +75,10 @@ container on **5432**.
 - **Superuser**: `postgres` / `pass123`.
 - **Dev database**: `osticket_dev` (created). **Test database**: `osticket_test` (created — used
   by the backend DB integration tests via `TEST_DATABASE_URL`). **Staging**: `osticket_staging` (later).
-- **Migrations** (TS-M1-A2): SQLx migrations live at the workspace-root `migrations/` directory
-  and are applied on app startup (`db::migrate`). Apply manually with
+- **Migrations** (TS-M1-A2): SQLx migrations live at the workspace-root `modernized/migrations/`
+  directory and are applied on app startup (`db::migrate`). Apply manually (from `modernized/`) with
   `DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev sqlx migrate run --source migrations`
-  (re-running is a safe no-op). Schema is the FS-091-aligned M1 subset (ticket/thread/staff/dept/
+  (or from the repo root: `--source modernized/migrations`; re-running is a safe no-op). Schema is the FS-091-aligned M1 subset (ticket/thread/staff/dept/
   groups/session/config); enum-valued columns are `text` + `CHECK` (no native PG enum types).
 - **Connection string template**: `postgres://<user>:<password>@localhost:5432/<database>`
 - **`.env` example** (dev):
@@ -89,19 +92,44 @@ container on **5432**.
 
 > Backend scaffolded by TS-M1-A1; frontend by TS-M1-A5.
 
-- **Backend API** — Cargo workspace at the **repo root** (`Cargo.toml`), member crates under
-  `backend/`: `backend/api` (bin+lib — router, health, CORS, error envelope), `backend/core`
+- **Backend API** — Cargo workspace under **`modernized/`** (`modernized/Cargo.toml`), member
+  crates under `modernized/backend/`: `backend/api` (bin+lib — router, health, CORS, error
+  envelope), `backend/core`
   (shared JSON error envelope + TS-M1-A4a validation/sanitize/argon2id-hashing pure functions),
   `backend/db` (Postgres pool + short-timeout health ping + embedded migrator); plus the
   workspace-member `tools/` crate (the `seed` binary). Port
-  **3701**; start: `cargo run -p api`. Config from `backend/.env` (template `backend/.env.example`):
-  `DATABASE_URL`, `APP_PORT`, `APP_FRONTEND_ORIGIN`. Health: `GET /api/health` →
+  **3701**; start (from `modernized/`): `cargo run -p api` (or `cargo --manifest-path
+  modernized/Cargo.toml run -p api` from the repo root). Config keys `DATABASE_URL`, `APP_PORT`,
+  `APP_FRONTEND_ORIGIN` from `modernized/.env` (template `modernized/.env.example`). The `.env`
+  lives at the **workspace root** (`modernized/.env`), and `dotenvy` searches the CWD and its
+  parent directories, so it auto-loads whether the backend runs from `modernized/` **or**
+  `modernized/backend/` -- no `DATABASE_URL` export needed (`cargo run -p api` from `modernized/`
+  gives `db: ok`). The blob store is CWD-relative (`<cwd>/var/blobs`, override `BLOB_ROOT`), so
+  running from `modernized/` uses `modernized/var/blobs`. Health: `GET /api/health` →
   `{ "status": "ok", "db": "ok" | "down" }` (db-down responds fast, never hangs). Shared error
   envelope `{ "error": { "message", "fields" } }` with 422/401/403/404.
-- **Frontend** — location: `frontend/` (Vite + React + TS + MobX + MUI; **scaffolded by
-  TS-M1-A5**); port **3702**; start: `npm --prefix frontend run dev` (Vite proxies `/api`
-  → `http://localhost:3701`). Tests: `npm --prefix frontend test` (Vitest + RTL + MSW).
-  Build: `npm --prefix frontend run build`. Lint: `npm --prefix frontend run lint`.
+  Admin System Settings (TS-M4-A1, `backend/api/src/settings.rs`): `GET/PUT
+  /api/staff/admin/settings` (admin-gated via `auth::gate::require_admin`, PUT CSRF-enforced)
+  read/write the FS-032 config keys bucketed into 8 tabs (system/tickets/emails/pages/kb/
+  autoresp/alerts/attach) with per-tab validation; `GET /api/staff/me` also exposes `isadmin`
+  + the four M4 capability flags (`can_manage_faq`/`can_manage_premade`/`can_ban_emails`/
+  `can_view_staff_stats`). Dev-only `POST /api/dev/seed-page` seeds a `page` row.
+  Admin Staff/Groups + Profile/Directory (TS-M4-B1/B3/B5, `backend/api/src/admin_staff.rs`,
+  `admin_groups.rs`, `profile.rs`): admin-gated `GET/POST /api/staff/admin/staff`,
+  `PUT /api/staff/admin/staff/:id`, `POST /api/staff/admin/staff/mass`,
+  `POST|DELETE /api/staff/admin/staff/:id/teams[/:teamId]`; `GET/POST /api/staff/admin/groups`,
+  `GET/PUT /api/staff/admin/groups/:id`, `POST /api/staff/admin/groups/mass` (11-flag set +
+  dept-access full-replace); staff-realm (NOT admin) `GET/PUT /api/staff/profile`,
+  `PUT /api/staff/profile/password`, `GET /api/staff/directory`. Migration `0012` adds
+  `staff.mobile`. Login-time password aging (FS-031.12) runs in `staff_login`. New dev
+  endpoints: `POST /api/dev/reset-groups`, `POST /api/dev/seed-staff-bulk`; `seed-staff` gained
+  `groupId/deptId/isvisible/isadmin/onvacation/firstname/lastname`; `age-password` gained
+  `forceChange` (backdate `passwdreset` without setting `change_passwd`).
+- **Frontend** — location: `modernized/frontend/` (Vite + React + TS + MobX + MUI; **scaffolded by
+  TS-M1-A5**); port **3702**; start: `npm --prefix modernized/frontend run dev` (Vite proxies
+  `/api` → `http://localhost:3701`). Tests: `npm --prefix modernized/frontend test` (Vitest + RTL
+  + MSW). Build: `npm --prefix modernized/frontend run build`. Lint:
+  `npm --prefix modernized/frontend run lint`.
 - **PostgreSQL** — **existing shared container `backend-db-1`** (`postgres:16`), host port
   **5432**; database `osticket_dev`. Already running — no `docker compose up` needed.
   Verify: `docker exec backend-db-1 psql -U postgres -d osticket_dev -c "select version();"`.
@@ -119,17 +147,22 @@ container on **5432**.
 > Provisional — exact commands finalised when scaffolding lands (TS-M1-A1 / A5).
 
 ```sh
+# All backend/frontend/docker commands run from the modernized/ workspace directory.
+cd modernized
+
 # PostgreSQL: already running as the shared container `backend-db-1` on :5432
 # (db `osticket_dev`); no compose step needed. One-time, if missing:
 #   docker exec backend-db-1 psql -U postgres -c "CREATE DATABASE osticket_dev;"
-# Copy backend/.env.example → backend/.env (sets DATABASE_URL, APP_PORT=3701, APP_FRONTEND_ORIGIN).
+# One-time: copy the env template. .env lives at the workspace root (modernized/.env) and
+# dotenvy searches CWD + parents, so it auto-loads from modernized/ — no DATABASE_URL export.
+cp .env.example .env           # sets DATABASE_URL, APP_PORT=3701, APP_FRONTEND_ORIGIN
 cargo run -p api               # backend on :3701 — applies migrations on startup, then serves
 cargo run -p tools --bin seed  # idempotent seed / M1 dev-reset (dept + group + staff + defaults)
-npm --prefix frontend run dev  # frontend on :3702
+npm --prefix frontend run dev  # frontend on :3702  (or from repo root: npm --prefix modernized/frontend run dev)
 
 # Real outbound email (TS-M2-E1 / M2 §5): start Mailpit, then run the backend
 # with the SMTP env so mail is delivered to Mailpit instead of the dev mailbox.
-docker compose up -d mailpit   # Mailpit: SMTP :3704, web UI + REST API :3705
+docker compose up -d mailpit   # Mailpit: SMTP :3704, web UI + REST API :3705  (run from modernized/)
 SMTP_HOST=localhost SMTP_PORT=3704 SMTP_FROM=support@osticket.local \
   DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_dev cargo run -p api
 # Inspect delivered mail: http://localhost:3705  (REST: /api/v1/messages)
@@ -144,32 +177,45 @@ cargo tests **skip-pass when `MAILPIT_URL` is unset**:
 `MAILPIT_URL=http://localhost:3705 cargo test -p api --test smtp_mailer`.
 
 **Migrations** are applied automatically on `cargo run -p api` startup (and by the seed task);
-apply manually with `sqlx migrate run --source migrations` (see the Database section above).
+apply manually (from `modernized/`) with `sqlx migrate run --source migrations` (see the Database
+section above).
 
-**Seeded staff credentials** (M1 seed fixture, TS-M1-A3) — used for the staff browser E2E:
+**Seeded staff credentials** (M1 seed fixture, TS-M1-A3; second agent added for the
+US-M3-I2 collaborative-lock E2E) — used for the staff browser E2E:
 
-| Username | Password    |
-|----------|-------------|
-| `agent`  | `Agent123!` |
+| Username | Password    | Name      | Notes |
+|----------|-------------|-----------|-------|
+| `agent`  | `Agent123!` | Agent One | Primary agent (non-admin). |
+| `agent2` | `Agent234!` | Agent Two | Second agent — same group/permissions + Support+Sales access; used to trigger the two-agent "locked by another staff" conflict. |
+| `admin`  | `Admin123!` | Admin User | **Admin** (`isadmin=true`), in the `Administrators` group carrying every permission flag incl. the four M4 flags (`can_manage_faq`/`can_manage_premade`/`can_ban_emails`/`can_view_staff_stats`) + Support+Sales access. The login every **M4 admin-panel** `[BROWSER]` E2E authenticates with (TS-M4-PREP-C). |
 
 The seed (`cargo run -p tools --bin seed`) is **idempotent** and is the **M1 dev-reset
 mechanism** — re-run it any time to return the dev DB to a known state. It upserts one
-department (`Support`), one permission group (flags `can_create_tickets` + `can_post_reply`
-+ access to `Support`), the `agent` staff account (argon2id-hashed password via the TS-M1-A4a
-util), and the FS-091 reference defaults (`default_ticket_status=open`,
-`default_priority=normal`). It targets `DATABASE_URL` (default `osticket_dev`) only.
+department (`Support`) plus `Sales`, permission groups (`M1 Agents` + `Administrators`), the
+`agent` / `agent2` / `admin` staff accounts (argon2id-hashed passwords via the TS-M1-A4a util),
+the FS-091 reference defaults (`default_ticket_status=open`, `default_priority=normal`), the
+**M4-PREP reference rows** (`email_account` `support@osticket.local`, `template_group`
+`osTicket Default`, a 12-row `timezone` set), and the **~110 FS-032 core config keys** (id-valued
+bindings — `default_dept_id`/`default_sla_id`/`default_email_id`/`default_template_id`/
+`default_timezone_id` — resolved to the live seeded ids). It targets `DATABASE_URL` (default
+`osticket_dev`) only. The M4-PREP reference tables + `syslog` survive `--reset` (only
+ticket-scoped data is purged).
 
 ## Testing
 
-> Provisional command set.
+> Provisional command set. All `cargo` / `npm` commands run from the `modernized/` workspace
+> directory (or pass `cargo --manifest-path modernized/Cargo.toml …` / `npm --prefix
+> modernized/frontend …` from the repo root).
 
-- Backend: `cargo test` (workspace unit/integration tests); `cargo clippy --all-targets -- -D warnings`
-  (lint); `SQLX_OFFLINE=true cargo build` (CI build without a live DB — uses the committed `.sqlx/`
-  query cache; see `.sqlx/README.md` for the `cargo sqlx prepare` convention).
+- Backend (from `modernized/`): `cargo test` (workspace unit/integration tests); `cargo clippy
+  --all-targets -- -D warnings` (lint); `SQLX_OFFLINE=true cargo build` (CI build without a live
+  DB — uses the committed `.sqlx/` query cache; see `.sqlx/README.md` for the `cargo sqlx prepare`
+  convention).
   - **DB-backed tests** (the `db` migration tests and the `tools` seed tests) read
     `TEST_DATABASE_URL`; without it they skip (pass) so DB-less CI stays green. Run them with
     `TEST_DATABASE_URL=postgres://postgres:pass123@localhost:5432/osticket_test cargo test`.
-- Frontend: `npm --prefix frontend test` (component tests) and `npm --prefix frontend run build`.
+- Frontend: `npm --prefix modernized/frontend test` (component tests) and `npm --prefix
+  modernized/frontend run build`.
 - **Browser E2E**: leaf user stories with UI flows and the M1 milestone root are validated by
   **qa-test-plan** + **qa-criterion-tester** against the running frontend (`http://localhost:3702`).
   Unit/API tests are never sufficient for `[BROWSER]` acceptance criteria.
@@ -215,14 +261,14 @@ Phase 3 round-2 for the `setup/cli/**` tooling), all **Final (Phase 4 de-duplica
   the requirement-level form `@implements FS-XXX.N: <Title> — <note>` (one id per line,
   BS/EC/KL first-class), normalized from bracketed `[FS-XXX]` in Round 3.
   Out of scope: 46 vendored third-party files, 11 self-test harness files, 2 bare
-  redirect stubs. See `work/UNCOVERED_CODE_REPORT.md`.
+  redirect stubs. See `retro-spec/UNCOVERED_CODE_REPORT.md`.
 - **Phase 4:** 107 raw findings → 38 distinct → 24-item worklist across 14 specs; the
   SLA-precedence contradiction resolved; adversarial verification **CLEAN after 4
-  post-verification fixes**. See `work/DUPLICATE-ANALYSIS-REPORT.md` +
-  `work/dedupe/ADVERSARIAL-VERIFICATION.md`.
+  post-verification fixes**. See `retro-spec/DUPLICATE-ANALYSIS-REPORT.md` +
+  `retro-spec/dedupe/ADVERSARIAL-VERIFICATION.md`.
 
-See the convergence summary (`work/FINAL_CONVERGENCE_REPORT.md`), the plan
-(`work/SPEC_REVERSE_ENGINEER_PLAN.md`), the tracker
-(`work/REVERSE_ENGINEER_PROGRESS.md`), the consolidated gap report
-(`work/GAP_REPORT.md`), and the coverage report
-(`work/UNCOVERED_CODE_REPORT.md`).
+See the convergence summary (`retro-spec/FINAL_CONVERGENCE_REPORT.md`), the plan
+(`retro-spec/SPEC_REVERSE_ENGINEER_PLAN.md`), the tracker
+(`retro-spec/REVERSE_ENGINEER_PROGRESS.md`), the consolidated gap report
+(`retro-spec/GAP_REPORT.md`), and the coverage report
+(`retro-spec/UNCOVERED_CODE_REPORT.md`).

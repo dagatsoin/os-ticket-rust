@@ -229,8 +229,9 @@ milestone breakdown live in `kanban/osticket-modernisation/ROADMAP.md`. Current 
 
 ## Hard rules
 
-- **Never push to any remote.** All git operations for this project stay **local** —
-  no `git push`, no `git push --tags`, no remote `gh` operations.
+- **Remote.** The repo's remote is `git@github.com:dagatsoin/os-ticket-rust.git`, and
+  pushing to it is **permitted** (authorized by the user 2026-07-24). The previous
+  "never push / all git stays local" restriction is lifted.
 - **The legacy PHP source is frozen.** Never modify any file under `legacy/`. The original
   "report spec only — never modify any PHP / source file" rule still applies in full to
   everything under `legacy/`. The only edits ever made to that source were the additive

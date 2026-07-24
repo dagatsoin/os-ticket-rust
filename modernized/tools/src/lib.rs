@@ -125,8 +125,29 @@ pub const TEMPLATE_GROUP_NAME: &str = "osTicket Default";
 pub const ADMIN_GROUP_NAME: &str = "Administrators";
 /// Seeded admin staff username (documented QA credential for M4 admin E2E).
 pub const ADMIN_USERNAME: &str = "admin";
-/// Seeded admin staff plaintext password (documented QA credential).
+/// Default admin staff plaintext password (documented QA credential).
+///
+/// Used only when the `ADMIN_PASSWORD` environment variable is unset — see
+/// [`admin_password`]. Production seeds override it by exporting `ADMIN_PASSWORD`
+/// for the one seed invocation (the value is never stored in a file).
 pub const ADMIN_PASSWORD: &str = "Admin123!";
+
+/// Resolve the admin account password from the environment, falling back to the
+/// default [`ADMIN_PASSWORD`] dev credential.
+///
+/// When the `ADMIN_PASSWORD` env var is set to a non-empty value, that value is
+/// used (and argon2id-hashed like any other password). When it is unset or
+/// empty, the default `Admin123!` is used — so dev / test behaviour is
+/// unchanged and backward-compatible. This lets production seed a strong admin
+/// password without baking it into the source or any committed file.
+///
+/// @implements TS-M4-PREP-C AC-5 (prod hardening): admin password from env.
+pub fn admin_password() -> String {
+    std::env::var("ADMIN_PASSWORD")
+        .ok()
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| ADMIN_PASSWORD.to_string())
+}
 
 // --- TS-M4-PREP-C: id-valued default bindings (resolve to real seeded ids) -----
 
@@ -707,7 +728,9 @@ async fn seed_admin(
     }
 
     // The admin staff account — upsert by unique username, isadmin=true.
-    let passwd = ost_core::hash_password(ADMIN_PASSWORD)?;
+    // Password comes from the `ADMIN_PASSWORD` env var when set (prod), else the
+    // default dev credential — see [`admin_password`].
+    let passwd = ost_core::hash_password(&admin_password())?;
     let admin_id: i32 = sqlx::query_scalar(
         "INSERT INTO staff
            (group_id, dept_id, username, firstname, lastname, passwd, email, isactive, isadmin)
@@ -1374,4 +1397,30 @@ async fn upsert_config(
     .execute(&mut **tx)
     .await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `admin_password` falls back to the default dev credential when the
+    /// `ADMIN_PASSWORD` env var is unset or empty (backward-compatible), and
+    /// returns the env value when it is set (production override).
+    ///
+    /// @implements TS-M4-PREP-C AC-5 (prod hardening): admin password from env.
+    #[test]
+    fn admin_password_uses_env_override_else_default() {
+        // Serialised into one test because the env var is process-global.
+        std::env::remove_var("ADMIN_PASSWORD");
+        assert_eq!(admin_password(), ADMIN_PASSWORD, "unset → default");
+
+        std::env::set_var("ADMIN_PASSWORD", "");
+        assert_eq!(admin_password(), ADMIN_PASSWORD, "empty → default");
+
+        std::env::set_var("ADMIN_PASSWORD", "S3cret-Prod-Pw!");
+        assert_eq!(admin_password(), "S3cret-Prod-Pw!", "set → override");
+
+        std::env::remove_var("ADMIN_PASSWORD");
+        assert_eq!(admin_password(), ADMIN_PASSWORD, "cleaned up → default");
+    }
 }

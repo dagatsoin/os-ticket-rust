@@ -14,6 +14,12 @@ stage
 /modernized/target
 **/*.rs.bk
 
+# Production deploy artifacts — the linux/amd64 binaries built locally via
+# modernized/Dockerfile and the built SPA. Reusable deploy assets under
+# modernized/deploy/ ARE committed; only the built outputs are ignored.
+/modernized/deploy/bin/
+/modernized/frontend/dist/
+
 # Local environment files (the committed .env.example is the template).
 /backend/.env
 /modernized/.env

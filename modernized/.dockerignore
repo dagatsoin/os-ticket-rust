@@ -1,0 +1,21 @@
+# Keep the Docker build context small and the build hermetic. The Dockerfile
+# COPYs only the Cargo workspace inputs (Cargo.*, .sqlx, migrations, backend,
+# tools); everything below is host-only state that must never enter the image.
+
+# Rust build output (rebuilt inside the image for the musl target).
+target/
+**/*.rs.bk
+
+# Frontend — built separately with `npm run build`; not part of the backend image.
+frontend/
+
+# Local runtime state.
+var/
+deploy/bin/
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Editor / OS cruft.
+.DS_Store

@@ -39,6 +39,19 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
+    // What to show for the admin credential in the summary line: the default dev
+    // password when `ADMIN_PASSWORD` is unset, else a note (never echo the real
+    // override secret into stdout/logs).
+    let admin_cred_display = if std::env::var("ADMIN_PASSWORD")
+        .ok()
+        .filter(|v| !v.is_empty())
+        .is_some()
+    {
+        "<from ADMIN_PASSWORD env>".to_string()
+    } else {
+        tools::ADMIN_PASSWORD.to_string()
+    };
+
     let database_url = std::env::var("DATABASE_URL")
         .context("DATABASE_URL must be set (e.g. postgres://postgres:pass123@localhost:5432/osticket_dev)")?;
 
@@ -69,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
             tools::STAFF2_PASSWORD,
             r.admin_id,
             tools::ADMIN_USERNAME,
-            tools::ADMIN_PASSWORD,
+            admin_cred_display,
         );
         r
     } else {
@@ -89,7 +102,7 @@ async fn main() -> anyhow::Result<()> {
             tools::STAFF2_PASSWORD,
             result.admin_id,
             tools::ADMIN_USERNAME,
-            tools::ADMIN_PASSWORD,
+            admin_cred_display,
         );
     }
     Ok(())

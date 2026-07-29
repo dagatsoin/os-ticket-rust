@@ -12,6 +12,7 @@ import { useStores } from "../stores/StoreContext";
 import { CredentialForm, type CredentialField } from "../components/CredentialForm";
 import { ThreadView, type ThreadEntry } from "../components/ThreadView";
 import { AttachmentList } from "../components/AttachmentList";
+import { formatTimestamp } from "../utils/formatTimestamp";
 import type { ClientThreadEntry } from "../stores/ClientPortalStore";
 
 const CLIENT_LOGIN_FIELDS: CredentialField[] = [
@@ -30,12 +31,9 @@ function toThreadEntries(entries: ClientThreadEntry[]): ThreadEntry[] {
     .map((e) => ({
       id: e.id,
       author: e.poster,
-      // BACKEND GAP: GET /api/client/ticket returns thread entries as
-      // { id, thread_type, poster, body } only — no per-entry `created`
-      // timestamp (see backend api/src/client.rs `ClientThreadEntry`). We do NOT
-      // fabricate one; the timestamp stays empty until the backend adds a
-      // per-entry created field to the client thread response.
-      timestamp: "",
+      // GET /api/client/ticket now returns a per-entry `created` (RFC3339);
+      // render it as a locale date-time via the shared formatter.
+      timestamp: formatTimestamp(e.created),
       kind: e.threadType === "R" ? "response" : "message",
       body: (
         <>

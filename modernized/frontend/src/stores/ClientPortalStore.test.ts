@@ -38,8 +38,8 @@ describe("ClientPortalStore", () => {
           status: "open",
           created: "2026-06-01T10:00:00Z",
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "Cannot log in" },
-            { id: 12, threadType: "R", poster: "Agent", body: "Try a reset" },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in" },
+            { id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Try a reset" },
           ],
         }),
       ),
@@ -80,7 +80,7 @@ describe("ClientPortalStore", () => {
         HttpResponse.json({
           number: 123456, subject: "Cannot log in", status: "open",
           created: "2026-06-01T10:00:00Z",
-          entries: [{ id: 10, threadType: "M", poster: "Alice", body: "Cannot log in" }],
+          entries: [{ id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in" }],
         }),
       ),
     );

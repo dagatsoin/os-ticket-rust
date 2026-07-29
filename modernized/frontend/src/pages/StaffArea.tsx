@@ -72,6 +72,7 @@ import {
   ALLOWED_EXTENSIONS_LABEL,
   MAX_FILE_SIZE_LABEL,
 } from "../utils/validateAttachment";
+import { formatTimestamp } from "../utils/formatTimestamp";
 import type {
   StaffThreadEntry,
   QueueStatus,
@@ -100,11 +101,10 @@ function toThreadEntry(e: StaffThreadEntry, ticketId: number): ThreadEntry {
   return {
     id: e.id,
     author,
-    // BACKEND GAP: the staff detail thread entries (ThreadEntryView in
-    // backend api/src/staff.rs) also omit a per-entry `created` timestamp, so
-    // this stays empty rather than being fabricated. Same limitation as the
-    // client thread (see ClientPortal.tsx).
-    timestamp: "",
+    // The staff detail thread entries (ThreadEntryView in backend
+    // api/src/staff.rs) now carry a per-entry `created` (RFC3339); render it
+    // as a locale date-time via the shared formatter.
+    timestamp: formatTimestamp(e.created),
     title: e.title,
     kind,
     body: (

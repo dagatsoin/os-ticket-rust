@@ -83,8 +83,8 @@ describe("Staff UI (TS-M1-C4)", () => {
           id: 1, number: 100001, subject: "Login issue", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T10:00:00Z",
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "Cannot log in" },
-            { id: 11, threadType: "N", poster: "Agent", body: "checking SSO" },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in" },
+            { id: 11, threadType: "N", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "checking SSO" },
           ],
         }),
       ),
@@ -94,9 +94,9 @@ describe("Staff UI (TS-M1-C4)", () => {
           id: 1, number: 100001, subject: "Login issue", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T10:00:00Z",
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "Cannot log in" },
-            { id: 11, threadType: "N", poster: "Agent", body: "checking SSO" },
-            { id: 12, threadType: "R", poster: "Agent", body: "Try a reset" },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in" },
+            { id: 11, threadType: "N", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "checking SSO" },
+            { id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Try a reset" },
           ],
         }),
       ),
@@ -108,6 +108,11 @@ describe("Staff UI (TS-M1-C4)", () => {
     await waitFor(() => expect(screen.getByText("Cannot log in")).toBeInTheDocument());
     expect(screen.getByText("checking SSO")).toBeInTheDocument();
     expect(screen.queryByText("Try a reset")).not.toBeInTheDocument();
+    // Each entry renders its per-entry `created` timestamp (formatted from the
+    // RFC3339 value the backend now sends); the fixture year appears on each.
+    for (const entry of screen.getAllByTestId("thread-entry")) {
+      expect(entry).toHaveTextContent("2026");
+    }
 
     await user.type(screen.getByLabelText(/reply/i), "Try a reset");
     await user.click(screen.getByRole("button", { name: /send reply/i }));
@@ -128,7 +133,7 @@ describe("Staff UI (TS-M1-C4)", () => {
           status: "open", created: "2026-06-01T10:00:00Z", isanswered: false,
           entries: [
             {
-              id: 10, threadType: "M", poster: "Alice", body: "Cannot log in",
+              id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in",
               attachments: [{ id: 99, name: "invoice.pdf", size: 100, mime: "application/pdf" }],
             },
           ],
@@ -164,7 +169,7 @@ describe("Staff UI (TS-M1-C4)", () => {
       HttpResponse.json({
         id: 1, number: 100001, subject: "Login issue", email: "a@x.io", name: "Alice",
         status: "open", created: "2026-06-01T10:00:00Z", isanswered: false,
-        entries: [{ id: 10, threadType: "M", poster: "Alice", body: "Cannot log in" }],
+        entries: [{ id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in" }],
       }),
     );
   }
@@ -219,8 +224,8 @@ describe("Staff UI (TS-M1-C4)", () => {
           id: 1, number: 100001, subject: "Login issue", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T10:00:00Z", isanswered: true,
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "Cannot log in" },
-            { id: 13, threadType: "R", poster: "Agent", body: "Substituted body 100001." },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "Cannot log in" },
+            { id: 13, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Substituted body 100001." },
           ],
         });
       }),

@@ -157,6 +157,19 @@ async fn reply_appends_r_returns_thread_and_keeps_status_open() {
     // AC-2: the R entry is authored by the seeded agent.
     let r = entries.iter().find(|e| e["threadType"] == "R").unwrap();
     assert_eq!(r["poster"], "Agent One", "R authored by the agent");
+    // Each staff thread entry carries a non-empty per-entry `created` timestamp
+    // (RFC3339) so the staff ticket view can render the date on every entry.
+    for e in entries {
+        let created = e["created"].as_str().unwrap_or("");
+        assert!(
+            !created.is_empty(),
+            "each staff thread entry must carry a non-empty `created` timestamp: {e:?}"
+        );
+        assert!(
+            created.contains('T') && created.ends_with('Z'),
+            "`created` must be RFC3339-ish (YYYY-MM-DDThh:mm:ssZ): {created}"
+        );
+    }
 
     // Pure append: status is unchanged (still open).
     let status: String = sqlx::query_scalar("SELECT status FROM ticket WHERE ticket_id = $1")

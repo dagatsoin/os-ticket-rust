@@ -125,6 +125,8 @@ export interface StaffThreadEntry {
   /** Optional title (typically used for internal notes). */
   title?: string;
   body: string;
+  /** When this entry was created — RFC3339 (`YYYY-MM-DDThh:mm:ssZ`). */
+  created: string;
   /** Attachments carried on this entry (§7); empty/absent when none. */
   attachments?: Attachment[];
 }

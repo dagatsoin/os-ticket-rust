@@ -24,7 +24,7 @@ describe("Client portal (TS-M1-D2)", () => {
         HttpResponse.json({
           number: 123456, subject: "Login issue", status: "open",
           created: "2026-06-01T10:00:00Z",
-          entries: [{ id: 10, threadType: "M", poster: "Alice", body: "I cannot log in" }],
+          entries: [{ id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "I cannot log in" }],
         }),
       ),
     );
@@ -67,8 +67,8 @@ describe("Client portal (TS-M1-D2)", () => {
       number: 123456, subject: "Login issue", status: "open",
       created: "2026-06-01T10:00:00Z",
       entries: [
-        { id: 10, threadType: "M", poster: "Alice", body: "I cannot log in" },
-        { id: 12, threadType: "R", poster: "Agent", body: "Try a reset" },
+        { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "I cannot log in" },
+        { id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Try a reset" },
       ],
     };
     renderWithProviders(<ClientRoutes />, { route: "/tickets", store });
@@ -78,6 +78,11 @@ describe("Client portal (TS-M1-D2)", () => {
     // Oldest-first: the customer message precedes the staff response.
     expect(entries[0]).toHaveTextContent("I cannot log in");
     expect(entries[1]).toHaveTextContent("Try a reset");
+    // Each entry renders its per-entry `created` timestamp (formatted from the
+    // RFC3339 value the backend now sends). The locale format varies, but the
+    // year from the fixture must appear on every bubble.
+    expect(entries[0]).toHaveTextContent("2026");
+    expect(entries[1]).toHaveTextContent("2026");
     // Read-only: no reply composer / slot.
     expect(screen.queryByTestId("thread-reply-slot")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /reply/i })).not.toBeInTheDocument();
@@ -91,10 +96,10 @@ describe("Client portal (TS-M1-D2)", () => {
       number: 123456, subject: "Login issue", status: "open",
       created: "2026-06-01T10:00:00Z",
       entries: [
-        { id: 10, threadType: "M", poster: "Alice", body: "I cannot log in" },
+        { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "I cannot log in" },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any -- forcing an N to prove it is filtered
-        { id: 11, threadType: "N" as any, poster: "Agent", body: "SECRET internal note" },
-        { id: 12, threadType: "R", poster: "Agent", body: "Try a reset" },
+        { id: 11, threadType: "N" as any, created: "2026-07-23T14:05:09Z", poster: "Agent", body: "SECRET internal note" },
+        { id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Try a reset" },
       ],
     };
     renderWithProviders(<ClientRoutes />, { route: "/tickets", store });
@@ -126,7 +131,7 @@ describe("Client portal (TS-M1-D2)", () => {
       created: "2026-06-01T10:00:00Z",
       entries: [
         {
-          id: 12, threadType: "R", poster: "Agent", body: "Here is the policy",
+          id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Here is the policy",
           attachments: [{ id: 77, name: "policy.txt", size: 10, mime: "text/plain" }],
         },
       ],
@@ -153,7 +158,7 @@ describe("Client portal (TS-M1-D2)", () => {
       created: "2026-06-01T10:00:00Z",
       entries: [
         {
-          id: 12, threadType: "R", poster: "Agent", body: "Here is the policy",
+          id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Here is the policy",
           attachments: [{ id: 77, name: "policy.txt", size: 10, mime: "text/plain" }],
         },
       ],

@@ -172,6 +172,10 @@ pub struct ThreadEntry {
     /// Optional title (typically used for internal notes).
     pub title: Option<String>,
     pub body: String,
+    /// When this entry was created — RFC3339 (`YYYY-MM-DDThh:mm:ssZ`), matching
+    /// the ticket-level `created` formatting. Drives the per-entry date in the
+    /// staff ticket view.
+    pub created: String,
 }
 
 /// Errors from the ticket service core.
@@ -486,9 +490,10 @@ pub async fn append_thread_entry(
     }
 
     let row = sqlx::query(
-        "INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
+        r#"INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
          VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, ticket_id, thread_type, poster, body",
+         RETURNING id, ticket_id, thread_type, poster, body,
+                   to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created"#,
     )
     .bind(ticket_id)
     .bind(entry.thread_type.as_db())
@@ -505,6 +510,7 @@ pub async fn append_thread_entry(
         poster: row.get("poster"),
         title: None,
         body: row.get("body"),
+        created: row.get("created"),
     })
 }
 
@@ -539,9 +545,10 @@ pub async fn append_thread_entry_with_attachment(
     let mut tx = pool.begin().await?;
 
     let row = sqlx::query(
-        "INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
+        r#"INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
          VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, ticket_id, thread_type, poster, body",
+         RETURNING id, ticket_id, thread_type, poster, body,
+                   to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created"#,
     )
     .bind(ticket_id)
     .bind(entry.thread_type.as_db())
@@ -557,6 +564,7 @@ pub async fn append_thread_entry_with_attachment(
         poster: row.get("poster"),
         title: None,
         body: row.get("body"),
+        created: row.get("created"),
     };
 
     // Store the blob, then bind it to the new entry — all before commit.
@@ -618,9 +626,10 @@ pub async fn post_staff_reply(
     let mut tx = pool.begin().await?;
 
     let row = sqlx::query(
-        "INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
+        r#"INSERT INTO ticket_thread (ticket_id, thread_type, poster, staff_id, body)
          VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, ticket_id, thread_type, poster, body",
+         RETURNING id, ticket_id, thread_type, poster, body,
+                   to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created"#,
     )
     .bind(ticket_id)
     .bind(entry.thread_type.as_db())
@@ -636,6 +645,7 @@ pub async fn post_staff_reply(
         poster: row.get("poster"),
         title: None,
         body: row.get("body"),
+        created: row.get("created"),
     };
 
     let ref_type = entry.thread_type.as_db();
@@ -676,8 +686,10 @@ pub async fn post_staff_reply(
 /// @implements BS-021: ordered thread retrieval (M then R …).
 pub async fn load_thread(pool: &PgPool, ticket_id: i64) -> Result<Vec<ThreadEntry>, TicketError> {
     let rows = sqlx::query(
-        "SELECT id, ticket_id, thread_type, poster, title, body FROM ticket_thread
-         WHERE ticket_id = $1 ORDER BY id ASC",
+        r#"SELECT id, ticket_id, thread_type, poster, title, body,
+                  to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created
+           FROM ticket_thread
+           WHERE ticket_id = $1 ORDER BY id ASC"#,
     )
     .bind(ticket_id)
     .fetch_all(pool)
@@ -691,6 +703,7 @@ pub async fn load_thread(pool: &PgPool, ticket_id: i64) -> Result<Vec<ThreadEntr
             poster: row.get("poster"),
             title: row.get("title"),
             body: row.get("body"),
+            created: row.get("created"),
         })
         .collect())
 }

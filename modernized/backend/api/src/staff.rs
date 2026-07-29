@@ -2094,6 +2094,10 @@ pub struct ThreadEntryView {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     pub body: String,
+    /// When this entry was created — RFC3339 (`YYYY-MM-DDThh:mm:ssZ`), matching
+    /// the ticket-level `created` formatting. Drives the per-entry date in the
+    /// staff ticket view.
+    pub created: String,
     /// Attachments bound to this entry — `[{id, name, size, mime}]` (§7), empty
     /// when none. The `id` is the `ticket_attachment` binding id (the download
     /// route's `attachmentId`).
@@ -2251,6 +2255,7 @@ async fn build_detail(
             poster: e.poster,
             title: e.title,
             body: e.body,
+            created: e.created,
         })
         .collect();
 
@@ -3032,6 +3037,7 @@ pub async fn get_thread(
             poster: e.poster,
             title: e.title,
             body: e.body,
+            created: e.created,
         })
         .collect();
 

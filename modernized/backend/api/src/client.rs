@@ -28,6 +28,10 @@ pub struct ClientThreadEntry {
     pub thread_type: String,
     pub poster: String,
     pub body: String,
+    /// When this entry was created — RFC3339 (`YYYY-MM-DDThh:mm:ssZ`), matching
+    /// the ticket-level `created` formatting. Drives the per-bubble date on the
+    /// client portal thread.
+    pub created: String,
     /// Attachments bound to this entry — `[{id, name, size, mime}]` (§7), empty
     /// when none. The `id` is the download route's `attachmentId`.
     pub attachments: Vec<AttachmentView>,
@@ -83,9 +87,11 @@ pub async fn ticket(
     // Filter to M + R in SQL so an internal N note can never reach the client,
     // even if one exists on the ticket. created ASC (= id ASC) chronological.
     let rows = sqlx::query(
-        "SELECT id, thread_type, poster, body FROM ticket_thread
-         WHERE ticket_id = $1 AND thread_type IN ('M', 'R')
-         ORDER BY id ASC",
+        r#"SELECT id, thread_type, poster, body,
+                  to_char(created, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created
+           FROM ticket_thread
+           WHERE ticket_id = $1 AND thread_type IN ('M', 'R')
+           ORDER BY id ASC"#,
     )
     .bind(ticket_id)
     .fetch_all(pool)
@@ -109,6 +115,7 @@ pub async fn ticket(
                 thread_type: row.get("thread_type"),
                 poster: row.get("poster"),
                 body: row.get("body"),
+                created: row.get("created"),
             }
         })
         .collect();

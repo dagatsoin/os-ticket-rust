@@ -171,6 +171,19 @@ async fn thread_route_returns_own_ticket_entries() {
     // M (original) + R (seeded reply), in order.
     let types: Vec<&str> = entries.iter().map(|e| e["threadType"].as_str().unwrap()).collect();
     assert_eq!(types, vec!["M", "R"]);
+    // Each entry carries a non-empty per-entry `created` RFC3339 timestamp
+    // (so the client portal can render the date on every thread bubble).
+    for e in entries {
+        let created = e["created"].as_str().unwrap_or("");
+        assert!(
+            !created.is_empty(),
+            "each thread entry must carry a non-empty `created` timestamp: {e:?}"
+        );
+        assert!(
+            created.contains('T') && created.ends_with('Z'),
+            "`created` must be RFC3339-ish (YYYY-MM-DDThh:mm:ssZ): {created}"
+        );
+    }
 }
 
 // --- AC-3: client thread route has no path param + staff route denied --------

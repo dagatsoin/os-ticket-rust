@@ -49,9 +49,9 @@ describe("StaffTicketStore", () => {
           status: "open",
           created: "2026-06-01T00:00:00Z",
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "It broke" },
-            { id: 11, threadType: "N", poster: "Agent", body: "internal note" },
-            { id: 12, threadType: "R", poster: "Agent", body: "On it" },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "It broke" },
+            { id: 11, threadType: "N", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "internal note" },
+            { id: 12, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "On it" },
           ],
         }),
       ),
@@ -72,7 +72,7 @@ describe("StaffTicketStore", () => {
         HttpResponse.json({
           id: 1, number: 100001, subject: "Help", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T00:00:00Z",
-          entries: [{ id: 10, threadType: "M", poster: "Alice", body: "It broke" }],
+          entries: [{ id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "It broke" }],
         }),
       ),
       http.post("/api/staff/tickets/1/reply", async ({ request }) => {
@@ -82,8 +82,8 @@ describe("StaffTicketStore", () => {
           id: 1, number: 100001, subject: "Help", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T00:00:00Z",
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "It broke" },
-            { id: 13, threadType: "R", poster: "Agent", body: "Fixed it" },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "It broke" },
+            { id: 13, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Fixed it" },
           ],
         });
       }),
@@ -99,7 +99,7 @@ describe("StaffTicketStore", () => {
     expect(postedBody).toEqual({ body: "Fixed it" });
     // The thread came from the reply RESPONSE, not a local append.
     expect(store.detail?.entries).toHaveLength(2);
-    expect(store.detail?.entries[1]).toMatchObject({ id: 13, threadType: "R", body: "Fixed it" });
+    expect(store.detail?.entries[1]).toMatchObject({ id: 13, threadType: "R", created: "2026-07-23T14:05:09Z", body: "Fixed it" });
     expect(store.replying).toBe(false);
   });
 
@@ -187,9 +187,9 @@ describe("StaffTicketStore — canned + multipart reply (TS-M2-D3)", () => {
           id: 1, number: 100001, subject: "Help", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T00:00:00Z", isanswered: true,
           entries: [
-            { id: 10, threadType: "M", poster: "Alice", body: "It broke" },
+            { id: 10, threadType: "M", created: "2026-07-23T14:05:09Z", poster: "Alice", body: "It broke" },
             {
-              id: 13, threadType: "R", poster: "Agent", body: "Hi, we received ticket 100001.",
+              id: 13, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Hi, we received ticket 100001.",
               attachments: [{ id: 50, name: "policy.txt", size: 12, mime: "text/plain" }],
             },
           ],
@@ -225,7 +225,7 @@ describe("StaffTicketStore — canned + multipart reply (TS-M2-D3)", () => {
         return HttpResponse.json({
           id: 1, number: 100001, subject: "Help", email: "a@x.io", name: "Alice",
           status: "open", created: "2026-06-01T00:00:00Z", isanswered: true,
-          entries: [{ id: 13, threadType: "R", poster: "Agent", body: "Fixed it" }],
+          entries: [{ id: 13, threadType: "R", created: "2026-07-23T14:05:09Z", poster: "Agent", body: "Fixed it" }],
         });
       }),
     );

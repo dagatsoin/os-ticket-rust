@@ -8,6 +8,8 @@ import { HealthStore } from "./HealthStore";
 import { OpenTicketStore } from "./OpenTicketStore";
 import { StaffTicketStore } from "./StaffTicketStore";
 import { ClientPortalStore } from "./ClientPortalStore";
+import { TicketOptionsStore } from "./TicketOptionsStore";
+import { PublicPageStore } from "./PublicPageStore";
 import { SnackbarStore } from "./SnackbarStore";
 import { AdminSettingsStore } from "./AdminSettingsStore";
 import { StaffAdminStore } from "./StaffAdminStore";
@@ -41,6 +43,10 @@ export class RootStore {
   readonly staffTickets: StaffTicketStore;
   /** Client portal session + read-only thread store (TS-M1-D2). */
   readonly clientPortal: ClientPortalStore;
+  /** Staff ticket-options reference lists (transfer/assign/edit/search dropdowns). */
+  readonly ticketOptions: TicketOptionsStore;
+  /** Public site-page (`/pages/:slug`) viewer store. */
+  readonly publicPage: PublicPageStore;
   /** Global success/error snackbar reused by every admin CRUD screen (TS-M4-A0). */
   readonly snackbar: SnackbarStore;
   /** Admin System Settings store (TS-M4-A2/A3) — rides the staff apiClient. */
@@ -94,6 +100,10 @@ export class RootStore {
     this.openTicket = new OpenTicketStore(this.clientApi);
     this.staffTickets = new StaffTicketStore(this.staffApi);
     this.clientPortal = new ClientPortalStore(this.clientApi);
+    // Ticket-options rides the staff apiClient (any authenticated staff session).
+    this.ticketOptions = new TicketOptionsStore(this.staffApi);
+    // Public page viewer rides the (unauthenticated) client apiClient.
+    this.publicPage = new PublicPageStore(this.clientApi);
 
     this.snackbar = new SnackbarStore();
     this.adminSettings = new AdminSettingsStore(this.staffApi, this.snackbar);

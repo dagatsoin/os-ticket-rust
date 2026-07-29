@@ -25,14 +25,23 @@ import { Link as RouterLink, Outlet, useNavigate } from "react-router-dom";
 import { HealthIndicator } from "./HealthIndicator";
 import { AppSnackbar } from "./AppSnackbar";
 import { useStores } from "../stores/StoreContext";
+import { DELEGATED_CAPABILITIES } from "../routes/adminCapabilities";
 
-/** Staff account menu — Profile / Directory / Logout (TS-M4-B6). */
+/** Staff account menu — Administration / Profile / Directory / Logout (TS-M4-B6). */
 const StaffUserMenu = observer(function StaffUserMenu() {
   const { staffAuth } = useStores();
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   if (!staffAuth.isAuthenticated) return null;
+
+  // Mirror the RequireAdminArea gate (routes/guards.tsx): admin OR any delegated
+  // capability may reach /staff/admin, so only those users see the entry. A plain
+  // agent never sees it. Ensure the profile is loaded so the capability flags are
+  // available (the forced-password banner already triggers this, but a menu opened
+  // before that resolves would otherwise mis-hide the link).
+  const canReachAdminArea =
+    staffAuth.isAdmin || DELEGATED_CAPABILITIES.some((f) => staffAuth.can(f));
 
   const open = (e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget);
   const close = () => setAnchorEl(null);
@@ -57,6 +66,11 @@ const StaffUserMenu = observer(function StaffUserMenu() {
         <AccountCircle />
       </IconButton>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={close}>
+        {canReachAdminArea && (
+          <MenuItem onClick={() => go("/staff/admin")} data-testid="menu-admin">
+            Administration
+          </MenuItem>
+        )}
         <MenuItem onClick={() => go("/staff/profile")} data-testid="menu-profile">
           Profile
         </MenuItem>

@@ -15,6 +15,19 @@ export const handlers = [
   // ProfileStore.ensureLoaded() whenever a staff session is authenticated) does
   // not 500 in tests that don't care about the profile. Tests exercising the
   // profile override this with server.use(...).
+  // Benign default so the staff queue/detail pages (which load the ticket-options
+  // reference lists on mount for their transfer/assign/edit/search dropdowns) do
+  // not hit an unhandled request. Tests exercising the real lists override this.
+  http.get("/api/staff/ticket-options", () =>
+    HttpResponse.json({
+      departments: [],
+      agents: [],
+      teams: [],
+      help_topics: [],
+      priorities: [],
+      sla_plans: [],
+    }),
+  ),
   http.get("/api/staff/profile", () =>
     HttpResponse.json({
       id: 0,

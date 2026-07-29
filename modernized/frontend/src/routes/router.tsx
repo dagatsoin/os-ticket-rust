@@ -14,6 +14,7 @@ import {
   StaffTicketDetailPage,
 } from "../pages/StaffArea";
 import { ClientLoginPage, ClientTicketsPage } from "../pages/ClientPortal";
+import { PublicPageView } from "../pages/PublicPageView";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { AdminLayout } from "../pages/admin/AdminLayout";
 import { AdminIndex, AdminPlaceholder } from "../pages/admin/AdminMisc";
@@ -40,13 +41,32 @@ export function AppRoutes() {
         {/* Public branch */}
         <Route index element={<PublicHomePage />} />
         <Route path="open" element={<OpenTicketPage />} />
+        {/* Public site page by slug (FS-033) — UNAUTHENTICATED, no guard. */}
+        <Route path="pages/:slug" element={<PublicPageView />} />
 
         {/* Staff branch — /staff/* */}
         <Route path="staff">
           <Route index element={<StaffDashboardPage />} />
           <Route path="login" element={<StaffLoginPage />} />
-          <Route path="tickets" element={<StaffQueuePage />} />
-          <Route path="tickets/:id" element={<StaffTicketDetailPage />} />
+          {/* Queue + ticket detail: gate with RequireStaff (any authenticated
+              staff) so an unauthenticated visitor is redirected to the staff
+              login instead of relying solely on the apiClient 401→redirect. */}
+          <Route
+            path="tickets"
+            element={
+              <RequireStaff>
+                <StaffQueuePage />
+              </RequireStaff>
+            }
+          />
+          <Route
+            path="tickets/:id"
+            element={
+              <RequireStaff>
+                <StaffTicketDetailPage />
+              </RequireStaff>
+            }
+          />
 
           {/* Non-admin staff screens (TS-M4-B6): own profile + directory. Any
               authenticated staff member may reach these — RequireStaff, NOT the

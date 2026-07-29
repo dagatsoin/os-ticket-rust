@@ -30,6 +30,11 @@ function toThreadEntries(entries: ClientThreadEntry[]): ThreadEntry[] {
     .map((e) => ({
       id: e.id,
       author: e.poster,
+      // BACKEND GAP: GET /api/client/ticket returns thread entries as
+      // { id, thread_type, poster, body } only — no per-entry `created`
+      // timestamp (see backend api/src/client.rs `ClientThreadEntry`). We do NOT
+      // fabricate one; the timestamp stays empty until the backend adds a
+      // per-entry created field to the client thread response.
       timestamp: "",
       kind: e.threadType === "R" ? "response" : "message",
       body: (

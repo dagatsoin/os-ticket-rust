@@ -15,14 +15,7 @@ import { Navigate } from "react-router-dom";
 import { Box, CircularProgress } from "@mui/material";
 import { useStores } from "../stores/StoreContext";
 import type { AuthStore, StaffCapability } from "../stores/AuthStore";
-
-/** The delegated capability flags that grant entry to the admin area (TS-M4-A0 / M4-PREP). */
-const DELEGATED_CAPABILITIES: StaffCapability[] = [
-  "can_manage_faq",
-  "can_manage_premade",
-  "can_ban_emails",
-  "can_view_staff_stats",
-];
+import { DELEGATED_CAPABILITIES } from "./adminCapabilities";
 
 const DENIAL_MESSAGE = "You don't have permission to access the admin area.";
 

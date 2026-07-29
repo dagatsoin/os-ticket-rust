@@ -100,6 +100,10 @@ function toThreadEntry(e: StaffThreadEntry, ticketId: number): ThreadEntry {
   return {
     id: e.id,
     author,
+    // BACKEND GAP: the staff detail thread entries (ThreadEntryView in
+    // backend api/src/staff.rs) also omit a per-entry `created` timestamp, so
+    // this stays empty rather than being fabricated. Same limitation as the
+    // client thread (see ClientPortal.tsx).
     timestamp: "",
     title: e.title,
     kind,
@@ -168,7 +172,7 @@ const RIGHTMOST_COLUMN_SORT_KEY: Record<RightmostColumn, SortKey> = {
  * @implements TS-M3-G2: checkboxes + bulk action bar
  */
 export const StaffQueuePage = observer(function StaffQueuePage() {
-  const { staffTickets, staffAuth } = useStores();
+  const { staffTickets, staffAuth, ticketOptions } = useStores();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -194,29 +198,21 @@ export const StaffQueuePage = observer(function StaffQueuePage() {
   const canDeleteTickets = (staffAuth.user as Record<string, unknown>)?.canDeleteTickets === true;
   const canManageTickets = canCloseTickets || canDeleteTickets;
 
-  // Mock data for search dropdowns (in production, fetch from API)
-  // NOTE: IDs must match actual database IDs (dept_id=2 Support, dept_id=61 Sales)
-  const mockDepartments = [
-    { id: 2, name: "Support" },
-    { id: 61, name: "Sales" },
-  ];
-  // NOTE: IDs must match actual staff IDs in the database.
-  // staff_id=1 (agent), staff_id=87 (alice_agent), staff_id=88 (bob_agent)
-  const mockAssignees = [
-    { id: 1, name: "agent" },
-    { id: 87, name: "alice_agent" },
-    { id: 88, name: "bob_agent" },
-  ];
-  const mockTopics = [
-    { id: 1, name: "General" },
-    { id: 2, name: "Billing" },
-  ];
+  // Advanced-search filter options come from the shared ticket-options store
+  // (GET /api/staff/ticket-options) — real departments / agents / help topics,
+  // no longer hardcoded literal DB ids. Advanced search filters by numeric id, so
+  // the raw `agents` list (numeric ids) is used here — not the prefixed combined
+  // assignee list the Assign dialog needs.
+  const searchDepartments = ticketOptions.departments;
+  const searchAssignees = ticketOptions.agents;
+  const searchTopics = ticketOptions.helpTopics;
 
-  // Load stats on mount.
+  // Load stats + reference options on mount.
   useEffect(() => {
     void staffTickets.loadStats();
     void staffTickets.loadSortPrefs();
-  }, [staffTickets]);
+    void ticketOptions.load();
+  }, [staffTickets, ticketOptions]);
 
   // Reload queue when URL params change.
   // IMPORTANT: When no explicit sort/order params are in the URL, we must wait for
@@ -429,9 +425,9 @@ export const StaffQueuePage = observer(function StaffQueuePage() {
         onClose={() => setAdvancedSearchOpen(false)}
         onSearch={handleAdvancedSearch}
         initialKeyword={searchQuery}
-        departments={mockDepartments}
-        assignees={mockAssignees}
-        topics={mockTopics}
+        departments={searchDepartments}
+        assignees={searchAssignees}
+        topics={searchTopics}
       />
 
       {/* Queue tabs (TS-M3-A4) - hidden in search mode */}
@@ -606,7 +602,7 @@ export const StaffQueuePage = observer(function StaffQueuePage() {
  * @implements TS-M3-I6: lock UI (warning banner + auto-renew polling)
  */
 export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
-  const { staffTickets, staffAuth } = useStores();
+  const { staffTickets, staffAuth, ticketOptions } = useStores();
   const { id } = useParams();
   const ticketId = Number(id);
 
@@ -631,6 +627,11 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
     return () => staffTickets.clearDetail();
   }, [staffTickets, ticketId]);
 
+  // Load the transfer/assign/edit reference lists once (cached across tickets).
+  useEffect(() => {
+    void ticketOptions.load();
+  }, [ticketOptions]);
+
   const detail = staffTickets.detail;
 
   // Extract permissions from auth profile (default to true for development)
@@ -647,40 +648,15 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
 
   const currentStaffId = (staffAuth.user as Record<string, unknown>)?.id as number | undefined;
 
-  // Mock departments for transfer (in production, fetch from API)
-  // NOTE: These IDs must match actual department IDs in the database.
-  // dept_id=2 (Support), dept_id=61 (Sales), dept_id=109 (Billing)
-  const mockDepartments: DepartmentOption[] = [
-    { id: 2, name: "Support" },
-    { id: 61, name: "Sales" },
-    { id: 109, name: "Billing" },
-  ];
-
-  // Mock assignees (in production, fetch from API)
-  // NOTE: These IDs must match actual staff/team IDs in the database.
-  // staff_id=1 (agent), staff_id=87 (alice_agent), team_id=3 (Tier 2).
-  const mockAssignees = [
-    { id: "s1", name: "agent", type: "staff" as const },
-    { id: "s87", name: "alice_agent", type: "staff" as const },
-    { id: "s88", name: "bob_agent", type: "staff" as const },
-    { id: "t3", name: "Tier 2", type: "team" as const },
-  ];
-
-  // Mock data for edit form dropdowns (in production, fetch from API)
-  const mockTopics = [
-    { id: 1, name: "General" },
-    { id: 2, name: "Billing" },
-  ];
-  const mockPriorities = [
-    { id: 1, name: "Low" },
-    { id: 2, name: "Normal" },
-    { id: 3, name: "High" },
-    { id: 4, name: "Emergency" },
-  ];
-  const mockSlas = [
-    { id: 1, name: "Default" },
-    { id: 2, name: "Express" },
-  ];
+  // Real reference lists from GET /api/staff/ticket-options (no longer hardcoded
+  // literal DB ids). Transfer → departments; Assign → combined staff+team
+  // assignees (ids namespaced s<id>/t<id>, exactly what the assign route expects);
+  // Edit properties → departments + help topics + priorities + SLA plans.
+  const departments: DepartmentOption[] = ticketOptions.departments;
+  const assignees = ticketOptions.assignees;
+  const topics = ticketOptions.helpTopics;
+  const priorities = ticketOptions.priorities;
+  const slas = ticketOptions.slaPlans;
 
   async function handleReply() {
     if (!staffTickets.canReply) return;
@@ -889,8 +865,8 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
               ticket={detail}
               permissions={permissions}
               currentStaffId={currentStaffId}
-              departments={mockDepartments}
-              assignees={mockAssignees}
+              departments={departments}
+              assignees={assignees}
             />
 
             {/* Edit button (TS-M3-I4) */}
@@ -929,10 +905,10 @@ export const StaffTicketDetailPage = observer(function StaffTicketDetailPage() {
             onClose={() => setEditDialogOpen(false)}
             ticket={detail}
             onSuccess={() => void staffTickets.loadDetail(ticketId)}
-            departments={mockDepartments}
-            topics={mockTopics}
-            priorities={mockPriorities}
-            slas={mockSlas}
+            departments={departments}
+            topics={topics}
+            priorities={priorities}
+            slas={slas}
           />
 
           {/* Delete confirmation dialog (TS-M3-I5) */}

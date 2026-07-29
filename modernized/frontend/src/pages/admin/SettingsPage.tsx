@@ -5,7 +5,9 @@
 // @implements FS-032.1: settings panel entry & tab routing.
 import { useEffect, useState } from "react";
 import { observer } from "mobx-react-lite";
-import { Alert, Box, Button, CircularProgress, Tab, Tabs, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Stack, Tab, Tabs, Typography } from "@mui/material";
+import { AttachFile } from "@mui/icons-material";
+import { Link as RouterLink } from "react-router-dom";
 import { useStores } from "../../stores/StoreContext";
 import { SETTINGS_TABS } from "../../stores/adminSettingsSchema";
 import { SettingsTabForm } from "./SettingsTabForm";
@@ -43,9 +45,27 @@ export const SettingsPage = observer(function SettingsPage() {
 
   return (
     <Box>
-      <Typography variant="h5" gutterBottom>
-        System Settings
-      </Typography>
+      {/* Header row: title + a visible link to the separate Attachment Settings
+          screen (/staff/admin/settings/attachments), which is otherwise only
+          reachable by typing the URL. */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ mb: 1 }}
+      >
+        <Typography variant="h5">System Settings</Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<AttachFile />}
+          component={RouterLink}
+          to="/staff/admin/settings/attachments"
+          data-testid="attachments-settings-link"
+        >
+          Attachment Settings
+        </Button>
+      </Stack>
       <Tabs
         value={active}
         onChange={(_e, v: number) => setActive(v)}

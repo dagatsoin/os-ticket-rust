@@ -73,6 +73,10 @@ pub fn app(state: AppState, frontend_origin: &str) -> Router {
         .route("/api/staff/logout", post(auth::routes::staff_logout))
         // Staff realm — gated by the StaffSession extractor (401 without it).
         .route("/api/staff/me", get(staff::me))
+        // Transfer/assign/edit reference lists — any staff session (NOT admin),
+        // read-only id+name only. Registered before the `:id` ticket routes so
+        // the static `ticket-options` segment cannot be shadowed.
+        .route("/api/staff/ticket-options", get(staff::ticket_options))
         // Admin settings (TS-M4-A1) — per-route admin gate (require_admin), not
         // blanket middleware; PUT additionally CSRF-enforced (StaffCsrf).
         .route(

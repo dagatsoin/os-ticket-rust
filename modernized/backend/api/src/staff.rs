@@ -151,6 +151,97 @@ pub async fn me(
     }))
 }
 
+/// `GET /api/staff/ticket-options` — the reference lists an agent needs to power
+/// the ticket Transfer / Assign / Edit-properties dialogs, under a plain staff
+/// gate (any authenticated staff, NOT admin). Read-only, exposes only id + name
+/// (no secrets), so it is safe outside the `/admin/*` surface; the admin
+/// form-options endpoints are re-used for their query logic but require admin.
+///
+/// Response shape (each value is `[{ "id", "name" }]`):
+/// - `departments`  — all departments (Transfer target list).
+/// - `agents`       — assignable staff: active staff, `name` = display name.
+/// - `teams`        — assignable teams: enabled teams.
+/// - `help_topics`  — active help topics (Edit properties).
+/// - `priorities`   — the priority set, ordered by urgency DESC.
+/// - `sla_plans`    — active SLA plans (Edit properties).
+///
+/// @implements FS-032.10/.11/.12: staff transfer/assign/edit reference data.
+/// @implements BS-020.2: read-only reference lists available to any staff realm
+///   session (not gated behind the admin capability).
+pub async fn ticket_options(
+    State(state): State<AppState>,
+    _session: StaffSession,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    use serde_json::json;
+
+    let pool = state
+        .pool
+        .as_ref()
+        .ok_or_else(|| ApiError::internal("Ticket options are unavailable"))?;
+
+    type NameRow = (i32, String);
+    let id_name = |rows: Vec<NameRow>| -> Vec<serde_json::Value> {
+        rows.into_iter()
+            .map(|(id, name)| json!({ "id": id, "name": name }))
+            .collect()
+    };
+
+    // departments: all departments (Transfer target list).
+    let dept_rows: Vec<NameRow> =
+        sqlx::query_as("SELECT dept_id, dept_name FROM department ORDER BY dept_name ASC")
+            .fetch_all(pool)
+            .await
+            .map_err(|_| ApiError::internal("Department lookup failed"))?;
+
+    // agents: active staff; name = display name (firstname+lastname, else username).
+    let agent_rows: Vec<NameRow> = sqlx::query_as(
+        "SELECT staff_id, COALESCE(NULLIF(TRIM(firstname || ' ' || lastname), ''), username) AS name \
+         FROM staff WHERE isactive = true ORDER BY name ASC",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|_| ApiError::internal("Staff lookup failed"))?;
+
+    // teams: enabled teams.
+    let team_rows: Vec<NameRow> =
+        sqlx::query_as("SELECT team_id, name FROM team WHERE isenabled = true ORDER BY name ASC")
+            .fetch_all(pool)
+            .await
+            .map_err(|_| ApiError::internal("Team lookup failed"))?;
+
+    // help_topics: active topics.
+    let topic_rows: Vec<NameRow> = sqlx::query_as(
+        "SELECT topic_id, topic FROM help_topic WHERE isactive = true ORDER BY topic ASC",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|_| ApiError::internal("Help topic lookup failed"))?;
+
+    // priorities: full set, most-urgent first.
+    let priority_rows: Vec<NameRow> = sqlx::query_as(
+        "SELECT priority_id, priority_desc FROM priority ORDER BY urgency DESC, priority_id ASC",
+    )
+    .fetch_all(pool)
+    .await
+    .map_err(|_| ApiError::internal("Priority lookup failed"))?;
+
+    // sla_plans: active SLA plans.
+    let sla_rows: Vec<NameRow> =
+        sqlx::query_as("SELECT id, name FROM sla WHERE isactive = true ORDER BY name ASC")
+            .fetch_all(pool)
+            .await
+            .map_err(|_| ApiError::internal("SLA lookup failed"))?;
+
+    Ok(Json(json!({
+        "departments": id_name(dept_rows),
+        "agents": id_name(agent_rows),
+        "teams": id_name(team_rows),
+        "help_topics": id_name(topic_rows),
+        "priorities": id_name(priority_rows),
+        "sla_plans": id_name(sla_rows),
+    })))
+}
+
 /// One row of the staff open-tickets queue.
 ///
 /// @implements BS-020.5: includes dynamic rightmost column fields.
